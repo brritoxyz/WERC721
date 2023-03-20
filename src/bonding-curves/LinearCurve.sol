@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {ICurve} from "./ICurve.sol";
-import {CurveErrorCodes} from "./CurveErrorCodes.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 /*
     @author 0xmons and boredGenius

@@ -6,7 +6,7 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import {ICurve} from "src/bonding-curves/ICurve.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 
 library LSSVMPairCloner {

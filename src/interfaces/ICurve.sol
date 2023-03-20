@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {CurveErrorCodes} from "./CurveErrorCodes.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 interface ICurve {
     /**

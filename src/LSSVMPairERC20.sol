@@ -4,11 +4,11 @@ pragma solidity 0.8.18;
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {LSSVMPair} from "./LSSVMPair.sol";
+import {LSSVMPair} from "src/LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
-import {LSSVMRouter} from "./LSSVMRouter.sol";
-import {ICurve} from "./bonding-curves/ICurve.sol";
-import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {LSSVMRouter} from "src/LSSVMRouter.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 /**
     @title An NFT/Token pair where the token is an ERC20

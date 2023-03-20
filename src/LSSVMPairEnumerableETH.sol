@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {LSSVMPairETH} from "./LSSVMPairETH.sol";
-import {LSSVMPairEnumerable} from "./LSSVMPairEnumerable.sol";
+import {LSSVMPairETH} from "src/LSSVMPairETH.sol";
+import {LSSVMPairEnumerable} from "src/LSSVMPairEnumerable.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 
 /**

@@ -11,3 +11,5 @@ out/
 .env
 
 scripts/loadEnv.sh
+
+.DS_Store

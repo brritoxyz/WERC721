@@ -4,9 +4,9 @@ pragma solidity 0.8.18;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {LSSVMPair} from "./LSSVMPair.sol";
+import {LSSVMPair} from "src/LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
-import {ICurve} from "./bonding-curves/ICurve.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
 
 /**
     @title An NFT/Token pair where the token is ETH

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {ICurve} from "./ICurve.sol";
-import {CurveErrorCodes} from "./CurveErrorCodes.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {LSSVMPair} from "../LSSVMPair.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {LSSVMPairCloner} from "../lib/LSSVMPairCloner.sol";
-import {LSSVMPairERC20} from "../LSSVMPairERC20.sol";
-import {ILSSVMPairFactoryLike} from "../LSSVMPairFactory.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
+import {LSSVMPair} from "src/LSSVMPair.sol";
+import {LSSVMPairCloner} from "src/lib/LSSVMPairCloner.sol";
+import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
+import {ILSSVMPairFactoryLike} from "src/LSSVMPairFactory.sol";
 
 /*
     @author 0xacedia
@@ -22,12 +22,9 @@ contract XykCurve is ICurve, CurveErrorCodes {
     /**
         @dev See {ICurve-validateDelta}
      */
-    function validateDelta(uint128 delta)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateDelta(
+        uint128 delta
+    ) external pure override returns (bool) {
         // all values are valid
         return true;
     }
@@ -35,12 +32,9 @@ contract XykCurve is ICurve, CurveErrorCodes {
     /**
         @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(uint128 newSpotPrice)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateSpotPrice(
+        uint128 newSpotPrice
+    ) external pure override returns (bool) {
         // all values are valid
         return true;
     }

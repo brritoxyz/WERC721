@@ -3,8 +3,8 @@ pragma solidity 0.8.18;
 
 import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enumerable.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {LSSVMRouter} from "./LSSVMRouter.sol";
-import {LSSVMPair} from "./LSSVMPair.sol";
+import {LSSVMRouter} from "src/LSSVMRouter.sol";
+import {LSSVMPair} from "src/LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 
 /**

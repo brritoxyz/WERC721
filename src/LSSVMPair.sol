@@ -5,12 +5,12 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
-import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
-import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
-import {ICurve} from "./bonding-curves/ICurve.sol";
-import {LSSVMRouter} from "./LSSVMRouter.sol";
+import {OwnableWithTransferCallback} from "src/lib/OwnableWithTransferCallback.sol";
+import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {LSSVMRouter} from "src/LSSVMRouter.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
-import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons

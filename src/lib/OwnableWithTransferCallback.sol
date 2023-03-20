@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 
-pragma solidity ^0.8.4;
+pragma solidity 0.8.18;
 
 import {ERC165Checker} from "openzeppelin/utils/introspection/ERC165Checker.sol";
-import {IOwnershipTransferCallback} from "./IOwnershipTransferCallback.sol";
 import {Address} from "openzeppelin/utils/Address.sol";
+import {IOwnershipTransferCallback} from "src/interfaces/IOwnershipTransferCallback.sol";
 
 abstract contract OwnableWithTransferCallback {
     using ERC165Checker for address;

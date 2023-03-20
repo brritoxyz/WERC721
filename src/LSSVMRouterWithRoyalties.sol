@@ -15,9 +15,9 @@ pragma solidity 0.8.18;
 */
 
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
-import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
-import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "./LSSVMRouter.sol";
-import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
+import {IRoyaltyRegistry} from "src/interfaces/IRoyaltyRegistry.sol";
+import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "src/LSSVMRouter.sol";
+import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
 
 contract LSSVMRouterWithRoyalties is LSSVMRouter {
     using SafeTransferLib for address payable;
@@ -1189,10 +1189,10 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         the default royalty info, or a specific set for this router
     */
 
-    function _issueETHRoyalties(LSSVMPair pair, uint256 salePrice)
-        internal
-        returns (uint256 royalties)
-    {
+    function _issueETHRoyalties(
+        LSSVMPair pair,
+        uint256 salePrice
+    ) internal returns (uint256 royalties) {
         address recipient;
 
         (recipient, royalties) = _calculateRoyalties(pair, salePrice);
@@ -1210,10 +1210,10 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         }
     }
 
-    function _issueTokenRoyalties(LSSVMPair pair, uint256 salePrice)
-        internal
-        returns (uint256 royalties)
-    {
+    function _issueTokenRoyalties(
+        LSSVMPair pair,
+        uint256 salePrice
+    ) internal returns (uint256 royalties) {
         address recipient;
 
         (recipient, royalties) = _calculateRoyalties(pair, salePrice);
@@ -1233,11 +1233,10 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         }
     }
 
-    function _calculateRoyalties(LSSVMPair pair, uint256 salePrice)
-        internal
-        view
-        returns (address recipient, uint256 royalties)
-    {
+    function _calculateRoyalties(
+        LSSVMPair pair,
+        uint256 salePrice
+    ) internal view returns (address recipient, uint256 royalties) {
         // get royalty lookup address from the shared royalty registry
         address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(
             address(pair.nft())
@@ -1260,11 +1259,9 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         }
     }
 
-    function _fetchRoyaltyType(LSSVMPair pair)
-        internal
-        pure
-        returns (RoyaltyType)
-    {
+    function _fetchRoyaltyType(
+        LSSVMPair pair
+    ) internal pure returns (RoyaltyType) {
         ILSSVMPairFactoryLike.PairVariant pairVariant = pair.pairVariant();
         if (pairVariant >= ILSSVMPairFactoryLike.PairVariant.ENUMERABLE_ERC20) {
             return RoyaltyType.ERC20;
