@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
+import {ERC165Checker} from "openzeppelin/utils/introspection/ERC165Checker.sol";
+import {IERC165} from "openzeppelin/utils/introspection/IERC165.sol";
+import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enumerable.sol";
 
 // @dev Solmate's ERC20 is used instead of OZ's ERC20 so we can use safeTransferLib for cheaper safeTransfers for
 // ETH and ERC20 tokens
@@ -18,7 +18,7 @@ import {LSSVMPairETH} from "./LSSVMPairETH.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
 import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 import {LSSVMPairEnumerableETH} from "./LSSVMPairEnumerableETH.sol";
 import {LSSVMPairEnumerableERC20} from "./LSSVMPairEnumerableERC20.sol";
 import {LSSVMPairMissingEnumerableETH} from "./LSSVMPairMissingEnumerableETH.sol";
@@ -89,7 +89,7 @@ contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
         @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
         @param _assetRecipient The address that will receive the assets traders give during trades.
                               If set to address(0), assets will be sent to the pool address.
-                              Not available to TRADE pools. 
+                              Not available to TRADE pools.
         @param _poolType TOKEN, NFT, or TRADE
         @param _delta The delta value used by the bonding curve. The meaning of delta depends
         on the specific curve.
@@ -112,7 +112,7 @@ contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
             bondingCurveAllowed[_bondingCurve],
             "Bonding curve not whitelisted"
         );
-        
+
         // Check to see if the NFT supports Enumerable to determine which template to use
         address template;
         try IERC165(address(_nft)).supportsInterface(INTERFACE_ID_ERC721_ENUMERABLE) returns (bool isEnumerable) {
@@ -445,7 +445,7 @@ contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
         }
     }
 
-    /** 
+    /**
       @dev Used to deposit NFTs into a pair after creation and emit an event for indexing (if recipient is indeed a pair)
     */
     function depositNFTs(

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
-import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enumerable.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {LSSVMPair} from "./LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 
 /**
     @title An NFT/Token pair for an NFT that implements ERC721Enumerable

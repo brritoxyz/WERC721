@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import {ERC165Checker} from "openzeppelin/utils/introspection/ERC165Checker.sol";
 import {IOwnershipTransferCallback} from "./IOwnershipTransferCallback.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Address} from "openzeppelin/utils/Address.sol";
 
 abstract contract OwnableWithTransferCallback {
     using ERC165Checker for address;

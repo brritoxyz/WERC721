@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 import {LSSVMPairETH} from "./LSSVMPairETH.sol";
 import {LSSVMPairMissingEnumerable} from "./LSSVMPairMissingEnumerable.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 
 contract LSSVMPairMissingEnumerableETH is
     LSSVMPairMissingEnumerable,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 /**
   Coded for Sudoswap with ♥ by
@@ -14,7 +14,7 @@ pragma solidity ^0.8.0;
   https://defi.sucks
 */
 
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "./LSSVMRouter.sol";
 import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";

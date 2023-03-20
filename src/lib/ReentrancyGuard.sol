@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Forked from OpenZeppelin Contracts v4.4.1 (security/ReentrancyGuard.sol), 
+// Forked from OpenZeppelin Contracts v4.4.1 (security/ReentrancyGuard.sol),
 // removed initializer check as we already do that in our modified Ownable
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
@@ -39,7 +39,7 @@ abstract contract ReentrancyGuard {
 
     function __ReentrancyGuard_init() internal {
       _status = _NOT_ENTERED;
-    } 
+    }
 
     /**
      * @dev Prevents a contract from calling itself, directly or indirectly.

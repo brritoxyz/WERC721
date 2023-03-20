@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {LSSVMPair} from "./LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 
 contract LSSVMRouter2 {
@@ -185,7 +185,7 @@ contract LSSVMRouter2 {
                                 continue;
                             }
                             // Otherwise, adjust the max amt sent to be down
-                            (,,,priceToFillAt,) = pair.getBuyNFTQuote(numItemsToFill); 
+                            (,,,priceToFillAt,) = pair.getBuyNFTQuote(numItemsToFill);
                         }
 
                         // Now, do the partial fill swap with the updated price and ids
@@ -258,7 +258,7 @@ contract LSSVMRouter2 {
     }
 
     /**
-      @dev Performs a log(n) search to find the largest value where maxPricesPerNumNFTs is still greater than 
+      @dev Performs a log(n) search to find the largest value where maxPricesPerNumNFTs is still greater than
       the pair's getBuyNFTQuote() value. Not a true binary search, as it's biased to underfill to reduce gas / complexity.
       @param maxNumNFTs The maximum number of NFTs to fill / get a quote for
       @param maxPricesPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
@@ -545,10 +545,10 @@ contract LSSVMRouter2 {
 
     /**
         @notice Swaps NFTs for tokens, designed to be used for 1 token at a time
-        @dev Calling with multiple tokens is permitted, BUT minOutput will be 
+        @dev Calling with multiple tokens is permitted, BUT minOutput will be
         far from enough of a safety check because different tokens almost certainly have different unit prices.
         @dev Does no price checking, this is assumed to be done off-chain
-        @param swapList The list of pairs and swap calldata 
+        @param swapList The list of pairs and swap calldata
         @return outputAmount The number of tokens to be received
      */
     function swapNFTsForToken(

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {LSSVMPair} from "./LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
 
 /**
@@ -134,7 +134,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
      */
     fallback() external payable {
         // Only allow calls without function selector
-        require (msg.data.length == _immutableParamsLength()); 
+        require (msg.data.length == _immutableParamsLength());
         emit TokenDeposit(msg.value);
     }
 }

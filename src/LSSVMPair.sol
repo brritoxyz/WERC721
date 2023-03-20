@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
+import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
+import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
 import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
 import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
 import {LSSVMRouter} from "./LSSVMRouter.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
-import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
@@ -65,13 +65,13 @@ abstract contract LSSVMPair is
     /**
       @notice Called during pair creation to set initial parameters
       @dev Only called once by factory to initialize.
-      We verify this by making sure that the current owner is address(0). 
+      We verify this by making sure that the current owner is address(0).
       The Ownable library we use disallows setting the owner to be address(0), so this condition
-      should only be valid before the first initialize call. 
+      should only be valid before the first initialize call.
       @param _owner The owner of the pair
       @param _assetRecipient The address that will receive the TOKEN or NFT sent to this pair during swaps. NOTE: If set to address(0), they will go to the pair itself.
       @param _delta The initial delta of the bonding curve
-      @param _fee The initial % fee taken, if this is a trade pair 
+      @param _fee The initial % fee taken, if this is a trade pair
       @param _spotPrice The initial price to sell an asset into the pair
      */
     function initialize(
@@ -583,7 +583,7 @@ abstract contract LSSVMPair is
 
     /**
         @notice Sends excess tokens back to the caller (if applicable)
-        @dev We send ETH back to the caller even when called from LSSVMRouter because we do an aggregate slippage check for certain bulk swaps. (Instead of sending directly back to the router caller) 
+        @dev We send ETH back to the caller even when called from LSSVMRouter because we do an aggregate slippage check for certain bulk swaps. (Instead of sending directly back to the router caller)
         Excess ETH sent for one swap can then be used to help pay for the next swap.
      */
     function _refundTokenToSender(uint256 inputAmount) internal virtual;
@@ -608,11 +608,11 @@ abstract contract LSSVMPair is
 
     /**
         @notice Sends some number of NFTs to a recipient address, ID agnostic
-        @dev Even though we specify the NFT address here, this internal function is only 
+        @dev Even though we specify the NFT address here, this internal function is only
         used to send NFTs associated with this specific pool.
         @param _nft The address of the NFT to send
         @param nftRecipient The receiving address for the NFTs
-        @param numNFTs The number of NFTs to send  
+        @param numNFTs The number of NFTs to send
      */
     function _sendAnyNFTsToRecipient(
         IERC721 _nft,
@@ -622,11 +622,11 @@ abstract contract LSSVMPair is
 
     /**
         @notice Sends specific NFTs to a recipient address
-        @dev Even though we specify the NFT address here, this internal function is only 
+        @dev Even though we specify the NFT address here, this internal function is only
         used to send NFTs associated with this specific pool.
         @param _nft The address of the NFT to send
         @param nftRecipient The receiving address for the NFTs
-        @param nftIds The specific IDs of NFTs to send  
+        @param nftIds The specific IDs of NFTs to send
      */
     function _sendSpecificNFTsToRecipient(
         IERC721 _nft,
@@ -636,7 +636,7 @@ abstract contract LSSVMPair is
 
     /**
         @notice Takes NFTs from the caller and sends them into the pair's asset recipient
-        @dev This is used by the LSSVMPair's swapNFTForToken function. 
+        @dev This is used by the LSSVMPair's swapNFTForToken function.
         @param _nft The NFT collection to take from
         @param nftIds The specific NFT IDs to take
         @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
@@ -835,7 +835,7 @@ abstract contract LSSVMPair is
     }
 
     /**
-        @notice Allows owner to batch multiple calls, forked from: https://github.com/boringcrypto/BoringSolidity/blob/master/contracts/BoringBatchable.sol 
+        @notice Allows owner to batch multiple calls, forked from: https://github.com/boringcrypto/BoringSolidity/blob/master/contracts/BoringBatchable.sol
         @dev Intended for withdrawing/altering pool pricing in one tx, only callable by owner, cannot change owner
         @param calls The calldata for each call to make
         @param revertOnFail Whether or not to revert the entire tx if any of the calls fail
