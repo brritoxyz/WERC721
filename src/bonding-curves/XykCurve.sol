@@ -5,10 +5,10 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-import {LSSVMPair} from "src/LSSVMPair.sol";
+import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
 import {LSSVMPairCloner} from "src/lib/LSSVMPairCloner.sol";
-import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
-import {ILSSVMPairFactoryLike} from "src/LSSVMPairFactory.sol";
+import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
+import {ILSSVMPairFactoryLike} from "src/sudoswap/LSSVMPairFactory.sol";
 
 /*
     @author 0xacedia

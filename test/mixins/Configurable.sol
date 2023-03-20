@@ -2,10 +2,10 @@
 pragma solidity 0.8.18;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {LSSVMPair} from "src/LSSVMPair.sol";
+import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
-import {LSSVMPairFactory} from "src/LSSVMPairFactory.sol";
+import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
 
 abstract contract Configurable {
     function getBalance(address a) public virtual returns (uint256);

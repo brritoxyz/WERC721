@@ -8,7 +8,7 @@ import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol"
 import {OwnableWithTransferCallback} from "src/lib/OwnableWithTransferCallback.sol";
 import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMRouter} from "src/LSSVMRouter.sol";
+import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 

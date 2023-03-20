@@ -7,13 +7,13 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {NoArbBondingCurve} from "test/base/NoArbBondingCurve.sol";
-import {LSSVMPair} from "src/LSSVMPair.sol";
-import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
-import {LSSVMRouter} from "src/LSSVMRouter.sol";
-import {LSSVMRouter2} from "src/LSSVMRouter2.sol";
+import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
+import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
+import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
 import {Test20} from "test/mocks/Test20.sol";
 import {IMintable} from "test/interfaces/IMintable.sol";
-import {LSSVMPairFactory} from "src/LSSVMPairFactory.sol";
+import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";

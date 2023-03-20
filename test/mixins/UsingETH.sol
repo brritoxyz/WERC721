@@ -3,11 +3,11 @@ pragma solidity 0.8.18;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMPair} from "src/LSSVMPair.sol";
-import {LSSVMPairFactory} from "src/LSSVMPairFactory.sol";
-import {LSSVMRouter} from "src/LSSVMRouter.sol";
-import {LSSVMRouter2} from "src/LSSVMRouter2.sol";
-import {LSSVMPairETH} from "src/LSSVMPairETH.sol";
+import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
+import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
+import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
+import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
 import {Configurable} from "./Configurable.sol";
 import {RouterCaller} from "./RouterCaller.sol";
 

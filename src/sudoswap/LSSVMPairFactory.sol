@@ -12,17 +12,17 @@ import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enu
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {LSSVMPair} from "src/LSSVMPair.sol";
-import {LSSVMRouter} from "src/LSSVMRouter.sol";
-import {LSSVMPairETH} from "src/LSSVMPairETH.sol";
+import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
+import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
+import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
 import {LSSVMPairCloner} from "src/lib/LSSVMPairCloner.sol";
 import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
-import {LSSVMPairEnumerableETH} from "src/LSSVMPairEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "src/LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableETH} from "src/LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableERC20} from "src/LSSVMPairMissingEnumerableERC20.sol";
+import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
+import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
+import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
+import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
 
 contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
     using LSSVMPairCloner for address;

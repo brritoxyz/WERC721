@@ -16,8 +16,8 @@ pragma solidity 0.8.18;
 
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "src/interfaces/IRoyaltyRegistry.sol";
-import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "src/LSSVMRouter.sol";
-import {LSSVMPairERC20} from "src/LSSVMPairERC20.sol";
+import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "src/sudoswap/LSSVMRouter.sol";
+import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
 
 contract LSSVMRouterWithRoyalties is LSSVMRouter {
     using SafeTransferLib for address payable;

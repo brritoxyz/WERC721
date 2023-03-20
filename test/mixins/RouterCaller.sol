@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {LSSVMRouter} from "src/LSSVMRouter.sol";
-import {LSSVMRouter2} from "src/LSSVMRouter2.sol";
+import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
 
 abstract contract RouterCaller {
     function swapTokenForAnyNFTs(
