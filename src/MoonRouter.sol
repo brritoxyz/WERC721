@@ -1135,10 +1135,6 @@ contract RouterWithRoyalties is Router {
 
             RoyaltyType royaltyType = _fetchRoyaltyType(swap.pair);
 
-            IPairFactoryLike.PairVariant pairVariant = swap
-                .pair
-                .pairVariant();
-
             if (royaltyType == RoyaltyType.ERC20) {
                 // avoids using _issueTokenRoyalties internal function because needs ERC20 token for reimbursing to tokenRecipient
                 ERC20 token = PairERC20(address(swap.pair)).token();

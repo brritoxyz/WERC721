@@ -13,11 +13,11 @@ abstract contract UsingXykCurve is Configurable {
         return new XykCurve();
     }
 
-    function modifyDelta(uint64 delta) public pure override returns (uint64) {
+    function modifyDelta(uint64) public pure override returns (uint64) {
         return 11;
     }
 
-    function modifySpotPrice(uint56 spotPrice)
+    function modifySpotPrice(uint56)
         public
         pure
         override

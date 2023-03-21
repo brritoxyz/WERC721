@@ -77,11 +77,10 @@ contract Router2 {
     }
 
     // Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
-    function getNFTQuoteForPartialFillBuy(Pair pair, uint256 numNFTs)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getNFTQuoteForPartialFillBuy(
+        Pair pair,
+        uint256 numNFTs
+    ) external view returns (uint256[] memory) {
         require(numNFTs > 0, "Nonzero");
         uint256[] memory prices = new uint256[](numNFTs);
         uint128 spotPrice = pair.spotPrice();
@@ -169,7 +168,6 @@ contract Router2 {
                     if (numItemsToFill == 0) {
                         continue;
                     } else {
-
                         // Figure out which items are actually still buyable from the list
                         uint256[] memory fillableIds = _findAvailableIds(
                             pair,
@@ -185,7 +183,9 @@ contract Router2 {
                                 continue;
                             }
                             // Otherwise, adjust the max amt sent to be down
-                            (,,,priceToFillAt,) = pair.getBuyNFTQuote(numItemsToFill);
+                            (, , , priceToFillAt, ) = pair.getBuyNFTQuote(
+                                numItemsToFill
+                            );
                         }
 
                         // Now, do the partial fill swap with the updated price and ids
@@ -298,14 +298,17 @@ contract Router2 {
     }
 
     function _findMaxFillableAmtForETHSell(
-        Pair pair,
-        uint256 maxNumNFTs,
-        uint256[] memory minOutputPerNumNFTs
-    ) internal view returns (uint256 numNFTs, uint256 price) {
-        uint256 pairBalance = address(pair).balance;
-        // Start and end indices
-        uint256 start = 0;
-        uint256 end = maxNumNFTs - 1;
+        Pair,
+        uint256,
+        uint256[] memory
+    ) internal pure returns (uint256, uint256) {
+    // ) internal view returns (uint256, uint256) {
+        // uint256 pairBalance = address(pair).balance;
+        // // Start and end indices
+        // uint256 start = 0;
+        // uint256 end = maxNumNFTs - 1;
+
+        return (0, 0);
         // while (start <= end) {
         //     // Get price of mid number of items
         //     uint256 mid = start + (end - start + 1) / 2;
@@ -508,11 +511,9 @@ contract Router2 {
         @param swapList The list of pairs and swap calldata
         @return remainingValue The unspent token amount
      */
-    function swapETHForSpecificNFTs(RobustPairSwapSpecific[] calldata swapList)
-        external
-        payable
-        returns (uint256 remainingValue)
-    {
+    function swapETHForSpecificNFTs(
+        RobustPairSwapSpecific[] calldata swapList
+    ) external payable returns (uint256 remainingValue) {
         // Start with all of the ETH sent
         remainingValue = msg.value;
 
