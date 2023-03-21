@@ -17,7 +17,7 @@ import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
 import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
 import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
 import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
-import {LSSVMRouterWithRoyalties, LSSVMRouter} from "src/sudoswap/LSSVMRouterWithRoyalties.sol";
+import {LSSVMRouterWithRoyalties, LSSVMRouter} from "src/MoonRouter.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Hevm} from "test/utils/Hevm.sol";
 import {ConfigurableWithRoyalties} from "test/mixins/ConfigurableWithRoyalties.sol";
