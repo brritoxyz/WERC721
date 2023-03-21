@@ -13,14 +13,14 @@ import {RouterWithRoyalties} from "src/MoonRouter.sol";
 
 contract LinearBase is Test {
     // 0.40%
-    uint256 private constant PROTOCOL_FEE_MULTIPLIER = 0.004e18;
+    uint256 internal constant PROTOCOL_FEE_MULTIPLIER = 0.004e18;
 
     // Unchanged SudoSwap contracts
-    LinearCurve private immutable linearCurve = new LinearCurve();
-    PairFactory private immutable pairFactory;
+    LinearCurve internal immutable linearCurve = new LinearCurve();
+    PairFactory internal immutable pairFactory;
 
-   // Moonbase
-    RouterWithRoyalties private immutable moonRouter;
+    // Moonbase
+    RouterWithRoyalties internal immutable moonRouter;
 
     constructor() {
         // Deploy PairFactory with template addresses and fee config
