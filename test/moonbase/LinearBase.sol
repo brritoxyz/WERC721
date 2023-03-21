@@ -18,26 +18,17 @@ contract LinearBase is Test {
     // Unchanged SudoSwap contracts
     LinearCurve private immutable linearCurve = new LinearCurve();
     PairFactory private immutable pairFactory;
-    PairEnumerableETH private immutable pairEnumerableETH;
-    PairMissingEnumerableETH private immutable pairMissingEnumerableETH;
-    PairEnumerableERC20 private immutable pairEnumerableERC20;
-    PairMissingEnumerableERC20 private immutable pairMissingEnumerableERC20;
 
    // Moonbase
     RouterWithRoyalties private immutable moonRouter;
 
     constructor() {
-        pairEnumerableETH = new PairEnumerableETH();
-        pairMissingEnumerableETH = new PairMissingEnumerableETH();
-        pairEnumerableERC20 = new PairEnumerableERC20();
-        pairMissingEnumerableERC20 = new PairMissingEnumerableERC20();
-
         // Deploy PairFactory with template addresses and fee config
         pairFactory = new PairFactory(
-            pairEnumerableETH,
-            pairMissingEnumerableETH,
-            pairEnumerableERC20,
-            pairMissingEnumerableERC20,
+            new PairEnumerableETH(),
+            new PairMissingEnumerableETH(),
+            new PairEnumerableERC20(),
+            new PairMissingEnumerableERC20(),
             payable(address(this)),
             PROTOCOL_FEE_MULTIPLIER
         );
