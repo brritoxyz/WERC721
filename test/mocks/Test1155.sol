@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 import "openzeppelin/token/ERC1155/ERC1155.sol";
 
 contract Test1155 is ERC1155 {

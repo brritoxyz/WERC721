@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {Router} from "sudoswap/Router.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 
 /**
     @title An NFT/Token pair for an NFT that does not implement ERC721Enumerable
     @author boredGenius and 0xmons
  */
-abstract contract LSSVMPairMissingEnumerable is LSSVMPair {
+abstract contract PairMissingEnumerable is Pair {
     using EnumerableSet for EnumerableSet.UintSet;
 
     // Used for internal ID tracking
     EnumerableSet.UintSet private idSet;
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _sendAnyNFTsToRecipient(
         IERC721 _nft,
         address nftRecipient,
@@ -39,7 +39,7 @@ abstract contract LSSVMPairMissingEnumerable is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _sendSpecificNFTsToRecipient(
         IERC721 _nft,
         address nftRecipient,
@@ -59,7 +59,7 @@ abstract contract LSSVMPairMissingEnumerable is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function getAllHeldIds() external view override returns (uint256[] memory) {
         uint256 numNFTs = idSet.length();
         uint256[] memory ids = new uint256[](numNFTs);
@@ -91,7 +91,7 @@ abstract contract LSSVMPairMissingEnumerable is LSSVMPair {
         return this.onERC721Received.selector;
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds)
         external
         override

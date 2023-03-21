@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC2981} from "openzeppelin/token/common/ERC2981.sol";

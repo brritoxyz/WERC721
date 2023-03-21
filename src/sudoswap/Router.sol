@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
-contract LSSVMRouter {
+contract Router {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
     struct PairSwapAny {
-        LSSVMPair pair;
+        Pair pair;
         uint256 numItems;
     }
 
     struct PairSwapSpecific {
-        LSSVMPair pair;
+        Pair pair;
         uint256[] nftIds;
     }
 
@@ -60,9 +60,9 @@ contract LSSVMRouter {
         _;
     }
 
-    ILSSVMPairFactoryLike public immutable factory;
+    IPairFactoryLike public immutable factory;
 
-    constructor(ILSSVMPairFactoryLike _factory) {
+    constructor(IPairFactoryLike _factory) {
         factory = _factory;
     }
 
@@ -864,16 +864,16 @@ contract LSSVMRouter {
         address from,
         address to,
         uint256 amount,
-        ILSSVMPairFactoryLike.PairVariant variant
+        IPairFactoryLike.PairVariant variant
     ) external {
         // verify caller is a trusted pair contract
         require(factory.isPair(msg.sender, variant), "Not pair");
 
         // verify caller is an ERC20 pair
         require(
-            variant == ILSSVMPairFactoryLike.PairVariant.ENUMERABLE_ERC20 ||
+            variant == IPairFactoryLike.PairVariant.ENUMERABLE_ERC20 ||
                 variant ==
-                ILSSVMPairFactoryLike.PairVariant.MISSING_ENUMERABLE_ERC20,
+                IPairFactoryLike.PairVariant.MISSING_ENUMERABLE_ERC20,
             "Not ERC20 pair"
         );
 
@@ -895,7 +895,7 @@ contract LSSVMRouter {
         address from,
         address to,
         uint256 id,
-        ILSSVMPairFactoryLike.PairVariant variant
+        IPairFactoryLike.PairVariant variant
     ) external {
         // verify caller is a trusted pair contract
         require(factory.isPair(msg.sender, variant), "Not pair");

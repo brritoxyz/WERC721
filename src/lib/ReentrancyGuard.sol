@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
+pragma solidity 0.8.19;
+
 // Forked from OpenZeppelin Contracts v4.4.1 (security/ReentrancyGuard.sol),
 // removed initializer check as we already do that in our modified Ownable
-
-pragma solidity 0.8.18;
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.

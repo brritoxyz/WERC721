@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
-contract LSSVMRouter2 {
+contract Router2 {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
     struct PairSwapSpecific {
-        LSSVMPair pair;
+        Pair pair;
         uint256[] nftIds;
     }
 
@@ -47,9 +47,9 @@ contract LSSVMRouter2 {
         address nftRecipient;
     }
 
-    ILSSVMPairFactoryLike public immutable factory;
+    IPairFactoryLike public immutable factory;
 
-    constructor(ILSSVMPairFactoryLike _factory) {
+    constructor(IPairFactoryLike _factory) {
         factory = _factory;
     }
 
@@ -67,7 +67,7 @@ contract LSSVMRouter2 {
         address from,
         address to,
         uint256 id,
-        ILSSVMPairFactoryLike.PairVariant variant
+        IPairFactoryLike.PairVariant variant
     ) external {
         // verify caller is a trusted pair contract
         require(factory.isPair(msg.sender, variant), "Not pair");
@@ -77,7 +77,7 @@ contract LSSVMRouter2 {
     }
 
     // Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
-    function getNFTQuoteForPartialFillBuy(LSSVMPair pair, uint256 numNFTs)
+    function getNFTQuoteForPartialFillBuy(Pair pair, uint256 numNFTs)
         external
         view
         returns (uint256[] memory)
@@ -131,7 +131,7 @@ contract LSSVMRouter2 {
 
             // Try each buy swap
             for (uint256 i; i < numBuys; ) {
-                LSSVMPair pair = buyList[i].swapInfo.pair;
+                Pair pair = buyList[i].swapInfo.pair;
                 uint256 numNFTs = buyList[i].swapInfo.nftIds.length;
                 uint256 spotPrice = pair.spotPrice();
 
@@ -218,7 +218,7 @@ contract LSSVMRouter2 {
             // Otherwise, find max fillable amt for sell (while being eth balance aware)
             // Then do the sells
             for (uint256 i; i < sellList.length; ) {
-                LSSVMPair pair = sellList[i].swapInfo.pair;
+                Pair pair = sellList[i].swapInfo.pair;
                 uint256 spotPrice = pair.spotPrice();
                 uint256 numNFTs = sellList[i].swapInfo.nftIds.length;
 
@@ -265,7 +265,7 @@ contract LSSVMRouter2 {
       @dev Note that maxPricesPerNumNFTs is 0-indexed
      */
     function _findMaxFillableAmtForBuy(
-        LSSVMPair pair,
+        Pair pair,
         uint256 maxNumNFTs,
         uint256[] memory maxPricesPerNumNFTs
     ) internal view returns (uint256 numNFTs, uint256 price) {
@@ -298,7 +298,7 @@ contract LSSVMRouter2 {
     }
 
     function _findMaxFillableAmtForETHSell(
-        LSSVMPair pair,
+        Pair pair,
         uint256 maxNumNFTs,
         uint256[] memory minOutputPerNumNFTs
     ) internal view returns (uint256 numNFTs, uint256 price) {
@@ -344,7 +344,7 @@ contract LSSVMRouter2 {
       @param potentialIds The possible NFT IDs
      */
     function _findAvailableIds(
-        LSSVMPair pair,
+        Pair pair,
         uint256 numNFTs,
         uint256[] memory potentialIds
     ) internal view returns (uint256[] memory idsToBuy) {

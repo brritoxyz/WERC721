@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
-import {Configurable, IERC721, LSSVMPair, ICurve, IERC721Mintable, LSSVMPairFactory} from "./Configurable.sol";
+import {Configurable, IERC721, Pair, ICurve, IERC721Mintable, PairFactory} from "./Configurable.sol";
 
 import {ERC2981} from "openzeppelin/token/common/ERC2981.sol";
 import {Test2981} from "test/mocks/Test2981.sol";

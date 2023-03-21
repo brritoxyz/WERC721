@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enumerable.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Router} from "sudoswap/Router.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 
 /**
     @title An NFT/Token pair for an NFT that implements ERC721Enumerable
     @author boredGenius and 0xmons
  */
-abstract contract LSSVMPairEnumerable is LSSVMPair {
-    /// @inheritdoc LSSVMPair
+abstract contract PairEnumerable is Pair {
+    /// @inheritdoc Pair
     function _sendAnyNFTsToRecipient(
         IERC721 _nft,
         address nftRecipient,
@@ -33,7 +33,7 @@ abstract contract LSSVMPairEnumerable is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _sendSpecificNFTsToRecipient(
         IERC721 _nft,
         address nftRecipient,
@@ -50,7 +50,7 @@ abstract contract LSSVMPairEnumerable is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function getAllHeldIds() external view override returns (uint256[] memory) {
         IERC721 _nft = nft();
         uint256 numNFTs = _nft.balanceOf(address(this));
@@ -77,7 +77,7 @@ abstract contract LSSVMPairEnumerable is LSSVMPair {
         return this.onERC721Received.selector;
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds)
         external
         override

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {Test721Enumerable} from "test/mocks/Test721Enumerable.sol";
 import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMPairCloner} from "src/lib/LSSVMPairCloner.sol";
-import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
-import {ILSSVMPairFactoryLike} from "src/sudoswap/LSSVMPairFactory.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {PairCloner} from "src/lib/PairCloner.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
+import {IPairFactoryLike} from "sudoswap/PairFactory.sol";
 
 /*
     @author 0xacedia

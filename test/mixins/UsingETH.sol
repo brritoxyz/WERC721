@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
-import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
-import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {PairFactory} from "sudoswap/PairFactory.sol";
+import {Router} from "sudoswap/Router.sol";
+import {Router2} from "sudoswap/Router2.sol";
+import {PairETH} from "sudoswap/PairETH.sol";
 import {Configurable} from "./Configurable.sol";
 import {RouterCaller} from "./RouterCaller.sol";
 
@@ -25,24 +25,24 @@ abstract contract UsingETH is Configurable, RouterCaller {
         return a.balance;
     }
 
-    function sendTokens(LSSVMPair pair, uint256 amount) public override {
+    function sendTokens(Pair pair, uint256 amount) public override {
         payable(address(pair)).transfer(amount);
     }
 
     function setupPair(
-        LSSVMPairFactory factory,
+        PairFactory factory,
         IERC721 nft,
         ICurve bondingCurve,
         address payable assetRecipient,
-        LSSVMPair.PoolType poolType,
+        Pair.PoolType poolType,
         uint128 delta,
         uint96 fee,
         uint128 spotPrice,
         uint256[] memory _idList,
         uint256,
         address
-    ) public payable override returns (LSSVMPair) {
-        LSSVMPairETH pair = factory.createPairETH{value: msg.value}(
+    ) public payable override returns (Pair) {
+        PairETH pair = factory.createPairETH{value: msg.value}(
             nft,
             bondingCurve,
             assetRecipient,
@@ -55,17 +55,17 @@ abstract contract UsingETH is Configurable, RouterCaller {
         return pair;
     }
 
-    function withdrawTokens(LSSVMPair pair) public override {
-        LSSVMPairETH(payable(address(pair))).withdrawAllETH();
+    function withdrawTokens(Pair pair) public override {
+        PairETH(payable(address(pair))).withdrawAllETH();
     }
 
-    function withdrawProtocolFees(LSSVMPairFactory factory) public override {
+    function withdrawProtocolFees(PairFactory factory) public override {
         factory.withdrawETHProtocolFees();
     }
 
     function swapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapAny[] calldata swapList,
+        Router router,
+        Router.PairSwapAny[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -81,8 +81,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function swapTokenForSpecificNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapSpecific[] calldata swapList,
+        Router router,
+        Router.PairSwapSpecific[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -98,8 +98,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function swapNFTsForAnyNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForAnyNFTsTrade calldata trade,
+        Router router,
+        Router.NFTsForAnyNFTsTrade calldata trade,
         uint256 minOutput,
         address payable ethRecipient,
         address nftRecipient,
@@ -117,8 +117,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function swapNFTsForSpecificNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForSpecificNFTsTrade calldata trade,
+        Router router,
+        Router.NFTsForSpecificNFTsTrade calldata trade,
         uint256 minOutput,
         address payable ethRecipient,
         address nftRecipient,
@@ -136,8 +136,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function robustSwapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapAny[] calldata swapList,
+        Router router,
+        Router.RobustPairSwapAny[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -153,8 +153,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function robustSwapTokenForSpecificNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapSpecific[] calldata swapList,
+        Router router,
+        Router.RobustPairSwapSpecific[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -170,8 +170,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function robustSwapTokenForSpecificNFTsAndNFTsForTokens(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
+        Router router,
+        Router.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
     ) public payable override returns (uint256, uint256) {
         return
             router.robustSwapETHForSpecificNFTsAndNFTsToToken{value: msg.value}(
@@ -180,9 +180,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function buyAndSellWithPartialFill(
-        LSSVMRouter2 router,
-        LSSVMRouter2.PairSwapSpecificPartialFill[] calldata buyList,
-        LSSVMRouter2.PairSwapSpecificPartialFillForToken[] calldata sellList
+        Router2 router,
+        Router2.PairSwapSpecificPartialFill[] calldata buyList,
+        Router2.PairSwapSpecificPartialFillForToken[] calldata sellList
     ) public payable override returns (uint256) {
       return router.robustBuySellWithETHAndPartialFill{value: msg.value}(
         buyList, sellList
@@ -190,8 +190,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     }
 
     function swapETHForSpecificNFTs(
-        LSSVMRouter2 router,
-        LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList
+        Router2 router,
+        Router2.RobustPairSwapSpecific[] calldata buyList
     ) public payable override returns (uint256) {
       return router.swapETHForSpecificNFTs{value: msg.value}(buyList);
     }

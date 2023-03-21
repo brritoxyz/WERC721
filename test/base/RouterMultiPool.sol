@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {DSTest} from "ds-test/test.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
-import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {PairFactory} from "sudoswap/PairFactory.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {PairETH} from "sudoswap/PairETH.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
+import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
+import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
+import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
+import {Router} from "sudoswap/Router.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
@@ -28,9 +28,9 @@ abstract contract RouterMultiPool is
 {
     IERC721Mintable test721;
     ICurve bondingCurve;
-    LSSVMPairFactory factory;
-    LSSVMRouter router;
-    mapping(uint256 => LSSVMPair) pairs;
+    PairFactory factory;
+    Router router;
+    mapping(uint256 => Pair) pairs;
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 3e15;
     uint256 numInitialNFTs = 10;
@@ -38,11 +38,11 @@ abstract contract RouterMultiPool is
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
-        factory = new LSSVMPairFactory(
+        PairEnumerableETH enumerableETHTemplate = new PairEnumerableETH();
+        PairMissingEnumerableETH missingEnumerableETHTemplate = new PairMissingEnumerableETH();
+        PairEnumerableERC20 enumerableERC20Template = new PairEnumerableERC20();
+        PairMissingEnumerableERC20 missingEnumerableERC20Template = new PairMissingEnumerableERC20();
+        factory = new PairFactory(
             enumerableETHTemplate,
             missingEnumerableETHTemplate,
             enumerableERC20Template,
@@ -50,7 +50,7 @@ abstract contract RouterMultiPool is
             feeRecipient,
             protocolFeeMultiplier
         );
-        router = new LSSVMRouter(factory);
+        router = new Router(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
 
@@ -77,7 +77,7 @@ abstract contract RouterMultiPool is
                 test721,
                 bondingCurve,
                 payable(address(0)),
-                LSSVMPair.PoolType.TRADE,
+                Pair.PoolType.TRADE,
                 modifyDelta(0),
                 0,
                 uint128(i * 1 ether),
@@ -90,14 +90,14 @@ abstract contract RouterMultiPool is
 
     function test_swapTokenForAny5NFTs() public {
         // Swap across all 5 pools
-        LSSVMRouter.PairSwapAny[]
-            memory swapList = new LSSVMRouter.PairSwapAny[](5);
+        Router.PairSwapAny[]
+            memory swapList = new Router.PairSwapAny[](5);
         uint256 totalInputAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
             uint256 inputAmount;
             (, , , inputAmount, ) = pairs[i + 1].getBuyNFTQuote(1);
             totalInputAmount += inputAmount;
-            swapList[i] = LSSVMRouter.PairSwapAny({
+            swapList[i] = Router.PairSwapAny({
                 pair: pairs[i + 1],
                 numItems: 1
             });
@@ -117,8 +117,8 @@ abstract contract RouterMultiPool is
 
     function test_swapTokenForSpecific5NFTs() public {
         // Swap across all 5 pools
-        LSSVMRouter.PairSwapSpecific[]
-            memory swapList = new LSSVMRouter.PairSwapSpecific[](5);
+        Router.PairSwapSpecific[]
+            memory swapList = new Router.PairSwapSpecific[](5);
         uint256 totalInputAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
             uint256 inputAmount;
@@ -126,7 +126,7 @@ abstract contract RouterMultiPool is
             totalInputAmount += inputAmount;
             uint256[] memory nftIds = new uint256[](1);
             nftIds[0] = i + 1;
-            swapList[i] = LSSVMRouter.PairSwapSpecific({
+            swapList[i] = Router.PairSwapSpecific({
                 pair: pairs[i + 1],
                 nftIds: nftIds
             });
@@ -148,8 +148,8 @@ abstract contract RouterMultiPool is
 
     function test_swap5NFTsForToken() public {
         // Swap across all 5 pools
-        LSSVMRouter.PairSwapSpecific[]
-            memory swapList = new LSSVMRouter.PairSwapSpecific[](5);
+        Router.PairSwapSpecific[]
+            memory swapList = new Router.PairSwapSpecific[](5);
         uint256 totalOutputAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
             uint256 outputAmount;
@@ -158,7 +158,7 @@ abstract contract RouterMultiPool is
             uint256[] memory nftIds = new uint256[](1);
             // Set it to be an ID we own
             nftIds[0] = i + 6;
-            swapList[i] = LSSVMRouter.PairSwapSpecific({
+            swapList[i] = Router.PairSwapSpecific({
                 pair: pairs[i + 1],
                 nftIds: nftIds
             });

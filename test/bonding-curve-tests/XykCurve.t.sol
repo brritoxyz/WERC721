@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {DSTest} from "ds-test/test.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {XykCurve} from "src/bonding-curves/XykCurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
-import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
-import {LSSVMPairCloner} from "src/lib/LSSVMPairCloner.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
+import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
+import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
+import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
+import {PairCloner} from "src/lib/PairCloner.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -26,23 +26,23 @@ contract XykCurveTest is DSTest, ERC721Holder {
     uint256 constant MIN_PRICE = 1 gwei;
 
     XykCurve curve;
-    LSSVMPairFactory factory;
-    LSSVMPairEnumerableETH enumerableETHTemplate;
-    LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate;
-    LSSVMPairEnumerableERC20 enumerableERC20Template;
-    LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template;
-    LSSVMPair ethPair;
+    PairFactory factory;
+    PairEnumerableETH enumerableETHTemplate;
+    PairMissingEnumerableETH missingEnumerableETHTemplate;
+    PairEnumerableERC20 enumerableERC20Template;
+    PairMissingEnumerableERC20 missingEnumerableERC20Template;
+    Pair ethPair;
     Test721 nft;
 
     receive() external payable {}
 
     function setUp() public {
-        enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        enumerableETHTemplate = new PairEnumerableETH();
+        missingEnumerableETHTemplate = new PairMissingEnumerableETH();
+        enumerableERC20Template = new PairEnumerableERC20();
+        missingEnumerableERC20Template = new PairMissingEnumerableERC20();
 
-        factory = new LSSVMPairFactory(
+        factory = new PairFactory(
             enumerableETHTemplate,
             missingEnumerableETHTemplate,
             enumerableERC20Template,
@@ -68,7 +68,7 @@ contract XykCurveTest is DSTest, ERC721Holder {
             nft,
             curve,
             payable(0),
-            LSSVMPair.PoolType.TRADE,
+            Pair.PoolType.TRADE,
             uint128(numNfts),
             0,
             uint128(value),

@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {DSTest} from "ds-test/test.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
-import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
-import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {PairFactory} from "sudoswap/PairFactory.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {PairETH} from "sudoswap/PairETH.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
+import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
+import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
+import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
+import {Router2} from "sudoswap/Router2.sol";
+import {Router} from "sudoswap/Router.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
@@ -31,9 +31,9 @@ abstract contract RouterPartialFill is
 {
     IERC721Mintable test721;
     ICurve bondingCurve;
-    LSSVMPairFactory factory;
-    LSSVMRouter2 router;
-    LSSVMPair pair;
+    PairFactory factory;
+    Router2 router;
+    Pair pair;
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 0;
     uint256 numInitialNFTs = 10;
@@ -42,11 +42,11 @@ abstract contract RouterPartialFill is
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
-        factory = new LSSVMPairFactory(
+        PairEnumerableETH enumerableETHTemplate = new PairEnumerableETH();
+        PairMissingEnumerableETH missingEnumerableETHTemplate = new PairMissingEnumerableETH();
+        PairEnumerableERC20 enumerableERC20Template = new PairEnumerableERC20();
+        PairMissingEnumerableERC20 missingEnumerableERC20Template = new PairMissingEnumerableERC20();
+        factory = new PairFactory(
             enumerableETHTemplate,
             missingEnumerableETHTemplate,
             enumerableERC20Template,
@@ -54,9 +54,9 @@ abstract contract RouterPartialFill is
             feeRecipient,
             protocolFeeMultiplier
         );
-        router = new LSSVMRouter2(factory);
+        router = new Router2(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
-        factory.setRouterAllowed(LSSVMRouter(payable(address(router))), true);
+        factory.setRouterAllowed(Router(payable(address(router))), true);
 
         // set NFT approvals
         test721.setApprovalForAll(address(factory), true);
@@ -76,7 +76,7 @@ abstract contract RouterPartialFill is
             test721,
             bondingCurve,
             payable(address(0)),
-            LSSVMPair.PoolType.TRADE,
+            Pair.PoolType.TRADE,
             delta,
             0,
             spotPrice,
@@ -134,8 +134,8 @@ abstract contract RouterPartialFill is
             uint256 startNFTBalance = test721.balanceOf(address(this));
 
             // Only 1 pool we're buying from
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            Router2.PairSwapSpecificPartialFill[]
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](NUM_NFTS);
@@ -150,8 +150,8 @@ abstract contract RouterPartialFill is
                 .getNFTQuoteForPartialFillBuy(pair, NUM_NFTS);
 
             // Create the partial fill args
-            buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
+            buyList[0] = Router2.PairSwapSpecificPartialFill({
+                swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
                     nftIds: ids
                 }),
@@ -160,8 +160,8 @@ abstract contract RouterPartialFill is
             });
 
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            Router2.PairSwapSpecificPartialFillForToken[]
+                memory emptySellList = new Router2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
@@ -215,8 +215,8 @@ abstract contract RouterPartialFill is
             pair.changeDelta(newDelta);
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            Router2.PairSwapSpecificPartialFill[]
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -228,8 +228,8 @@ abstract contract RouterPartialFill is
             uint256[] memory partialFillPrices = router
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
-            buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
+            buyList[0] = Router2.PairSwapSpecificPartialFill({
+                swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
                     nftIds: ids
                 }),
@@ -237,8 +237,8 @@ abstract contract RouterPartialFill is
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            Router2.PairSwapSpecificPartialFillForToken[]
+                memory emptySellList = new Router2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
@@ -254,12 +254,12 @@ abstract contract RouterPartialFill is
             (, , , uint256 initialQuote, ) = pair.getBuyNFTQuote(
                 numNFTsToBuyFirst
             );
-            LSSVMRouter2.RobustPairSwapSpecific[]
-                memory initialBuyList = new LSSVMRouter2.RobustPairSwapSpecific[](
+            Router2.RobustPairSwapSpecific[]
+                memory initialBuyList = new Router2.RobustPairSwapSpecific[](
                     1
                 );
-            initialBuyList[0] = LSSVMRouter2.RobustPairSwapSpecific({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
+            initialBuyList[0] = Router2.RobustPairSwapSpecific({
+                swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
                     nftIds: nftIdsToBuyFirst
                 }),
@@ -326,8 +326,8 @@ abstract contract RouterPartialFill is
             this.setUp();
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            Router2.PairSwapSpecificPartialFill[]
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -339,8 +339,8 @@ abstract contract RouterPartialFill is
             uint256[] memory partialFillPrices = router
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
-            buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
+            buyList[0] = Router2.PairSwapSpecificPartialFill({
+                swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
                     nftIds: ids
                 }),
@@ -348,8 +348,8 @@ abstract contract RouterPartialFill is
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            Router2.PairSwapSpecificPartialFillForToken[]
+                memory emptySellList = new Router2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
@@ -411,8 +411,8 @@ abstract contract RouterPartialFill is
             this.setUp();
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            Router2.PairSwapSpecificPartialFill[]
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -425,8 +425,8 @@ abstract contract RouterPartialFill is
             uint256[] memory partialFillPrices = router
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
-            buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
+            buyList[0] = Router2.PairSwapSpecificPartialFill({
+                swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
                     nftIds: ids
                 }),
@@ -434,8 +434,8 @@ abstract contract RouterPartialFill is
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            Router2.PairSwapSpecificPartialFillForToken[]
+                memory emptySellList = new Router2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";

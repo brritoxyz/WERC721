@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
@@ -7,22 +7,22 @@ import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 contract MultiRouter {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
-    ILSSVMPairFactoryLike public immutable erc721factory;
+    IPairFactoryLike public immutable erc721factory;
 
-    constructor(ILSSVMPairFactoryLike _erc721factory) {
+    constructor(IPairFactoryLike _erc721factory) {
         erc721factory = _erc721factory;
     }
 
     struct PairSwapSpecific {
-        LSSVMPair pair;
+        Pair pair;
         uint256[] nftIds;
     }
 
@@ -192,15 +192,15 @@ contract MultiRouter {
         uint8 variant
     ) external {
         // verify caller is an ERC20 pair contract
-        ILSSVMPairFactoryLike.PairVariant _variant = ILSSVMPairFactoryLike
+        IPairFactoryLike.PairVariant _variant = IPairFactoryLike
             .PairVariant(variant);
         require(erc721factory.isPair(msg.sender, _variant), "Not pair");
 
         // verify caller is an ERC20 pair
         require(
-            _variant == ILSSVMPairFactoryLike.PairVariant.ENUMERABLE_ERC20 ||
+            _variant == IPairFactoryLike.PairVariant.ENUMERABLE_ERC20 ||
                 _variant ==
-                ILSSVMPairFactoryLike.PairVariant.MISSING_ENUMERABLE_ERC20,
+                IPairFactoryLike.PairVariant.MISSING_ENUMERABLE_ERC20,
             "Not ERC20 pair"
         );
         // transfer tokens to pair
@@ -221,7 +221,7 @@ contract MultiRouter {
         address from,
         address to,
         uint256 id,
-        ILSSVMPairFactoryLike.PairVariant variant
+        IPairFactoryLike.PairVariant variant
     ) external {
         // verify caller is a trusted pair contract
         require(erc721factory.isPair(msg.sender, variant), "Not pair");

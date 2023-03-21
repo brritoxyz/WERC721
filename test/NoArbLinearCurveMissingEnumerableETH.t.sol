@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {NoArbBondingCurve} from "test/base/NoArbBondingCurve.sol";
 import {UsingLinearCurve} from "test/mixins/UsingLinearCurve.sol";

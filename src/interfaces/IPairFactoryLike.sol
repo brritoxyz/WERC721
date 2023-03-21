@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
+import {Router} from "sudoswap/Router.sol";
 
-interface ILSSVMPairFactoryLike {
+interface IPairFactoryLike {
     enum PairVariant {
         ENUMERABLE_ETH,
         MISSING_ENUMERABLE_ETH,
@@ -17,7 +17,7 @@ interface ILSSVMPairFactoryLike {
 
     function callAllowed(address target) external view returns (bool);
 
-    function routerStatus(LSSVMRouter router)
+    function routerStatus(Router router)
         external
         view
         returns (bool allowed, bool wasEverAllowed);

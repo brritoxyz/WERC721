@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {DSTest} from "ds-test/test.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {LSSVMPairETH} from "src/sudoswap/LSSVMPairETH.sol";
-import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "src/sudoswap/LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "src/sudoswap/LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "src/sudoswap/LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "src/sudoswap/LSSVMPairMissingEnumerableERC20.sol";
-import {LSSVMPairFactory} from "src/sudoswap/LSSVMPairFactory.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {PairETH} from "sudoswap/PairETH.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
+import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
+import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
+import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
+import {PairFactory} from "sudoswap/PairFactory.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 import {Test721} from "test/mocks/Test721.sol";
@@ -23,18 +23,18 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
     uint256 startingId;
     IERC721Mintable test721;
     ICurve bondingCurve;
-    LSSVMPairFactory factory;
+    PairFactory factory;
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 3e15;
 
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
-        factory = new LSSVMPairFactory(
+        PairEnumerableETH enumerableETHTemplate = new PairEnumerableETH();
+        PairMissingEnumerableETH missingEnumerableETHTemplate = new PairMissingEnumerableETH();
+        PairEnumerableERC20 enumerableERC20Template = new PairEnumerableERC20();
+        PairMissingEnumerableERC20 missingEnumerableERC20Template = new PairMissingEnumerableERC20();
+        factory = new PairFactory(
             enumerableETHTemplate,
             missingEnumerableETHTemplate,
             enumerableERC20Template,
@@ -71,12 +71,12 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
 
         // initialize the pair
         uint256[] memory empty;
-        LSSVMPair pair = setupPair(
+        Pair pair = setupPair(
             factory,
             test721,
             bondingCurve,
             payable(address(0)),
-            LSSVMPair.PoolType.TRADE,
+            Pair.PoolType.TRADE,
             delta,
             0,
             spotPrice,
@@ -182,12 +182,12 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
             idList.push(startingId);
             startingId += 1;
         }
-        LSSVMPair pair = setupPair(
+        Pair pair = setupPair(
             factory,
             test721,
             bondingCurve,
             payable(address(0)),
-            LSSVMPair.PoolType.TRADE,
+            Pair.PoolType.TRADE,
             delta,
             0,
             spotPrice,

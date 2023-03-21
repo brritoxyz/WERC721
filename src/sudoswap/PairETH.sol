@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {LSSVMPair} from "src/sudoswap/LSSVMPair.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Pair} from "src/sudoswap/Pair.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 
 /**
     @title An NFT/Token pair where the token is ETH
     @author boredGenius and 0xmons
  */
-abstract contract LSSVMPairETH is LSSVMPair {
+abstract contract PairETH is Pair {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 61;
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _pullTokenInputAndPayProtocolFee(
         uint256 inputAmount,
         bool, /*isRouter*/
         address, /*routerCaller*/
-        ILSSVMPairFactoryLike _factory,
+        IPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
         require(msg.value >= inputAmount, "Sent too little ETH");
@@ -47,7 +47,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _refundTokenToSender(uint256 inputAmount) internal override {
         // Give excess ETH back to caller
         if (msg.value > inputAmount) {
@@ -55,9 +55,9 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _payProtocolFeeFromPair(
-        ILSSVMPairFactoryLike _factory,
+        IPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
         // Take protocol fee
@@ -73,7 +73,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function _sendTokenOutput(
         address payable tokenRecipient,
         uint256 outputAmount
@@ -84,8 +84,8 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
-    // @dev see LSSVMPairCloner for params length calculation
+    /// @inheritdoc Pair
+    // @dev see PairCloner for params length calculation
     function _immutableParamsLength() internal pure override returns (uint256) {
         return IMMUTABLE_PARAMS_LENGTH;
     }
@@ -111,7 +111,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         emit TokenWithdrawal(amount);
     }
 
-    /// @inheritdoc LSSVMPair
+    /// @inheritdoc Pair
     function withdrawERC20(ERC20 a, uint256 amount)
         external
         override

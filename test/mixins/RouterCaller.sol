@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
-import {LSSVMRouter2} from "src/sudoswap/LSSVMRouter2.sol";
+import {Router} from "sudoswap/Router.sol";
+import {Router2} from "sudoswap/Router2.sol";
 
 abstract contract RouterCaller {
     function swapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapAny[] calldata swapList,
+        Router router,
+        Router.PairSwapAny[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -15,8 +15,8 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function swapTokenForSpecificNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapSpecific[] calldata swapList,
+        Router router,
+        Router.PairSwapSpecific[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -24,8 +24,8 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function swapNFTsForAnyNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForAnyNFTsTrade calldata trade,
+        Router router,
+        Router.NFTsForAnyNFTsTrade calldata trade,
         uint256 minOutput,
         address payable ethRecipient,
         address nftRecipient,
@@ -34,8 +34,8 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function swapNFTsForSpecificNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForSpecificNFTsTrade calldata trade,
+        Router router,
+        Router.NFTsForSpecificNFTsTrade calldata trade,
         uint256 minOutput,
         address payable ethRecipient,
         address nftRecipient,
@@ -44,8 +44,8 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function robustSwapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapAny[] calldata swapList,
+        Router router,
+        Router.RobustPairSwapAny[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -53,8 +53,8 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function robustSwapTokenForSpecificNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapSpecific[] calldata swapList,
+        Router router,
+        Router.RobustPairSwapSpecific[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -62,18 +62,18 @@ abstract contract RouterCaller {
     ) public payable virtual returns (uint256);
 
     function robustSwapTokenForSpecificNFTsAndNFTsForTokens(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
+        Router router,
+        Router.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
     ) public payable virtual returns (uint256, uint256);
 
     function buyAndSellWithPartialFill(
-        LSSVMRouter2 router,
-        LSSVMRouter2.PairSwapSpecificPartialFill[] calldata buyList,
-        LSSVMRouter2.PairSwapSpecificPartialFillForToken[] calldata sellList
+        Router2 router,
+        Router2.PairSwapSpecificPartialFill[] calldata buyList,
+        Router2.PairSwapSpecificPartialFillForToken[] calldata sellList
     ) public payable virtual returns (uint256);
 
     function swapETHForSpecificNFTs(
-        LSSVMRouter2 router,
-        LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList
+        Router2 router,
+        Router2.RobustPairSwapSpecific[] calldata buyList
     ) public payable virtual returns (uint256);
 }

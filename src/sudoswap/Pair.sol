@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
@@ -8,14 +8,14 @@ import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol"
 import {OwnableWithTransferCallback} from "src/lib/OwnableWithTransferCallback.sol";
 import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {LSSVMRouter} from "src/sudoswap/LSSVMRouter.sol";
-import {ILSSVMPairFactoryLike} from "src/interfaces/ILSSVMPairFactoryLike.sol";
+import {Router} from "sudoswap/Router.sol";
+import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
 /// @notice This implements the core swap logic from NFT to TOKEN
-abstract contract LSSVMPair is
+abstract contract Pair is
     OwnableWithTransferCallback,
     ReentrancyGuard,
     ERC1155Holder
@@ -26,7 +26,7 @@ abstract contract LSSVMPair is
         TRADE
     }
 
-    // 90%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
+    // 90%, must <= 1 - MAX_PROTOCOL_FEE (set in PairFactory)
     uint256 internal constant MAX_FEE = 0.90e18;
 
     // The current price of the NFT
@@ -120,7 +120,7 @@ abstract contract LSSVMPair is
         @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
         amount is greater than this value, the transaction will be reverted.
         @param nftRecipient The recipient of the NFTs
-        @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+        @param isRouter True if calling from Router, false otherwise. Not used for
         ETH pairs.
         @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
         ETH pairs.
@@ -134,7 +134,7 @@ abstract contract LSSVMPair is
         address routerCaller
     ) external payable virtual nonReentrant returns (uint256 inputAmount) {
         // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
+        IPairFactoryLike _factory = factory();
         ICurve _bondingCurve = bondingCurve();
         IERC721 _nft = nft();
 
@@ -184,7 +184,7 @@ abstract contract LSSVMPair is
         @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
         amount is greater than this value, the transaction will be reverted.
         @param nftRecipient The recipient of the NFTs
-        @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+        @param isRouter True if calling from Router, false otherwise. Not used for
         ETH pairs.
         @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
         ETH pairs.
@@ -198,7 +198,7 @@ abstract contract LSSVMPair is
         address routerCaller
     ) external payable virtual nonReentrant returns (uint256 inputAmount) {
         // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
+        IPairFactoryLike _factory = factory();
         ICurve _bondingCurve = bondingCurve();
 
         // Input validation
@@ -242,7 +242,7 @@ abstract contract LSSVMPair is
         @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
         amount is less than this value, the transaction will be reverted.
         @param tokenRecipient The recipient of the token output
-        @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+        @param isRouter True if calling from Router, false otherwise. Not used for
         ETH pairs.
         @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
         ETH pairs.
@@ -256,7 +256,7 @@ abstract contract LSSVMPair is
         address routerCaller
     ) external virtual nonReentrant returns (uint256 outputAmount) {
         // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
+        IPairFactoryLike _factory = factory();
         ICurve _bondingCurve = bondingCurve();
 
         // Input validation
@@ -363,9 +363,9 @@ abstract contract LSSVMPair is
         public
         pure
         virtual
-        returns (ILSSVMPairFactoryLike.PairVariant);
+        returns (IPairFactoryLike.PairVariant);
 
-    function factory() public pure returns (ILSSVMPairFactoryLike _factory) {
+    function factory() public pure returns (IPairFactoryLike _factory) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
             _factory := shr(
@@ -455,7 +455,7 @@ abstract contract LSSVMPair is
         uint256 numNFTs,
         uint256 maxExpectedTokenInput,
         ICurve _bondingCurve,
-        ILSSVMPairFactoryLike _factory
+        IPairFactoryLike _factory
     ) internal returns (uint256 protocolFee, uint256 inputAmount) {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
@@ -515,7 +515,7 @@ abstract contract LSSVMPair is
         uint256 numNFTs,
         uint256 minExpectedTokenOutput,
         ICurve _bondingCurve,
-        ILSSVMPairFactoryLike _factory
+        IPairFactoryLike _factory
     ) internal returns (uint256 protocolFee, uint256 outputAmount) {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
@@ -568,31 +568,31 @@ abstract contract LSSVMPair is
     /**
         @notice Pulls the token input of a trade from the trader and pays the protocol fee.
         @param inputAmount The amount of tokens to be sent
-        @param isRouter Whether or not the caller is LSSVMRouter
-        @param routerCaller If called from LSSVMRouter, store the original caller
-        @param _factory The LSSVMPairFactory which stores LSSVMRouter allowlist info
+        @param isRouter Whether or not the caller is Router
+        @param routerCaller If called from Router, store the original caller
+        @param _factory The PairFactory which stores Router allowlist info
         @param protocolFee The protocol fee to be paid
      */
     function _pullTokenInputAndPayProtocolFee(
         uint256 inputAmount,
         bool isRouter,
         address routerCaller,
-        ILSSVMPairFactoryLike _factory,
+        IPairFactoryLike _factory,
         uint256 protocolFee
     ) internal virtual;
 
     /**
         @notice Sends excess tokens back to the caller (if applicable)
-        @dev We send ETH back to the caller even when called from LSSVMRouter because we do an aggregate slippage check for certain bulk swaps. (Instead of sending directly back to the router caller)
+        @dev We send ETH back to the caller even when called from Router because we do an aggregate slippage check for certain bulk swaps. (Instead of sending directly back to the router caller)
         Excess ETH sent for one swap can then be used to help pay for the next swap.
      */
     function _refundTokenToSender(uint256 inputAmount) internal virtual;
 
     /**
-        @notice Sends protocol fee (if it exists) back to the LSSVMPairFactory from the pair
+        @notice Sends protocol fee (if it exists) back to the PairFactory from the pair
      */
     function _payProtocolFeeFromPair(
-        ILSSVMPairFactoryLike _factory,
+        IPairFactoryLike _factory,
         uint256 protocolFee
     ) internal virtual;
 
@@ -636,10 +636,10 @@ abstract contract LSSVMPair is
 
     /**
         @notice Takes NFTs from the caller and sends them into the pair's asset recipient
-        @dev This is used by the LSSVMPair's swapNFTForToken function.
+        @dev This is used by the Pair's swapNFTForToken function.
         @param _nft The NFT collection to take from
         @param nftIds The specific NFT IDs to take
-        @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+        @param isRouter True if calling from Router, false otherwise. Not used for
         ETH pairs.
         @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
         ETH pairs.
@@ -647,7 +647,7 @@ abstract contract LSSVMPair is
     function _takeNFTsFromSender(
         IERC721 _nft,
         uint256[] calldata nftIds,
-        ILSSVMPairFactoryLike _factory,
+        IPairFactoryLike _factory,
         bool isRouter,
         address routerCaller
     ) internal virtual {
@@ -657,7 +657,7 @@ abstract contract LSSVMPair is
 
             if (isRouter) {
                 // Verify if router is allowed
-                LSSVMRouter router = LSSVMRouter(payable(msg.sender));
+                Router router = Router(payable(msg.sender));
                 (bool routerAllowed, ) = _factory.routerStatus(router);
                 require(routerAllowed, "Not router");
 
@@ -714,7 +714,7 @@ abstract contract LSSVMPair is
     }
 
     /**
-        @dev Used internally to grab pair parameters from calldata, see LSSVMPairCloner for technical details
+        @dev Used internally to grab pair parameters from calldata, see PairCloner for technical details
      */
     function _immutableParamsLength() internal pure virtual returns (uint256);
 
@@ -828,7 +828,7 @@ abstract contract LSSVMPair is
         external
         onlyOwner
     {
-        ILSSVMPairFactoryLike _factory = factory();
+        IPairFactoryLike _factory = factory();
         require(_factory.callAllowed(target), "Target must be whitelisted");
         (bool result, ) = target.call{value: 0}(data);
         require(result, "Call failed");

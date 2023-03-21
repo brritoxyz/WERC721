@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 /// @notice Arithmetic library with operations for fixed-point numbers.
 /// @author Modified from Dappsys V2 (https://github.com/dapp-org/dappsys-v2/blob/main/src/math.sol)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 /**
   Coded for Sudoswap with ♥ by
@@ -16,10 +16,10 @@ pragma solidity 0.8.18;
 
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "src/interfaces/IRoyaltyRegistry.sol";
-import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "src/sudoswap/LSSVMRouter.sol";
-import {LSSVMPairERC20} from "src/sudoswap/LSSVMPairERC20.sol";
+import {Router, IERC721, ERC20, SafeTransferLib, Pair, IPairFactoryLike, CurveErrorCodes} from "sudoswap/Router.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
 
-contract LSSVMRouterWithRoyalties is LSSVMRouter {
+contract RouterWithRoyalties is Router {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
@@ -41,7 +41,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
     uint256 public immutable FETCH_TOKEN_ID;
 
-    constructor(ILSSVMPairFactoryLike _factory) LSSVMRouter(_factory) {
+    constructor(IPairFactoryLike _factory) Router(_factory) {
         // used to query the default royalty for a NFT collection
         // allows collection owner to set a particular royalty for this router
         FETCH_TOKEN_ID = uint256(keccak256(abi.encode(address(this))));
@@ -304,7 +304,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
                 if (royaltyAmount > 0) {
                     remainingValue -= royaltyAmount;
-                    ERC20 token = LSSVMPairERC20(address(swap.swapInfo.pair))
+                    ERC20 token = PairERC20(address(swap.swapInfo.pair))
                         .token();
                     token.safeTransferFrom(
                         msg.sender,
@@ -390,7 +390,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
                 if (royaltyAmount > 0) {
                     remainingValue -= royaltyAmount;
-                    ERC20 token = LSSVMPairERC20(address(swap.swapInfo.pair))
+                    ERC20 token = PairERC20(address(swap.swapInfo.pair))
                         .token();
                     token.safeTransferFrom(
                         msg.sender,
@@ -474,7 +474,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
                     outputAmount += pairOutput - royaltyAmount;
 
                     if (royaltyType == RoyaltyType.ERC20) {
-                        ERC20 token = LSSVMPairERC20(
+                        ERC20 token = PairERC20(
                             address(swap.swapInfo.pair)
                         ).token();
                         if (royaltyAmount > 0) {
@@ -656,7 +656,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
                         outputAmount += pairOutput - royaltyAmount;
 
                         if (royaltyType == RoyaltyType.ERC20) {
-                            ERC20 token = LSSVMPairERC20(
+                            ERC20 token = PairERC20(
                                 address(swapOut.swapInfo.pair)
                             ).token();
                             if (royaltyAmount > 0) {
@@ -769,7 +769,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
                     remainingValue -= royaltyAmount;
 
                     if (royaltyAmount > 0) {
-                        ERC20 token = LSSVMPairERC20(
+                        ERC20 token = PairERC20(
                             address(swapIn.swapInfo.pair)
                         ).token();
                         token.safeTransferFrom(
@@ -839,7 +839,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
                         outputAmount += pairOutput - royaltyAmount;
 
                         if (royaltyType == RoyaltyType.ERC20) {
-                            ERC20 token = LSSVMPairERC20(
+                            ERC20 token = PairERC20(
                                 address(swapOut.swapInfo.pair)
                             ).token();
                             if (royaltyAmount > 0) {
@@ -1134,13 +1134,13 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
             RoyaltyType royaltyType = _fetchRoyaltyType(swap.pair);
 
-            ILSSVMPairFactoryLike.PairVariant pairVariant = swap
+            IPairFactoryLike.PairVariant pairVariant = swap
                 .pair
                 .pairVariant();
 
             if (royaltyType == RoyaltyType.ERC20) {
                 // avoids using _issueTokenRoyalties internal function because needs ERC20 token for reimbursing to tokenRecipient
-                ERC20 token = LSSVMPairERC20(address(swap.pair)).token();
+                ERC20 token = PairERC20(address(swap.pair)).token();
 
                 (
                     address royaltyRecipient,
@@ -1190,7 +1190,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
     */
 
     function _issueETHRoyalties(
-        LSSVMPair pair,
+        Pair pair,
         uint256 salePrice
     ) internal returns (uint256 royalties) {
         address recipient;
@@ -1211,7 +1211,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
     }
 
     function _issueTokenRoyalties(
-        LSSVMPair pair,
+        Pair pair,
         uint256 salePrice
     ) internal returns (uint256 royalties) {
         address recipient;
@@ -1219,7 +1219,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         (recipient, royalties) = _calculateRoyalties(pair, salePrice);
 
         if (royalties > 0) {
-            ERC20 token = LSSVMPairERC20(address(pair)).token();
+            ERC20 token = PairERC20(address(pair)).token();
 
             // issue payment to royalty recipient
             token.safeTransferFrom(msg.sender, recipient, royalties);
@@ -1234,7 +1234,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
     }
 
     function _calculateRoyalties(
-        LSSVMPair pair,
+        Pair pair,
         uint256 salePrice
     ) internal view returns (address recipient, uint256 royalties) {
         // get royalty lookup address from the shared royalty registry
@@ -1260,10 +1260,10 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
     }
 
     function _fetchRoyaltyType(
-        LSSVMPair pair
+        Pair pair
     ) internal pure returns (RoyaltyType) {
-        ILSSVMPairFactoryLike.PairVariant pairVariant = pair.pairVariant();
-        if (pairVariant >= ILSSVMPairFactoryLike.PairVariant.ENUMERABLE_ERC20) {
+        IPairFactoryLike.PairVariant pairVariant = pair.pairVariant();
+        if (pairVariant >= IPairFactoryLike.PairVariant.ENUMERABLE_ERC20) {
             return RoyaltyType.ERC20;
         } else {
             return RoyaltyType.ETH;
