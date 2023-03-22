@@ -16,15 +16,34 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
 
     PairETH private immutable pair;
 
+    event NFTWithdrawal();
+
     constructor() {
-        vm.prank(AZUKI_OWNER);
-
-        AZUKI.safeTransferFrom(AZUKI_OWNER, address(this), 0);
-
-        assertTrue(AZUKI.ownerOf(0) == address(this));
-
-        uint256[] memory initialNFTIDs = new uint256[](1);
+        uint256[] memory initialNFTIDs = new uint256[](3);
         initialNFTIDs[0] = 0;
+        initialNFTIDs[1] = 2;
+        initialNFTIDs[2] = 7;
+
+        vm.startPrank(AZUKI_OWNER);
+
+        uint256 iLen = initialNFTIDs.length;
+
+        // Transfer NFTs from owner to self
+        for (uint256 i; i < iLen; ) {
+            uint256 id = initialNFTIDs[i];
+
+            assertTrue(AZUKI.ownerOf(id) == AZUKI_OWNER);
+
+            AZUKI.safeTransferFrom(AZUKI_OWNER, address(this), id);
+
+            assertTrue(AZUKI.ownerOf(id) == address(this));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.stopPrank();
 
         AZUKI.setApprovalForAll(address(pairFactory), true);
 
@@ -46,5 +65,40 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             // uint256[] calldata _initialNFTIDs
             initialNFTIDs
         );
+
+        // Verify that the pair contract has custody of the NFTs
+        for (uint256 i; i < iLen; ) {
+            uint256 id = initialNFTIDs[i];
+
+            assertTrue(AZUKI.ownerOf(id) == address(pair));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function testWithdrawERC721() external {
+        uint256[] memory heldIds = pair.getAllHeldIds();
+        IERC721 a = AZUKI;
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = heldIds[0];
+
+        assertTrue(AZUKI.ownerOf(nftIds[0]) == address(pair));
+        assertTrue(pair.owner() == address(this));
+
+        vm.expectEmit(false, false, false, false, address(pair));
+
+        emit NFTWithdrawal();
+
+        pair.withdrawERC721(a, nftIds);
+
+        assertTrue(AZUKI.ownerOf(nftIds[0]) == address(this));
+
+        uint256[] memory postWithdrawalHeldIds = pair.getAllHeldIds();
+
+        assertEq(heldIds[1], postWithdrawalHeldIds[0]);
+        assertEq(heldIds[2], postWithdrawalHeldIds[1]);
+        assertEq(heldIds.length - 1, postWithdrawalHeldIds.length);
     }
 }
