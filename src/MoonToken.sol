@@ -9,7 +9,7 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
     mapping(address user => uint256 amount) public mintable;
 
     event SetRouter(address);
-    event IncreaseMintable(address[], uint256);
+    event IncreaseMintable(address[], uint256[]);
 
     error Unauthorized();
     error InvalidAddress();
@@ -61,7 +61,7 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
             }
         }
 
-        emit IncreaseMintable(users, amount);
+        emit IncreaseMintable(users, amounts);
     }
 
     /**
