@@ -13,10 +13,18 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         IERC721(0xED5AF388653567Af2F388E6224dC7C4b3241C544);
     address private constant AZUKI_OWNER =
         0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA;
+    uint128 private constant INITIAL_DELTA = 1 ether;
+    uint96 private constant INITIAL_FEE = 0.01e18;
+    uint128 private constant INITIAL_SPOT_PRICE = 1 ether;
 
     PairETH private immutable pair;
 
+    event SpotPriceUpdate(uint128 newSpotPrice);
+    event DeltaUpdate(uint128 newDelta);
+    event FeeUpdate(uint96 newFee);
     event NFTWithdrawal();
+
+    error Ownable_NotOwner();
 
     constructor() {
         uint256[] memory initialNFTIDs = new uint256[](3);
@@ -57,11 +65,11 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             // Pair.PoolType _poolType,
             Pair.PoolType.TRADE,
             // uint128 _delta,
-            1 ether,
+            INITIAL_DELTA,
             // uint96 _fee,
-            0,
+            INITIAL_FEE,
             // uint128 _spotPrice,
-            1 ether,
+            INITIAL_SPOT_PRICE,
             // uint256[] calldata _initialNFTIDs
             initialNFTIDs
         );
@@ -77,6 +85,121 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             }
         }
     }
+
+    /*///////////////////////////////////////////////////////////////
+                            changeSpotPrice
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotChangeSpotPriceNotOwner() external {
+        uint128 newSpotPrice = pair.spotPrice() * 2;
+
+        vm.prank(address(0));
+        vm.expectRevert(Ownable_NotOwner.selector);
+
+        pair.changeSpotPrice(newSpotPrice);
+    }
+
+    function testChangeSpotPrice() external {
+        assertEq(address(this), pair.owner());
+
+        uint128 newSpotPrice = INITIAL_SPOT_PRICE * 2;
+
+        emit SpotPriceUpdate(newSpotPrice);
+
+        pair.changeSpotPrice(newSpotPrice);
+
+        assertEq(newSpotPrice, pair.spotPrice());
+    }
+
+    function testChangeSpotPriceFuzz(uint128 newSpotPrice) external {
+        vm.assume(newSpotPrice != INITIAL_SPOT_PRICE);
+
+        assertEq(address(this), pair.owner());
+
+        emit SpotPriceUpdate(newSpotPrice);
+
+        pair.changeSpotPrice(newSpotPrice);
+
+        assertEq(newSpotPrice, pair.spotPrice());
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            changeDelta
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotChangeDeltaNotOwner() external {
+        uint128 newDelta = pair.delta() * 2;
+
+        vm.prank(address(0));
+        vm.expectRevert(Ownable_NotOwner.selector);
+
+        pair.changeDelta(newDelta);
+    }
+
+    function testChangeDelta() external {
+        assertEq(address(this), pair.owner());
+
+        uint128 newDelta = INITIAL_DELTA * 2;
+
+        emit DeltaUpdate(newDelta);
+
+        pair.changeDelta(newDelta);
+
+        assertEq(newDelta, pair.delta());
+    }
+
+    function testChangeDeltaFuzz(uint128 newDelta) external {
+        vm.assume(newDelta != INITIAL_DELTA);
+
+        assertEq(address(this), pair.owner());
+
+        emit DeltaUpdate(newDelta);
+
+        pair.changeDelta(newDelta);
+
+        assertEq(newDelta, pair.delta());
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                                changeFee
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotChangeFeeNotOwner() external {
+        uint96 newFee = pair.fee() * 2;
+
+        vm.prank(address(0));
+        vm.expectRevert(Ownable_NotOwner.selector);
+
+        pair.changeFee(newFee);
+    }
+
+    function testChangeFee() external {
+        assertEq(address(this), pair.owner());
+
+        uint96 newFee = INITIAL_FEE * 2;
+
+        emit FeeUpdate(newFee);
+
+        pair.changeFee(newFee);
+
+        assertEq(newFee, pair.fee());
+    }
+
+    function testChangeFeeFuzz(uint96 newFee) external {
+        vm.assume(newFee != INITIAL_FEE);
+
+        assertEq(address(this), pair.owner());
+
+        emit FeeUpdate(newFee);
+
+        pair.changeFee(newFee);
+
+        assertEq(newFee, pair.fee());
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            withdrawERC721
+    //////////////////////////////////////////////////////////////*/
 
     function testWithdrawERC721() external {
         uint256[] memory heldIds = pair.getAllHeldIds();
