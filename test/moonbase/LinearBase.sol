@@ -13,33 +13,33 @@ import {RouterWithRoyalties} from "src/MoonRouter.sol";
 
 contract LinearBase is Test {
     // 0.40%
-    uint256 internal constant PROTOCOL_FEE_MULTIPLIER = 0.004e18;
+    uint256 internal constant DEFAULT_PROTOCOL_FEE = 0.004e18;
 
     // Unchanged SudoSwap contracts
     LinearCurve internal immutable linearCurve = new LinearCurve();
-    PairFactory internal immutable pairFactory;
+    PairFactory internal immutable factory;
 
     // Moonbase
     RouterWithRoyalties internal immutable moonRouter;
 
     constructor() {
         // Deploy PairFactory with template addresses and fee config
-        pairFactory = new PairFactory(
+        factory = new PairFactory(
             new PairEnumerableETH(),
             new PairMissingEnumerableETH(),
             new PairEnumerableERC20(),
             new PairMissingEnumerableERC20(),
             payable(address(this)),
-            PROTOCOL_FEE_MULTIPLIER
+            DEFAULT_PROTOCOL_FEE
         );
 
         // Whitelist bonding curve
-        pairFactory.setBondingCurveAllowed(linearCurve, true);
+        factory.setBondingCurveAllowed(linearCurve, true);
 
         // Deploy MoonRouter
-        moonRouter = new RouterWithRoyalties(pairFactory);
+        moonRouter = new RouterWithRoyalties(factory);
 
         // Whitelist MoonRouter
-        pairFactory.setRouterAllowed(moonRouter, true);
+        factory.setRouterAllowed(moonRouter, true);
     }
 }
