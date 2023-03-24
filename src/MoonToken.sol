@@ -9,11 +9,12 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
     mapping(address user => uint256 amount) public mintable;
 
     event SetRouter(address);
-    event IncreaseMintable(address, uint256);
+    event IncreaseMintable(address[], uint256);
 
     error Unauthorized();
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidArray();
 
     constructor(address _owner) Owned(_owner) {
         if (_owner == address(0)) revert InvalidAddress();
@@ -24,6 +25,10 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
         _;
     }
 
+    /**
+     * @notice Set the router address
+     * @param _router  address  Router address
+     */
     function setRouter(address _router) external onlyOwner {
         if (_router == address(0)) revert InvalidAddress();
 
@@ -32,17 +37,38 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
         emit SetRouter(_router);
     }
 
-    function increaseMintable(address to, uint256 amount) external onlyRouter {
-        if (to == address(0)) revert InvalidAddress();
-        if (amount == 0) revert InvalidAmount();
+    /**
+     * @notice Increase the mintable MOON amount for users
+     * @param users    address[]  User addresses
+     * @param amounts  uint256[]  Mintable amounts for each user
+     */
+    function increaseMintable(
+        address[] calldata users,
+        uint256[] calldata amounts
+    ) external onlyRouter {
+        uint256 uLen = users.length;
 
-        mintable[to] += amount;
+        if (uLen == 0) revert InvalidArray();
+        if (uLen != amounts.length) revert InvalidArray();
 
-        emit IncreaseMintable(to, amount);
+        // The router will most likely increase the mint amount for 2-3 users
+        // Potential minters: buyer, pair owner, and collection owner (others TBD)
+        for (uint256 i; i < uLen; ) {
+            mintable[users[i]] += amounts[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit IncreaseMintable(users, amount);
     }
 
-    function mint() external {
-        uint256 amount = mintable[msg.sender];
+    /**
+     * @notice Mints MOON equal to msg.sender's mintable amount
+     */
+    function mint() external returns (uint256 amount) {
+        amount = mintable[msg.sender];
 
         if (amount == 0) revert InvalidAmount();
 
