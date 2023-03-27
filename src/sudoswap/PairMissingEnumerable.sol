@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {Router} from "sudoswap/Router.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 

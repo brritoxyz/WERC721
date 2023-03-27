@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {Router} from "sudoswap/Router.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";

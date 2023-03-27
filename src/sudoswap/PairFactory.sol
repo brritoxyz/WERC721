@@ -12,7 +12,7 @@ import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enu
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {Router} from "sudoswap/Router.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";

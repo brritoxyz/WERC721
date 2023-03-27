@@ -5,7 +5,7 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {PairCloner} from "src/lib/PairCloner.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
 import {IPairFactoryLike} from "sudoswap/PairFactory.sol";

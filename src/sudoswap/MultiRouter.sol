@@ -7,7 +7,7 @@ import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
