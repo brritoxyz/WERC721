@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import {ExponentialCurve} from "src/bonding-curves/ExponentialCurve.sol";
 import {Test721Enumerable} from "test/mocks/Test721Enumerable.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Configurable} from "./Configurable.sol";

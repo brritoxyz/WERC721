@@ -16,12 +16,12 @@ import {Pair} from "sudoswap/Pair.sol";
 import {Router} from "sudoswap/Router.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairCloner} from "src/lib/PairCloner.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {Moon} from "src/Moon.sol";
 
@@ -85,7 +85,7 @@ contract PairFactory is Owned, IPairFactoryLike {
     mapping(address => bool) public override callAllowed;
     mapping(Router => RouterStatus) public override routerStatus;
 
-    event SetToken(Moon);
+    event SetMoon(Moon);
     event NewPair(address poolAddress);
     event TokenDeposit(address poolAddress);
     event NFTDeposit(address poolAddress);
@@ -127,7 +127,7 @@ contract PairFactory is Owned, IPairFactoryLike {
      * @dev    Separate method instead of constructor to minimize test changes
      * @param  _moon  Moon  MOON token contract
      */
-    function setToken(Moon _moon) external onlyOwner {
+    function setMoon(Moon _moon) external onlyOwner {
         if (address(_moon) == address(0)) revert InvalidAddress();
 
         // Token cannot be re-set
@@ -135,7 +135,7 @@ contract PairFactory is Owned, IPairFactoryLike {
 
         moon = _moon;
 
-        emit SetToken(_moon);
+        emit SetMoon(_moon);
     }
 
     /**
@@ -203,7 +203,10 @@ contract PairFactory is Owned, IPairFactoryLike {
             _initialNFTIDs
         );
 
-        // Enable pair contract to issue MOON rewards
+        // Set the MOON token on the pair
+        PairEnumerableETH(payable(address(pair))).setMoon(moon);
+
+        // Enable pair contract to issue MOON rewards (ETH pairs only)
         moon.addMinter(address(pair));
 
         emit NewPair(address(pair));
@@ -254,8 +257,6 @@ contract PairFactory is Owned, IPairFactoryLike {
             params.initialNFTIDs,
             params.initialTokenBalance
         );
-
-        moon.addMinter(address(pair));
 
         emit NewPair(address(pair));
     }

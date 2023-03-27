@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {DSTest} from "ds-test/test.sol";
-import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
-
-import {ExponentialCurve} from "src/bonding-curves/ExponentialCurve.sol";
-import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 import {Hevm} from "test/utils/Hevm.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
+import {ExponentialCurve} from "src/bonding-curves/ExponentialCurve.sol";
+import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 contract ExponentialCurveTest is DSTest {
     using FixedPointMathLib for uint256;

@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {NoArbBondingCurve} from "test/base/NoArbBondingCurve.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
 import {Router} from "sudoswap/Router.sol";
 import {Router2} from "sudoswap/Router2.sol";

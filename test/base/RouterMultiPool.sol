@@ -5,19 +5,19 @@ import {DSTest} from "ds-test/test.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 
-import {ICurve} from "src/interfaces/ICurve.sol";
-import {PairFactory} from "src/MoonPairFactory.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
 import {Router} from "sudoswap/Router.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 
 // Gives more realistic scenarios where swaps have to go through multiple pools, for more accurate gas profiling
 abstract contract RouterMultiPool is
@@ -90,17 +90,13 @@ abstract contract RouterMultiPool is
 
     function test_swapTokenForAny5NFTs() public {
         // Swap across all 5 pools
-        Router.PairSwapAny[]
-            memory swapList = new Router.PairSwapAny[](5);
+        Router.PairSwapAny[] memory swapList = new Router.PairSwapAny[](5);
         uint256 totalInputAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
             uint256 inputAmount;
             (, , , inputAmount, ) = pairs[i + 1].getBuyNFTQuote(1);
             totalInputAmount += inputAmount;
-            swapList[i] = Router.PairSwapAny({
-                pair: pairs[i + 1],
-                numItems: 1
-            });
+            swapList[i] = Router.PairSwapAny({pair: pairs[i + 1], numItems: 1});
         }
         uint256 startBalance = test721.balanceOf(address(this));
         this.swapTokenForAnyNFTs{value: modifyInputAmount(totalInputAmount)}(

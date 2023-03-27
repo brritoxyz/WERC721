@@ -3,26 +3,27 @@ pragma solidity 0.8.19;
 
 import {DSTest} from "ds-test/test.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ICurve} from "src/interfaces/ICurve.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
-import {IMintable} from "../interfaces/IMintable.sol";
-import {Test20} from "test/mocks/Test20.sol";
-import {PairFactory} from "src/MoonPairFactory.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
-import {PairETH} from "sudoswap/PairETH.sol";
-import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
-import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
-import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
-import {Configurable} from "test/mixins/Configurable.sol";
+import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
+import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+
+import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
+import {IMintable} from "test/interfaces/IMintable.sol";
+import {Test20} from "test/mocks/Test20.sol";
+import {Configurable} from "test/mixins/Configurable.sol";
 import {Test721} from "test/mocks/Test721.sol";
 import {TestPairManager} from "test/mocks/TestPairManager.sol";
-import {IERC1155} from "openzeppelin/token/ERC1155/IERC1155.sol";
 import {Test1155} from "test/mocks/Test1155.sol";
-import {ERC1155Holder} from "openzeppelin/token/ERC1155/utils/ERC1155Holder.sol";
+import {Pair} from "sudoswap/Pair.sol";
+import {PairETH} from "sudoswap/PairETH.sol";
+import {PairERC20} from "sudoswap/PairERC20.sol";
+import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
+import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 
 abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155Holder {
     uint128 delta = 1.1 ether;

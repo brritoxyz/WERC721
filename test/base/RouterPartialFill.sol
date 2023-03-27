@@ -4,21 +4,22 @@ pragma solidity 0.8.19;
 import {DSTest} from "ds-test/test.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
-import {ICurve} from "src/interfaces/ICurve.sol";
-import {PairFactory} from "src/MoonPairFactory.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+
+import {Pair} from "sudoswap/Pair.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
 import {Router2} from "sudoswap/Router2.sol";
 import {Router} from "sudoswap/Router.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
-import "../utils/console.sol";
+import {console} from "test/utils/console.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 
 /** Handles test cases where users try to buy multiple NFTs from a pool, but only get partially filled
 >  $ forge test --match-contract RPF.*ETH -vvvvv
@@ -91,11 +92,10 @@ abstract contract RouterPartialFill is
         }
     }
 
-    function compareStrings(string memory a, string memory b)
-        public
-        pure
-        returns (bool)
-    {
+    function compareStrings(
+        string memory a,
+        string memory b
+    ) public pure returns (bool) {
         return (keccak256(abi.encodePacked((a))) ==
             keccak256(abi.encodePacked((b))));
     }
@@ -135,9 +135,7 @@ abstract contract RouterPartialFill is
 
             // Only 1 pool we're buying from
             Router2.PairSwapSpecificPartialFill[]
-                memory buyList = new Router2.PairSwapSpecificPartialFill[](
-                    1
-                );
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](1);
             uint256[] memory ids = new uint256[](NUM_NFTS);
 
             // Get IDS to buy (#11 and onwards)
@@ -151,10 +149,7 @@ abstract contract RouterPartialFill is
 
             // Create the partial fill args
             buyList[0] = Router2.PairSwapSpecificPartialFill({
-                swapInfo: Router2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: Router2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
@@ -216,9 +211,7 @@ abstract contract RouterPartialFill is
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
             Router2.PairSwapSpecificPartialFill[]
-                memory buyList = new Router2.PairSwapSpecificPartialFill[](
-                    1
-                );
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](1);
             uint256[] memory ids = new uint256[](10);
             // Get all IDs
             for (uint256 i = 1; i <= 10; i++) {
@@ -229,10 +222,7 @@ abstract contract RouterPartialFill is
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = Router2.PairSwapSpecificPartialFill({
-                swapInfo: Router2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: Router2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
@@ -255,9 +245,7 @@ abstract contract RouterPartialFill is
                 numNFTsToBuyFirst
             );
             Router2.RobustPairSwapSpecific[]
-                memory initialBuyList = new Router2.RobustPairSwapSpecific[](
-                    1
-                );
+                memory initialBuyList = new Router2.RobustPairSwapSpecific[](1);
             initialBuyList[0] = Router2.RobustPairSwapSpecific({
                 swapInfo: Router2.PairSwapSpecific({
                     pair: pair,
@@ -327,9 +315,7 @@ abstract contract RouterPartialFill is
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
             Router2.PairSwapSpecificPartialFill[]
-                memory buyList = new Router2.PairSwapSpecificPartialFill[](
-                    1
-                );
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](1);
             uint256[] memory ids = new uint256[](10);
             // Get all IDs
             for (uint256 i = 1; i <= 10; i++) {
@@ -340,10 +326,7 @@ abstract contract RouterPartialFill is
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = Router2.PairSwapSpecificPartialFill({
-                swapInfo: Router2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: Router2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
@@ -412,9 +395,7 @@ abstract contract RouterPartialFill is
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
             Router2.PairSwapSpecificPartialFill[]
-                memory buyList = new Router2.PairSwapSpecificPartialFill[](
-                    1
-                );
+                memory buyList = new Router2.PairSwapSpecificPartialFill[](1);
             uint256[] memory ids = new uint256[](10);
 
             // Set IDs to be inconsistent with the actual inventory state (for partial fill)
@@ -426,11 +407,8 @@ abstract contract RouterPartialFill is
                 .getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = Router2.PairSwapSpecificPartialFill({
-                swapInfo: Router2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
-                expectedSpotPrice: SPOT_PRICE-1,
+                swapInfo: Router2.PairSwapSpecific({pair: pair, nftIds: ids}),
+                expectedSpotPrice: SPOT_PRICE - 1,
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list

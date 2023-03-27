@@ -5,16 +5,12 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {PairETH} from "sudoswap/PairETH.sol";
-import {PairEnumerable} from "sudoswap/PairEnumerable.sol";
+import {PairMissingEnumerable} from "sudoswap/PairMissingEnumerable.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {Moon} from "src/Moon.sol";
 
-/**
-    @title An NFT/Token pair where the NFT implements ERC721Enumerable, and the token is ETH
-    @author boredGenius and 0xmons
- */
-contract PairEnumerableETH is PairEnumerable, PairETH {
+contract PairMissingEnumerableETH is PairMissingEnumerable, PairETH {
     using FixedPointMathLib for uint256;
 
     Moon public moon;
@@ -22,18 +18,14 @@ contract PairEnumerableETH is PairEnumerable, PairETH {
     event SetMoon(Moon);
 
     error Unauthorized();
-    error InvalidAddress();
 
-    /**
-        @notice Returns the Pair type
-     */
     function pairVariant()
         public
         pure
         override
         returns (IPairFactoryLike.PairVariant)
     {
-        return IPairFactoryLike.PairVariant.ENUMERABLE_ETH;
+        return IPairFactoryLike.PairVariant.MISSING_ENUMERABLE_ETH;
     }
 
     /**

@@ -5,24 +5,24 @@ import {DSTest} from "ds-test/test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721Holder} from "openzeppelin/token/ERC721/utils/ERC721Holder.sol";
 import {ERC2981} from "openzeppelin/token/common/ERC2981.sol";
-import {RoyaltyRegistry} from "src/lib/RoyaltyRegistry.sol";
 
-import {LinearCurve} from "src/bonding-curves/LinearCurve.sol";
-import {ICurve} from "src/interfaces/ICurve.sol";
-import {PairFactory} from "src/MoonPairFactory.sol";
-import {Pair} from "src/sudoswap/Pair.sol";
+import {Pair} from "sudoswap/Pair.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
-import {RouterWithRoyalties} from "src/MoonRouter.sol";
 import {Router} from "sudoswap/RouterWithRoyalties.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
 import {Hevm} from "test/utils/Hevm.sol";
 import {ConfigurableWithRoyalties} from "test/mixins/ConfigurableWithRoyalties.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
+import {LinearCurve} from "src/bonding-curves/LinearCurve.sol";
+import {ICurve} from "src/interfaces/ICurve.sol";
+import {RoyaltyRegistry} from "src/lib/RoyaltyRegistry.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
+import {RouterWithRoyalties} from "src/MoonRouter.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 
 abstract contract RouterRobustSwapWithRoyalties is
     DSTest,
@@ -240,24 +240,15 @@ abstract contract RouterRobustSwapWithRoyalties is
         Router.RobustPairSwapSpecific[]
             memory swapList = new Router.RobustPairSwapSpecific[](3);
         swapList[0] = Router.RobustPairSwapSpecific({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             maxCost: pair2InputAmount
         });
         swapList[1] = Router.RobustPairSwapSpecific({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             maxCost: pair2InputAmount
         });
         swapList[2] = Router.RobustPairSwapSpecific({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             maxCost: pair2InputAmount
         });
 
@@ -318,28 +309,17 @@ abstract contract RouterRobustSwapWithRoyalties is
         totalRoyaltyAmount += royaltyAmount;
 
         Router.RobustPairSwapSpecificForToken[]
-            memory swapList = new Router.RobustPairSwapSpecificForToken[](
-                3
-            );
+            memory swapList = new Router.RobustPairSwapSpecificForToken[](3);
         swapList[0] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             minOutput: pair2OutputAmount
         });
         swapList[1] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
         swapList[2] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             minOutput: pair2OutputAmount
         });
 
@@ -387,28 +367,17 @@ abstract contract RouterRobustSwapWithRoyalties is
         pair2OutputAmount -= royaltyAmount;
 
         Router.RobustPairSwapSpecificForToken[]
-            memory swapList = new Router.RobustPairSwapSpecificForToken[](
-                3
-            );
+            memory swapList = new Router.RobustPairSwapSpecificForToken[](3);
         swapList[0] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             minOutput: pair2OutputAmount
         });
         swapList[1] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
         swapList[2] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             minOutput: pair2OutputAmount
         });
 
@@ -455,14 +424,9 @@ abstract contract RouterRobustSwapWithRoyalties is
         nftIds1[0] = 0;
         nftIds1[1] = 1;
         Router.RobustPairSwapSpecific[]
-            memory tokenToNFTSwapList = new Router.RobustPairSwapSpecific[](
-                1
-            );
+            memory tokenToNFTSwapList = new Router.RobustPairSwapSpecific[](1);
         tokenToNFTSwapList[0] = Router.RobustPairSwapSpecific({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             maxCost: pair1InputAmount
         });
 
@@ -475,10 +439,7 @@ abstract contract RouterRobustSwapWithRoyalties is
                 1
             );
         nftToTokenSwapList[0] = Router.RobustPairSwapSpecificForToken({
-            swapInfo: Router.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: Router.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
 

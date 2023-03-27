@@ -4,10 +4,9 @@ pragma solidity 0.8.19;
 import {DSTest} from "ds-test/test.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
+import {Hevm} from "test/utils/Hevm.sol";
 import {LinearCurve} from "src/bonding-curves/LinearCurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-
-import {Hevm} from "test/utils/Hevm.sol";
 
 contract LinearCurveTest is DSTest {
     LinearCurve curve;

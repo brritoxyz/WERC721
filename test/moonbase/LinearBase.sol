@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 
 import {LinearCurve} from "src/bonding-curves/LinearCurve.sol";
-import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
+import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
@@ -51,6 +51,6 @@ contract LinearBase is Test {
         moon.setFactory(address(factory));
 
         // Set MOON
-        factory.setToken(moon);
+        factory.setMoon(moon);
     }
 }
