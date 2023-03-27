@@ -126,12 +126,14 @@ contract PairEnumerableETH is PairEnumerable, PairETH {
 
         _refundTokenToSender(inputAmount);
 
-        // Calculate and increase the mintable MOON mint amounts for the buyer and seller
-        _calculateAndIncreaseMintableMoon(
-            protocolFee,
-            _factory.protocolFeeMultiplier(),
-            nftRecipient
-        );
+        if (protocolFee != 0) {
+            // Calculate and increase the mintable MOON mint amounts for the buyer and seller
+            _calculateAndIncreaseMintableMoon(
+                protocolFee,
+                _factory.protocolFeeMultiplier(),
+                nftRecipient
+            );
+        }
 
         emit SwapNFTOutPair();
     }
@@ -194,12 +196,13 @@ contract PairEnumerableETH is PairEnumerable, PairETH {
 
         _refundTokenToSender(inputAmount);
 
-        // Calculate and increase the mintable MOON mint amounts for the buyer and seller
-        _calculateAndIncreaseMintableMoon(
-            protocolFee,
-            _factory.protocolFeeMultiplier(),
-            nftRecipient
-        );
+        if (protocolFee != 0) {
+            _calculateAndIncreaseMintableMoon(
+                protocolFee,
+                _factory.protocolFeeMultiplier(),
+                nftRecipient
+            );
+        }
 
         emit SwapNFTOutPair();
     }

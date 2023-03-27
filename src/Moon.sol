@@ -68,6 +68,13 @@ contract Moon is Owned, ERC20("MoonBase", "MOON", 18) {
         uint256 pairAmount
     ) external {
         if (!minters[msg.sender]) revert Unauthorized();
+        if (buyer == address(0)) revert InvalidAddress();
+
+        // The MOON mintable amount for the buyer must be always be greater than zero
+        // The reason is due to `buyerAmount` representing protocol fees. This is not
+        // the case for `pairAmount` (can be 0) since we deduct pair fees from the pair's
+        // mintable amount
+        if (buyerAmount == 0) revert InvalidAmount();
 
         mintable[buyer] += buyerAmount;
 

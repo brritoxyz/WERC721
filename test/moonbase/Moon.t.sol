@@ -18,8 +18,20 @@ contract MoonTest is Test {
     // Moonbase
     Moon private immutable moon;
 
+    address[3] private testAccounts = [
+        0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
+        0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
+        0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+    ];
+
     event SetFactory(address);
     event AddMinter(address);
+    event IncreaseMintable(
+        address indexed buyer,
+        address indexed pair,
+        uint256 buyerAmount,
+        uint256 pairAmount
+    );
 
     constructor() {
         // Deploy Moon
@@ -87,5 +99,60 @@ contract MoonTest is Test {
         moon.addMinter(_minter);
 
         assertTrue(moon.minters(_minter));
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            increaseMintable
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotIncreaseMintableUnauthorized() external {
+        vm.prank(address(0));
+        vm.expectRevert(Moon.Unauthorized.selector);
+
+        moon.increaseMintable(address(this), 1, 1);
+    }
+
+    function testCannotIncreaseMintableInvalidAddress() external {
+        moon.addMinter(address(this));
+
+        vm.expectRevert(Moon.InvalidAddress.selector);
+
+        moon.increaseMintable(address(0), 1, 1);
+    }
+
+    function testCannotIncreaseMintableInvalidAmount() external {
+        moon.addMinter(address(this));
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.increaseMintable(address(this), 0, 1);
+    }
+
+    function testIncreaseMintableFuzz(
+        uint256 buyerAmount,
+        uint256 pairAmount
+    ) external {
+        // buyerAmount is never 0, but pairAmount may be 0
+        vm.assume(buyerAmount != 0);
+
+        // Set to self for testing purposes - would normally be pair contract
+        address msgSender = address(this);
+
+        address buyer = testAccounts[0];
+
+        moon.addMinter(msgSender);
+
+        assertTrue(moon.minters(msgSender));
+        assertEq(0, moon.mintable(buyer));
+        assertEq(0, moon.mintable(msgSender));
+
+        vm.expectEmit(true, true, false, true, address(moon));
+
+        emit IncreaseMintable(buyer, msgSender, buyerAmount, pairAmount);
+
+        moon.increaseMintable(buyer, buyerAmount, pairAmount);
+
+        assertEq(buyerAmount, moon.mintable(buyer));
+        assertEq(pairAmount, moon.mintable(msgSender));
     }
 }
