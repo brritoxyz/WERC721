@@ -18,6 +18,7 @@ import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract RouterSinglePool is
     DSTest,
@@ -52,6 +53,11 @@ abstract contract RouterSinglePool is
         router = new Router(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         // set NFT approvals
         test721.setApprovalForAll(address(factory), true);
@@ -88,8 +94,7 @@ abstract contract RouterSinglePool is
     }
 
     function test_swapTokenForSingleAnyNFT() public {
-        Router.PairSwapAny[]
-            memory swapList = new Router.PairSwapAny[](1);
+        Router.PairSwapAny[] memory swapList = new Router.PairSwapAny[](1);
         swapList[0] = Router.PairSwapAny({pair: pair, numItems: 1});
         uint256 inputAmount;
         (, , , inputAmount, ) = pair.getBuyNFTQuote(1);
@@ -108,10 +113,7 @@ abstract contract RouterSinglePool is
         nftIds[0] = 1;
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 inputAmount;
         (, , , inputAmount, ) = pair.getBuyNFTQuote(1);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
@@ -130,10 +132,7 @@ abstract contract RouterSinglePool is
         nftIds[0] = numInitialNFTs + 1;
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(
             swapList,
             outputAmount,
@@ -149,10 +148,7 @@ abstract contract RouterSinglePool is
             nftIds[0] = numInitialNFTs + i;
             Router.PairSwapSpecific[]
                 memory swapList = new Router.PairSwapSpecific[](1);
-            swapList[0] = Router.PairSwapSpecific({
-                pair: pair,
-                nftIds: nftIds
-            });
+            swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
             router.swapNFTsForToken(
                 swapList,
                 outputAmount,
@@ -176,10 +172,7 @@ abstract contract RouterSinglePool is
         // construct Token to NFT swap list
         Router.PairSwapAny[]
             memory tokenToNFTSwapList = new Router.PairSwapAny[](1);
-        tokenToNFTSwapList[0] = Router.PairSwapAny({
-            pair: pair,
-            numItems: 1
-        });
+        tokenToNFTSwapList[0] = Router.PairSwapAny({pair: pair, numItems: 1});
 
         // NOTE: We send some tokens (more than enough) to cover the protocol fee needed
         uint256 inputAmount = 0.01 ether;
@@ -239,8 +232,7 @@ abstract contract RouterSinglePool is
     }
 
     function test_swapTokenforAny5NFTs() public {
-        Router.PairSwapAny[]
-            memory swapList = new Router.PairSwapAny[](1);
+        Router.PairSwapAny[] memory swapList = new Router.PairSwapAny[](1);
         swapList[0] = Router.PairSwapAny({pair: pair, numItems: 5});
         uint256 startBalance = test721.balanceOf(address(this));
         uint256 inputAmount;
@@ -266,10 +258,7 @@ abstract contract RouterSinglePool is
         nftIds[2] = 3;
         nftIds[3] = 4;
         nftIds[4] = 5;
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 startBalance = test721.balanceOf(address(this));
         uint256 inputAmount;
         (, , , inputAmount, ) = pair.getBuyNFTQuote(5);
@@ -293,10 +282,7 @@ abstract contract RouterSinglePool is
         }
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(
             swapList,
             outputAmount,
@@ -306,8 +292,7 @@ abstract contract RouterSinglePool is
     }
 
     function testFail_swapTokenForSingleAnyNFTSlippage() public {
-        Router.PairSwapAny[]
-            memory swapList = new Router.PairSwapAny[](1);
+        Router.PairSwapAny[] memory swapList = new Router.PairSwapAny[](1);
         swapList[0] = Router.PairSwapAny({pair: pair, numItems: 1});
         uint256 inputAmount;
         (, , , inputAmount, ) = pair.getBuyNFTQuote(1);
@@ -327,10 +312,7 @@ abstract contract RouterSinglePool is
         nftIds[0] = 1;
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 inputAmount;
         (, , , inputAmount, ) = pair.getBuyNFTQuote(1);
         inputAmount = inputAmount - 1 wei;
@@ -349,10 +331,7 @@ abstract contract RouterSinglePool is
         nftIds[0] = numInitialNFTs + 1;
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 sellAmount;
         (, , , sellAmount, ) = pair.getSellNFTQuote(1);
         sellAmount = sellAmount + 1 wei;
@@ -367,8 +346,7 @@ abstract contract RouterSinglePool is
     function testFail_swapTokenForAnyNFTsPastBalance() public {
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
-        Router.PairSwapAny[]
-            memory swapList = new Router.PairSwapAny[](1);
+        Router.PairSwapAny[] memory swapList = new Router.PairSwapAny[](1);
         swapList[0] = Router.PairSwapAny({
             pair: pair,
             numItems: test721.balanceOf(address(pair)) + 1
@@ -392,10 +370,7 @@ abstract contract RouterSinglePool is
         uint256[] memory nftIds = new uint256[](0);
         Router.PairSwapSpecific[]
             memory swapList = new Router.PairSwapSpecific[](1);
-        swapList[0] = Router.PairSwapSpecific({
-            pair: pair,
-            nftIds: nftIds
-        });
+        swapList[0] = Router.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 sellAmount;
         (, , , sellAmount, ) = pair.getSellNFTQuote(1);
         sellAmount = sellAmount + 1 wei;

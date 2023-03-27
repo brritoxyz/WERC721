@@ -20,6 +20,7 @@ import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract RouterRobustSwapWithAssetRecipient is
     DSTest,
@@ -68,6 +69,11 @@ abstract contract RouterRobustSwapWithAssetRecipient is
         test721.setApprovalForAll(address(router), true);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         for (uint256 i = 1; i <= numInitialNFTs; i++) {
             test721.mint(address(this), i);

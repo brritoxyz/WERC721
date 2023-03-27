@@ -18,6 +18,7 @@ import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 contract XykCurveTest is DSTest, ERC721Holder {
     using FixedPointMathLib for uint256;
@@ -52,6 +53,11 @@ contract XykCurveTest is DSTest, ERC721Holder {
 
         curve = new XykCurve();
         factory.setBondingCurveAllowed(curve, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
     }
 
     function setUpEthPair(uint256 numNfts, uint256 value) public {

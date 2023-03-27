@@ -20,6 +20,7 @@ import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract RouterRobustSwap is
     DSTest,
@@ -59,6 +60,11 @@ abstract contract RouterRobustSwap is
             protocolFeeMultiplier
         );
         router = new Router(factory);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         // Set approvals
         test721.setApprovalForAll(address(factory), true);

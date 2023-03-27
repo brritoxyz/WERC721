@@ -21,6 +21,7 @@ import {RouterWithRoyalties} from "src/MoonRouter.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract RouterSinglePoolWithRoyalties is
     DSTest,
@@ -64,6 +65,11 @@ abstract contract RouterSinglePoolWithRoyalties is
         router = new RouterWithRoyalties(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         // set NFT approvals
         test721.setApprovalForAll(address(factory), true);

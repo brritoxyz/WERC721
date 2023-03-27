@@ -24,8 +24,14 @@ import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
-abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155Holder {
+abstract contract PairAndFactory is
+    DSTest,
+    ERC721Holder,
+    Configurable,
+    ERC1155Holder
+{
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
@@ -58,6 +64,12 @@ abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155H
         );
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
+
         for (uint256 i = 1; i <= numItems; i++) {
             IERC721Mintable(address(test721)).mint(address(this), i);
             idList.push(i);

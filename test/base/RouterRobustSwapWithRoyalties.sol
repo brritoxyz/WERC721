@@ -23,6 +23,7 @@ import {PairFactory} from "src/MoonPairFactory.sol";
 import {RouterWithRoyalties} from "src/MoonRouter.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract RouterRobustSwapWithRoyalties is
     DSTest,
@@ -77,6 +78,11 @@ abstract contract RouterRobustSwapWithRoyalties is
         test721.setApprovalForAll(address(router), true);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         uint256[] memory empty;
         uint256 nftIndex = 0;

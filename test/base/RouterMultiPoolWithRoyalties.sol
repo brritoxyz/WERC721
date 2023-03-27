@@ -21,6 +21,7 @@ import {PairFactory} from "src/MoonPairFactory.sol";
 import {RouterWithRoyalties} from "src/MoonRouter.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 // Gives more realistic scenarios where swaps have to go through multiple pools, for more accurate gas profiling
 abstract contract RouterMultiPoolWithRoyalties is
@@ -65,6 +66,11 @@ abstract contract RouterMultiPoolWithRoyalties is
         router = new RouterWithRoyalties(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
 
         // set NFT approvals
         test721.setApprovalForAll(address(factory), true);

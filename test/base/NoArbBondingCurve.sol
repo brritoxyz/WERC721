@@ -17,6 +17,7 @@ import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "src/MoonPairMissingEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
     uint256[] idList;
@@ -44,6 +45,11 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
         );
         test721.setApprovalForAll(address(factory), true);
         factory.setBondingCurveAllowed(bondingCurve, true);
+
+        // Deploy and configure Moon contract
+        Moon moon = new Moon(address(this));
+        moon.setFactory(address(factory));
+        factory.setMoon(moon);
     }
 
     /**
