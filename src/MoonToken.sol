@@ -5,11 +5,22 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 
 contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
-    address public router;
+    address public factory;
+
+    // Factory-deployed pair addresses that can increase MOON mint amounts
+    mapping(address minter => bool canMint) public minters;
+
+    // User addresses and their mintable MOON amounts
     mapping(address user => uint256 amount) public mintable;
 
-    event SetRouter(address);
-    event IncreaseMintable(address[], uint256[]);
+    event SetFactory(address);
+    event AddMinter(address);
+    event IncreaseMintable(
+        address indexed buyer,
+        address indexed pair,
+        uint256 buyerAmount,
+        uint256 pairAmount
+    );
 
     error Unauthorized();
     error InvalidAddress();
@@ -20,52 +31,54 @@ contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
-    modifier onlyRouter() {
-        if (msg.sender != router) revert Unauthorized();
-        _;
-    }
-
     /**
-     * @notice Set the router address
-     * @param _router  address  Router address
+     * @notice Set the factory address
+     * @param _factory  address  Factory address
      */
-    function setRouter(address _router) external onlyOwner {
-        if (_router == address(0)) revert InvalidAddress();
+    function setFactory(address _factory) external onlyOwner {
+        if (_factory == address(0)) revert InvalidAddress();
 
-        router = _router;
+        factory = _factory;
 
-        emit SetRouter(_router);
+        emit SetFactory(_factory);
     }
 
     /**
-     * @notice Increase the mintable MOON amount for users
-     * @param users    address[]  User addresses
-     * @param amounts  uint256[]  Mintable amounts for each user
+     * @notice Enables the factory to add a MOON minter (i.e. pair contract)
+     * @param _minter  address  Minter address
+     */
+    function addMinter(address _minter) external {
+        if (msg.sender != factory) revert Unauthorized();
+
+        minters[_minter] = true;
+
+        emit AddMinter(_minter);
+    }
+
+    /**
+     * @notice Enables a pair to increase the mintable MOON for a buyer and itself
+     * @param buyer         address  Buyer address
+     * @param buyerAmount   uint256  Buyer mintable amount
+     * @param pairAmount    uint256  Pair mintable amount
      */
     function increaseMintable(
-        address[] calldata users,
-        uint256[] calldata amounts
-    ) external onlyRouter {
-        uint256 uLen = users.length;
+        address buyer,
+        uint256 buyerAmount,
+        uint256 pairAmount
+    ) external {
+        if (!minters[msg.sender]) revert Unauthorized();
 
-        if (uLen == 0) revert InvalidArray();
-        if (uLen != amounts.length) revert InvalidArray();
+        mintable[buyer] += buyerAmount;
 
-        // The router will most likely increase the mint amount for 2-3 users
-        // Potential minters: buyer, pair owner, and collection owner (others TBD)
-        for (uint256 i; i < uLen; ) {
-            mintable[users[i]] += amounts[i];
+        // pairAmount will be 0 if the pair fee is >= protocol fee
+        if (pairAmount != 0) mintable[msg.sender] += pairAmount;
 
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit IncreaseMintable(users, amounts);
+        emit IncreaseMintable(buyer, msg.sender, buyerAmount, pairAmount);
     }
 
     /**
      * @notice Mints MOON equal to msg.sender's mintable amount
+     * @return amount  uint256  Minted amount
      */
     function mint() external returns (uint256 amount) {
         amount = mintable[msg.sender];
