@@ -8,11 +8,11 @@ import {ERC2981} from "openzeppelin/token/common/ERC2981.sol";
 import {RoyaltyRegistry} from "src/lib/RoyaltyRegistry.sol";
 
 import {ICurve} from "src/interfaces/ICurve.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
 import {Pair} from "src/sudoswap/Pair.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
 import {PairERC20} from "sudoswap/PairERC20.sol";
-import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";

@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {Pair} from "src/sudoswap/Pair.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
 import {Router} from "sudoswap/Router.sol";
 import {Router2} from "sudoswap/Router2.sol";
 import {PairETH} from "sudoswap/PairETH.sol";

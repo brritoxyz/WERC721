@@ -6,8 +6,8 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {XykCurve} from "src/bonding-curves/XykCurve.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
-import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";

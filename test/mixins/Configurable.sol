@@ -5,7 +5,7 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {Pair} from "src/sudoswap/Pair.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {IERC721Mintable} from "test/interfaces/IERC721Mintable.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
 
 abstract contract Configurable {
     function getBalance(address a) public virtual returns (uint256);

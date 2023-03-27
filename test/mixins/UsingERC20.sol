@@ -13,7 +13,7 @@ import {Router} from "sudoswap/Router.sol";
 import {Router2} from "sudoswap/Router2.sol";
 import {Test20} from "test/mocks/Test20.sol";
 import {IMintable} from "test/interfaces/IMintable.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
 import {ICurve} from "src/interfaces/ICurve.sol";
 import {Configurable} from "test/mixins/Configurable.sol";
 import {RouterCaller} from "test/mixins/RouterCaller.sol";
