@@ -17,6 +17,7 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     uint128 private constant DEFAULT_DELTA = 1 ether;
     uint96 private constant DEFAULT_FEE = 0.01e18;
     uint128 private constant DEFAULT_SPOT_PRICE = 1 ether;
+    uint256 private constant PAIR_MAX_FEE = 0.90e18;
 
     PairETH private immutable pair;
 
@@ -201,6 +202,7 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
 
     function testChangeFeeFuzz(uint96 newFee) external {
         vm.assume(newFee != DEFAULT_FEE);
+        vm.assume(newFee < PAIR_MAX_FEE);
 
         assertEq(address(this), pair.owner());
 
