@@ -32,6 +32,7 @@ contract MoonTest is Test {
         uint256 buyerAmount,
         uint256 pairAmount
     );
+    event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
         // Deploy Moon
@@ -154,5 +155,62 @@ contract MoonTest is Test {
 
         assertEq(buyerAmount, moon.mintable(buyer));
         assertEq(pairAmount, moon.mintable(msgSender));
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                                mint
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotMintInvalidAmount() external {
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.mint();
+    }
+
+    function testMintFuzz(
+        uint8 buyerIndex,
+        uint128 buyerAmount,
+        uint128 pairAmount
+    ) external {
+        vm.assume(buyerIndex < 3);
+        vm.assume(buyerAmount != 0);
+
+        address pair = address(this);
+
+        moon.addMinter(pair);
+
+        address buyer = testAccounts[buyerIndex];
+
+        assertEq(0, moon.mintable(buyer));
+        assertEq(0, moon.mintable(pair));
+
+        moon.increaseMintable(buyer, buyerAmount, pairAmount);
+
+        assertEq(buyerAmount, moon.mintable(buyer));
+        assertEq(pairAmount, moon.mintable(pair));
+
+        vm.startPrank(buyer);
+        vm.expectEmit(true, true, false, true, address(moon));
+
+        emit Transfer(address(0), buyer, buyerAmount);
+
+        moon.mint();
+
+        vm.stopPrank();
+
+        assertEq(0, moon.mintable(buyer));
+        assertEq(buyerAmount, moon.balanceOf(buyer));
+
+        vm.startPrank(pair);
+        vm.expectEmit(true, true, false, true, address(moon));
+
+        emit Transfer(address(0), pair, pairAmount);
+
+        moon.mint();
+
+        vm.stopPrank();
+
+        assertEq(0, moon.mintable(pair));
+        assertEq(pairAmount, moon.balanceOf(pair));
     }
 }
