@@ -66,7 +66,7 @@ contract ExponentialCurveTest is DSTest {
         (
             CurveErrorCodes.Error error,
             uint256 newSpotPrice,
-            uint256 newDelta,
+            ,
             uint256 inputValue,
 
         ) = curve.getBuyInfo(spotPrice, delta, numItems, 0, 0);

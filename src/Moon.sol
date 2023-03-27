@@ -49,6 +49,7 @@ contract Moon is Owned, ERC20("MoonBase", "MOON", 18) {
      */
     function addMinter(address _minter) external {
         if (msg.sender != factory) revert Unauthorized();
+        if (_minter == address(0)) revert InvalidAddress();
 
         minters[_minter] = true;
 

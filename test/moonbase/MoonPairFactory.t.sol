@@ -46,6 +46,10 @@ contract MoonPairFactoryTest is Test {
         moon.setFactory(address(factory));
     }
 
+    /*///////////////////////////////////////////////////////////////
+                                setMoon
+    //////////////////////////////////////////////////////////////*/
+
     function testCannotSetMoonUnauthorized() external {
         vm.prank(address(0));
         vm.expectRevert(bytes("UNAUTHORIZED"));

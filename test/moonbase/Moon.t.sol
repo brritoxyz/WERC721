@@ -19,6 +19,7 @@ contract MoonTest is Test {
     Moon private immutable moon;
 
     event SetFactory(address);
+    event AddMinter(address);
 
     constructor() {
         // Deploy Moon
@@ -27,6 +28,10 @@ contract MoonTest is Test {
         // Set to this contract's address for testing purposes
         moon.setFactory(testFactory);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                            setFactory
+    //////////////////////////////////////////////////////////////*/
 
     function testCannotSetFactoryUnauthorized() external {
         vm.prank(address(0));
@@ -53,5 +58,34 @@ contract MoonTest is Test {
         moon.setFactory(_factory);
 
         assertTrue(_factory == moon.factory());
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                                addMinter
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotAddMinterUnauthorized() external {
+        vm.prank(address(0));
+        vm.expectRevert(Moon.Unauthorized.selector);
+
+        moon.addMinter(address(this));
+    }
+
+    function testCannotAddMinterInvalidAddress() external {
+        vm.expectRevert(Moon.InvalidAddress.selector);
+
+        moon.addMinter(address(0));
+    }
+
+    function testAddMinter(address _minter) external {
+        assertFalse(moon.minters(_minter));
+
+        vm.expectEmit(false, false, false, true, address(moon));
+
+        emit AddMinter(_minter);
+
+        moon.addMinter(_minter);
+
+        assertTrue(moon.minters(_minter));
     }
 }
