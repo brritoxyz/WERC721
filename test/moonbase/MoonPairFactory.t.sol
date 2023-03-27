@@ -21,7 +21,6 @@ contract MoonPairFactoryTest is Test {
     PairFactory internal immutable factory;
 
     // Moonbase
-    RouterWithRoyalties internal immutable moonRouter;
     Moon internal immutable moon;
 
     event SetMoon(Moon);
@@ -39,12 +38,6 @@ contract MoonPairFactoryTest is Test {
 
         // Whitelist bonding curve
         factory.setBondingCurveAllowed(linearCurve, true);
-
-        // Deploy MoonRouter
-        moonRouter = new RouterWithRoyalties(factory);
-
-        // Whitelist MoonRouter
-        factory.setRouterAllowed(moonRouter, true);
 
         // Deploy Moon
         moon = new Moon(address(this));

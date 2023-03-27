@@ -1,3 +1,6 @@
+MoonTest:testCannotSetFactoryInvalidAddress() (gas: 8469)
+MoonTest:testCannotSetFactoryUnauthorized() (gas: 9185)
+MoonTest:testSetFactoryFuzz(address) (runs: 8, μ: 17989, ~: 17989)
 MoonPairFactoryTest:testCannotSetMoonAlreadySet() (gas: 32839)
 MoonPairFactoryTest:testCannotSetMoonInvalidAddress() (gas: 8498)
 MoonPairFactoryTest:testCannotSetMoonUnauthorized() (gas: 9221)
