@@ -10,6 +10,7 @@ import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.so
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 import {PairFactory} from "src/MoonPairFactory.sol";
 import {RouterWithRoyalties} from "src/MoonRouter.sol";
+import {MoonToken} from "src/MoonToken.sol";
 
 contract LinearBase is Test {
     // 0.30%
@@ -21,6 +22,7 @@ contract LinearBase is Test {
 
     // Moonbase
     RouterWithRoyalties internal immutable moonRouter;
+    MoonToken internal immutable moon;
 
     constructor() {
         // Deploy PairFactory with template addresses and fee config
@@ -41,5 +43,11 @@ contract LinearBase is Test {
 
         // Whitelist MoonRouter
         factory.setRouterAllowed(moonRouter, true);
+
+        // Deploy MoonToken
+        moon = new MoonToken(address(this));
+
+        // Enable factory to add minters
+        moon.setFactory(address(factory));
     }
 }
