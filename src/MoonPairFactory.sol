@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.19;
 
-import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {ERC165Checker} from "openzeppelin/utils/introspection/ERC165Checker.sol";
 import {IERC165} from "openzeppelin/utils/introspection/IERC165.sol";
@@ -9,6 +8,7 @@ import {IERC721Enumerable} from "openzeppelin/token/ERC721/extensions/IERC721Enu
 
 // @dev Solmate's ERC20 is used instead of OZ's ERC20 so we can use safeTransferLib for cheaper safeTransfers for
 // ETH and ERC20 tokens
+import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
@@ -24,7 +24,7 @@ import {PairCloner} from "src/lib/PairCloner.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
 
-contract PairFactory is Ownable, IPairFactoryLike {
+contract PairFactory is Owned, IPairFactoryLike {
     using PairCloner for address;
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
@@ -43,6 +43,9 @@ contract PairFactory is Ownable, IPairFactoryLike {
     // Units are in base 1e18
     uint256 public override protocolFeeMultiplier;
 
+    // MOON token
+    address public token;
+
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
     struct RouterStatus {
@@ -51,6 +54,7 @@ contract PairFactory is Ownable, IPairFactoryLike {
     }
     mapping(Router => RouterStatus) public override routerStatus;
 
+    event SetToken(address);
     event NewPair(address poolAddress);
     event TokenDeposit(address poolAddress);
     event NFTDeposit(address poolAddress);
@@ -60,6 +64,10 @@ contract PairFactory is Ownable, IPairFactoryLike {
     event CallTargetStatusUpdate(address target, bool isAllowed);
     event RouterStatusUpdate(Router router, bool isAllowed);
 
+    error InvalidFee();
+    error InvalidAddress();
+    error AlreadySet();
+
     constructor(
         PairEnumerableETH _enumerableETHTemplate,
         PairMissingEnumerableETH _missingEnumerableETHTemplate,
@@ -67,20 +75,37 @@ contract PairFactory is Ownable, IPairFactoryLike {
         PairMissingEnumerableERC20 _missingEnumerableERC20Template,
         address payable _protocolFeeRecipient,
         uint256 _protocolFeeMultiplier
-    ) {
+    ) Owned(msg.sender) {
         enumerableETHTemplate = _enumerableETHTemplate;
         missingEnumerableETHTemplate = _missingEnumerableETHTemplate;
         enumerableERC20Template = _enumerableERC20Template;
         missingEnumerableERC20Template = _missingEnumerableERC20Template;
         protocolFeeRecipient = _protocolFeeRecipient;
 
-        require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
+        if (_protocolFeeMultiplier > MAX_PROTOCOL_FEE) revert InvalidFee();
+
         protocolFeeMultiplier = _protocolFeeMultiplier;
     }
 
     /**
      * External functions
      */
+
+    /**
+     * @notice Enables the owner to set the protocol token
+     * @dev    Separate method instead of constructor to minimize test changes
+     * @param  _token  address  MOON token contract address
+     */
+    function setToken(address _token) external onlyOwner {
+        if (_token == address(0)) revert InvalidAddress();
+
+        // Token cannot be re-set
+        if (token != address(0)) revert AlreadySet();
+
+        token = _token;
+
+        emit SetToken(_token);
+    }
 
     /**
         @notice Creates a pair contract using EIP-1167.
