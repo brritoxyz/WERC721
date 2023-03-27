@@ -23,11 +23,46 @@ import {ICurve} from "src/interfaces/ICurve.sol";
 import {PairCloner} from "src/lib/PairCloner.sol";
 import {IPairFactoryLike} from "src/interfaces/IPairFactoryLike.sol";
 import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {Moon} from "src/Moon.sol";
 
 contract PairFactory is Owned, IPairFactoryLike {
     using PairCloner for address;
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
+
+    /**
+        @notice Creates a pair contract using EIP-1167.
+        @param _nft The NFT contract of the collection the pair trades
+        @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
+        @param _assetRecipient The address that will receive the assets traders give during trades.
+                                If set to address(0), assets will be sent to the pool address.
+                                Not available to TRADE pools.
+        @param _poolType TOKEN, NFT, or TRADE
+        @param _delta The delta value used by the bonding curve. The meaning of delta depends
+        on the specific curve.
+        @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
+        @param _spotPrice The initial selling spot price, in ETH
+        @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
+        @param _initialTokenBalance The initial token balance sent from the sender to the new pair
+        @return pair The new pair
+     */
+    struct CreateERC20PairParams {
+        ERC20 token;
+        IERC721 nft;
+        ICurve bondingCurve;
+        address payable assetRecipient;
+        Pair.PoolType poolType;
+        uint128 delta;
+        uint96 fee;
+        uint128 spotPrice;
+        uint256[] initialNFTIDs;
+        uint256 initialTokenBalance;
+    }
+
+    struct RouterStatus {
+        bool allowed;
+        bool wasEverAllowed;
+    }
 
     bytes4 private constant INTERFACE_ID_ERC721_ENUMERABLE =
         type(IERC721Enumerable).interfaceId;
@@ -44,17 +79,13 @@ contract PairFactory is Owned, IPairFactoryLike {
     uint256 public override protocolFeeMultiplier;
 
     // MOON token
-    address public token;
+    Moon public moon;
 
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
-    struct RouterStatus {
-        bool allowed;
-        bool wasEverAllowed;
-    }
     mapping(Router => RouterStatus) public override routerStatus;
 
-    event SetToken(address);
+    event SetToken(Moon);
     event NewPair(address poolAddress);
     event TokenDeposit(address poolAddress);
     event NFTDeposit(address poolAddress);
@@ -92,19 +123,19 @@ contract PairFactory is Owned, IPairFactoryLike {
      */
 
     /**
-     * @notice Enables the owner to set the protocol token
+     * @notice Enables the owner to set the MOON protocol token
      * @dev    Separate method instead of constructor to minimize test changes
-     * @param  _token  address  MOON token contract address
+     * @param  _moon  Moon  MOON token contract
      */
-    function setToken(address _token) external onlyOwner {
-        if (_token == address(0)) revert InvalidAddress();
+    function setToken(Moon _moon) external onlyOwner {
+        if (address(_moon) == address(0)) revert InvalidAddress();
 
         // Token cannot be re-set
-        if (token != address(0)) revert AlreadySet();
+        if (address(moon) != address(0)) revert AlreadySet();
 
-        token = _token;
+        moon = _moon;
 
-        emit SetToken(_token);
+        emit SetToken(_moon);
     }
 
     /**
@@ -171,36 +202,11 @@ contract PairFactory is Owned, IPairFactoryLike {
             _spotPrice,
             _initialNFTIDs
         );
-        emit NewPair(address(pair));
-    }
 
-    /**
-        @notice Creates a pair contract using EIP-1167.
-        @param _nft The NFT contract of the collection the pair trades
-        @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-        @param _assetRecipient The address that will receive the assets traders give during trades.
-                                If set to address(0), assets will be sent to the pool address.
-                                Not available to TRADE pools.
-        @param _poolType TOKEN, NFT, or TRADE
-        @param _delta The delta value used by the bonding curve. The meaning of delta depends
-        on the specific curve.
-        @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
-        @param _spotPrice The initial selling spot price, in ETH
-        @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
-        @param _initialTokenBalance The initial token balance sent from the sender to the new pair
-        @return pair The new pair
-     */
-    struct CreateERC20PairParams {
-        ERC20 token;
-        IERC721 nft;
-        ICurve bondingCurve;
-        address payable assetRecipient;
-        Pair.PoolType poolType;
-        uint128 delta;
-        uint96 fee;
-        uint128 spotPrice;
-        uint256[] initialNFTIDs;
-        uint256 initialTokenBalance;
+        // Enable pair contract to issue MOON rewards
+        moon.addMinter(address(pair));
+
+        emit NewPair(address(pair));
     }
 
     function createPairERC20(
@@ -248,6 +254,9 @@ contract PairFactory is Owned, IPairFactoryLike {
             params.initialNFTIDs,
             params.initialTokenBalance
         );
+
+        moon.addMinter(address(pair));
+
         emit NewPair(address(pair));
     }
 

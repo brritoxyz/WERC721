@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 
-contract MoonToken is Owned, ERC20("MoonBase", "MOON", 18) {
+contract Moon is Owned, ERC20("MoonBase", "MOON", 18) {
     address public factory;
 
     // Factory-deployed pair addresses that can increase MOON mint amounts
