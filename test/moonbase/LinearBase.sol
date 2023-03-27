@@ -4,16 +4,16 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 
 import {LinearCurve} from "src/bonding-curves/LinearCurve.sol";
-import {PairEnumerableETH} from "sudoswap/PairEnumerableETH.sol";
 import {PairMissingEnumerableETH} from "sudoswap/PairMissingEnumerableETH.sol";
 import {PairEnumerableERC20} from "sudoswap/PairEnumerableERC20.sol";
 import {PairMissingEnumerableERC20} from "sudoswap/PairMissingEnumerableERC20.sol";
-import {PairFactory} from "sudoswap/PairFactory.sol";
+import {PairEnumerableETH} from "src/MoonPairEnumerableETH.sol";
+import {PairFactory} from "src/MoonPairFactory.sol";
 import {RouterWithRoyalties} from "src/MoonRouter.sol";
 
 contract LinearBase is Test {
-    // 0.40%
-    uint256 internal constant DEFAULT_PROTOCOL_FEE = 0.004e18;
+    // 0.30%
+    uint256 internal constant DEFAULT_PROTOCOL_FEE = 0.003e18;
 
     // Unchanged SudoSwap contracts
     LinearCurve internal immutable linearCurve = new LinearCurve();
