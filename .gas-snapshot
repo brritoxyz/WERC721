@@ -1,3 +1,7 @@
+MoonPairFactoryTest:testCannotSetMoonAlreadySet() (gas: 32839)
+MoonPairFactoryTest:testCannotSetMoonInvalidAddress() (gas: 8498)
+MoonPairFactoryTest:testCannotSetMoonUnauthorized() (gas: 9221)
+MoonPairFactoryTest:testSetMoon() (gas: 34725)
 PairEnumerableETHTest:testCannotChangeDeltaNotOwner() (gas: 14786)
 PairEnumerableETHTest:testCannotChangeFeeNotOwner() (gas: 14762)
 PairEnumerableETHTest:testCannotChangeSpotPriceNotOwner() (gas: 14812)
