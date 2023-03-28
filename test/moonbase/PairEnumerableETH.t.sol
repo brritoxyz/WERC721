@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {LinearBase} from "test/moonbase/LinearBase.sol";
 import {Pair} from "sudoswap/Pair.sol";
 import {PairETH} from "sudoswap/PairETH.sol";
@@ -10,6 +11,8 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {CurveErrorCodes} from "src/bonding-curves/CurveErrorCodes.sol";
 
 contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
+    using FixedPointMathLib for uint256;
+
     IERC721 private constant AZUKI =
         IERC721(0xED5AF388653567Af2F388E6224dC7C4b3241C544);
     address private constant AZUKI_OWNER =
@@ -99,6 +102,20 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             DEFAULT_FEE,
             DEFAULT_PROTOCOL_FEE
         );
+    }
+
+    function _calculateLinearCurveBuyInfo(
+        uint256 numNFTs
+    ) internal view returns (uint256 price, uint256 fee, uint256 protocolFee) {
+        uint256 spotPrice = pair.spotPrice();
+        uint256 delta = pair.delta();
+
+        price = numNFTs *
+            (spotPrice + delta) +
+            (numNFTs * (numNFTs - 1) * delta) /
+            2;
+        fee = uint256(pair.fee()).mulDivDown(price, 1e18);
+        protocolFee = (factory.protocolFeeMultiplier()).mulDivDown(price, 1e18);
     }
 
     /*///////////////////////////////////////////////////////////////
