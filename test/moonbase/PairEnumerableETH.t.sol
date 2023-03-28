@@ -18,11 +18,12 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     address private constant AZUKI_OWNER =
         0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA;
     uint128 private constant DEFAULT_DELTA = 1 ether;
-    uint96 private constant DEFAULT_FEE = 0.01e18;
+    uint96 private constant DEFAULT_FEE = 0.002e18;
     uint128 private constant DEFAULT_SPOT_PRICE = 1 ether;
     uint256 private constant PAIR_MAX_FEE = 0.90e18;
 
     PairETH private immutable pair;
+    address private immutable pairAddr;
 
     event SpotPriceUpdate(uint128 newSpotPrice);
     event DeltaUpdate(uint128 newDelta);
@@ -79,6 +80,7 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             // uint256[] calldata _initialNFTIDs
             initialNFTIDs
         );
+        pairAddr = address(pair);
 
         // Verify that the pair contract has custody of the NFTs
         for (uint256 i; i < iLen; ) {
@@ -96,26 +98,43 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         uint256 numItems
     ) internal view returns (uint256 inputValue) {
         (, , , inputValue, ) = linearCurve.getBuyInfo(
-            DEFAULT_SPOT_PRICE,
-            DEFAULT_DELTA,
+            pair.spotPrice(),
+            pair.delta(),
             numItems,
-            DEFAULT_FEE,
-            DEFAULT_PROTOCOL_FEE
+            pair.fee(),
+            factory.protocolFeeMultiplier()
         );
     }
 
     function _calculateLinearCurveBuyInfo(
         uint256 numNFTs
-    ) internal view returns (uint256 price, uint256 fee, uint256 protocolFee) {
+    )
+        internal
+        view
+        returns (
+            uint256 price,
+            uint256 fee,
+            uint256 protocolFee,
+            uint256 pairMintable,
+            uint256 buyerMintable
+        )
+    {
         uint256 spotPrice = pair.spotPrice();
         uint256 delta = pair.delta();
+        uint256 feeMultiplier = pair.fee();
+        uint256 protocolFeeMultiplier = factory.protocolFeeMultiplier();
 
-        price = numNFTs *
+        price =
+            numNFTs *
             (spotPrice + delta) +
             (numNFTs * (numNFTs - 1) * delta) /
             2;
-        fee = uint256(pair.fee()).mulDivDown(price, 1e18);
-        protocolFee = (factory.protocolFeeMultiplier()).mulDivDown(price, 1e18);
+        fee = feeMultiplier.mulDivDown(price, 1e18);
+        protocolFee = protocolFeeMultiplier.mulDivDown(price, 1e18);
+        pairMintable = feeMultiplier >= protocolFeeMultiplier
+            ? 0
+            : protocolFee - fee;
+        buyerMintable = protocolFee;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -269,6 +288,13 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         bool isRouter = false;
         address routerCaller = address(0);
         uint256 balanceBeforeSwap = address(this).balance;
+        (
+            uint256 price,
+            uint256 fee,
+            uint256 protocolFee,
+            uint256 pairMintable,
+            uint256 buyerMintable
+        ) = _calculateLinearCurveBuyInfo(numNFTs);
 
         assertEq(0, AZUKI.balanceOf(nftRecipient));
 
@@ -286,15 +312,36 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             address(this).balance
         );
         assertEq(inputAmount, maxExpectedTokenInput);
+        assertEq(price + fee + protocolFee, inputAmount);
+        assertEq(pairMintable, moon.mintable(pairAddr));
+        assertEq(buyerMintable, moon.mintable(nftRecipient));
     }
 
-    function testSwapTokenForAnyNFTsFuzz(uint8 numNFTs) external {
+    function testSwapTokenForAnyNFTsFuzz(
+        uint8 numNFTs,
+        uint56 pairFeeMultiplier,
+        uint56 protocolFeeMultiplier
+    ) external {
         vm.assume(numNFTs != 0);
         vm.assume(numNFTs < AZUKI.balanceOf(address(pair)));
+        vm.assume(pairFeeMultiplier <= 0.005e18);
+        vm.assume(protocolFeeMultiplier != 0);
+        vm.assume(protocolFeeMultiplier <= 0.005e18);
+
+        // Fuzz fee multiplier percentages
+        pair.changeFee(pairFeeMultiplier);
+        factory.changeProtocolFeeMultiplier(protocolFeeMultiplier);
 
         uint256 maxExpectedTokenInput = _getSwapInputValue(numNFTs);
         address nftRecipient = address(this);
         uint256 balanceBeforeSwap = address(this).balance;
+        (
+            uint256 price,
+            uint256 fee,
+            uint256 protocolFee,
+            uint256 pairMintable,
+            uint256 buyerMintable
+        ) = _calculateLinearCurveBuyInfo(numNFTs);
 
         assertEq(0, AZUKI.balanceOf(nftRecipient));
 
@@ -312,5 +359,8 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             address(this).balance
         );
         assertEq(inputAmount, maxExpectedTokenInput);
+        assertEq(price + fee + protocolFee, inputAmount);
+        assertEq(pairMintable, moon.mintable(pairAddr));
+        assertEq(buyerMintable, moon.mintable(nftRecipient));
     }
 }
