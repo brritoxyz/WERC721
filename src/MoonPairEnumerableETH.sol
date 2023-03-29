@@ -138,21 +138,6 @@ contract PairEnumerableETH is PairEnumerable, PairETH {
         emit SwapNFTOutPair();
     }
 
-    /**
-        @notice Sends token to the pair in exchange for a specific set of NFTs
-        @dev To compute the amount of token to send, call bondingCurve.getBuyInfo
-        This swap is meant for users who want specific IDs. Also higher chance of
-        reverting if some of the specified IDs leave the pool before the swap goes through.
-        @param nftIds The list of IDs of the NFTs to purchase
-        @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
-        amount is greater than this value, the transaction will be reverted.
-        @param nftRecipient The recipient of the NFTs
-        @param isRouter True if calling from Router, false otherwise. Not used for
-        ETH pairs.
-        @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-        ETH pairs.
-        @return inputAmount The amount of token used for purchase
-     */
     function swapTokenForSpecificNFTs(
         uint256[] calldata nftIds,
         uint256 maxExpectedTokenInput,
@@ -205,5 +190,53 @@ contract PairEnumerableETH is PairEnumerable, PairETH {
         }
 
         emit SwapNFTOutPair();
+    }
+
+    function swapNFTsForToken(
+        uint256[] calldata nftIds,
+        uint256 minExpectedTokenOutput,
+        address payable tokenRecipient,
+        bool isRouter,
+        address routerCaller
+    ) external override nonReentrant returns (uint256 outputAmount) {
+        // Store locally to remove extra calls
+        IPairFactoryLike _factory = factory();
+        ICurve _bondingCurve = bondingCurve();
+
+        // Input validation
+        {
+            PoolType _poolType = poolType();
+            require(
+                _poolType == PoolType.TOKEN || _poolType == PoolType.TRADE,
+                "Wrong Pool type"
+            );
+            require(nftIds.length > 0, "Must ask for > 0 NFTs");
+        }
+
+        // Call bonding curve for pricing information
+        uint256 protocolFee;
+
+        (protocolFee, outputAmount) = _calculateSellInfoAndUpdatePoolParams(
+            nftIds.length,
+            minExpectedTokenOutput,
+            _bondingCurve,
+            _factory
+        );
+
+        _sendTokenOutput(tokenRecipient, outputAmount);
+
+        _payProtocolFeeFromPair(_factory, protocolFee);
+
+        _takeNFTsFromSender(nft(), nftIds, _factory, isRouter, routerCaller);
+
+        if (protocolFee != 0) {
+            _calculateAndIncreaseMintableMoon(
+                protocolFee,
+                _factory.protocolFeeMultiplier(),
+                tokenRecipient
+            );
+        }
+
+        emit SwapNFTInPair();
     }
 }
