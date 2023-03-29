@@ -25,6 +25,9 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     PairETH private immutable pair;
     address private immutable pairAddr;
 
+    // NFT IDs that are owned by the impersonated/pranked address
+    uint256[] private initialNftIds = [0, 2, 7];
+
     event SpotPriceUpdate(uint128 newSpotPrice);
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
@@ -34,18 +37,13 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     error Ownable_NotOwner();
 
     constructor() {
-        uint256[] memory initialNFTIDs = new uint256[](3);
-        initialNFTIDs[0] = 0;
-        initialNFTIDs[1] = 2;
-        initialNFTIDs[2] = 7;
-
         vm.startPrank(AZUKI_OWNER);
 
-        uint256 iLen = initialNFTIDs.length;
+        uint256 iLen = initialNftIds.length;
 
         // Transfer NFTs from owner to self
         for (uint256 i; i < iLen; ) {
-            uint256 id = initialNFTIDs[i];
+            uint256 id = initialNftIds[i];
 
             assertTrue(AZUKI.ownerOf(id) == AZUKI_OWNER);
 
@@ -78,15 +76,15 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             // uint128 _spotPrice,
             DEFAULT_SPOT_PRICE,
             // uint256[] calldata _initialNFTIDs
-            initialNFTIDs
+            initialNftIds
         );
         pairAddr = address(pair);
 
         // Verify that the pair contract has custody of the NFTs
         for (uint256 i; i < iLen; ) {
-            uint256 id = initialNFTIDs[i];
+            uint256 id = initialNftIds[i];
 
-            assertTrue(AZUKI.ownerOf(id) == address(pair));
+            assertTrue(AZUKI.ownerOf(id) == pairAddr);
 
             unchecked {
                 ++i;
@@ -107,7 +105,7 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     }
 
     function _calculateLinearCurveBuyInfo(
-        uint256 numNFTs
+        uint256 numNfts
     )
         internal
         view
@@ -125,9 +123,9 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         uint256 protocolFeeMultiplier = factory.protocolFeeMultiplier();
 
         price =
-            numNFTs *
+            numNfts *
             (spotPrice + delta) +
-            (numNFTs * (numNFTs - 1) * delta) /
+            (numNfts * (numNfts - 1) * delta) /
             2;
         fee = feeMultiplier.mulDivDown(price, 1e18);
         protocolFee = protocolFeeMultiplier.mulDivDown(price, 1e18);
@@ -259,10 +257,10 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = heldIds[0];
 
-        assertTrue(AZUKI.ownerOf(nftIds[0]) == address(pair));
+        assertTrue(AZUKI.ownerOf(nftIds[0]) == pairAddr);
         assertTrue(pair.owner() == address(this));
 
-        vm.expectEmit(false, false, false, false, address(pair));
+        vm.expectEmit(false, false, false, false, pairAddr);
 
         emit NFTWithdrawal();
 
@@ -282,8 +280,8 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     //////////////////////////////////////////////////////////////*/
 
     function testSwapTokenForAnyNFTs() external {
-        uint256 numNFTs = 1;
-        uint256 maxExpectedTokenInput = _getSwapInputValue(numNFTs);
+        uint256 numNfts = 1;
+        uint256 maxExpectedTokenInput = _getSwapInputValue(numNfts);
         address nftRecipient = address(this);
         bool isRouter = false;
         address routerCaller = address(0);
@@ -294,19 +292,19 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             uint256 protocolFee,
             uint256 pairMintable,
             uint256 buyerMintable
-        ) = _calculateLinearCurveBuyInfo(numNFTs);
+        ) = _calculateLinearCurveBuyInfo(numNfts);
 
         assertEq(0, AZUKI.balanceOf(nftRecipient));
 
-        vm.expectEmit(false, false, false, true, address(pair));
+        vm.expectEmit(false, false, false, true, pairAddr);
 
         emit SwapNFTOutPair();
 
         uint256 inputAmount = pair.swapTokenForAnyNFTs{
             value: maxExpectedTokenInput
-        }(numNFTs, maxExpectedTokenInput, nftRecipient, isRouter, routerCaller);
+        }(numNfts, maxExpectedTokenInput, nftRecipient, isRouter, routerCaller);
 
-        assertEq(numNFTs, AZUKI.balanceOf(nftRecipient));
+        assertEq(numNfts, AZUKI.balanceOf(nftRecipient));
         assertEq(
             balanceBeforeSwap - maxExpectedTokenInput,
             address(this).balance
@@ -318,12 +316,12 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
     }
 
     function testSwapTokenForAnyNFTsFuzz(
-        uint8 numNFTs,
+        uint8 numNfts,
         uint56 pairFeeMultiplier,
         uint56 protocolFeeMultiplier
     ) external {
-        vm.assume(numNFTs != 0);
-        vm.assume(numNFTs < AZUKI.balanceOf(address(pair)));
+        vm.assume(numNfts != 0);
+        vm.assume(numNfts < AZUKI.balanceOf(pairAddr));
         vm.assume(pairFeeMultiplier <= 0.005e18);
         vm.assume(protocolFeeMultiplier != 0);
         vm.assume(protocolFeeMultiplier <= 0.005e18);
@@ -332,7 +330,7 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
         pair.changeFee(pairFeeMultiplier);
         factory.changeProtocolFeeMultiplier(protocolFeeMultiplier);
 
-        uint256 maxExpectedTokenInput = _getSwapInputValue(numNFTs);
+        uint256 maxExpectedTokenInput = _getSwapInputValue(numNfts);
         address nftRecipient = address(this);
         uint256 balanceBeforeSwap = address(this).balance;
         (
@@ -341,19 +339,109 @@ contract PairEnumerableETHTest is ERC721TokenReceiver, LinearBase {
             uint256 protocolFee,
             uint256 pairMintable,
             uint256 buyerMintable
-        ) = _calculateLinearCurveBuyInfo(numNFTs);
+        ) = _calculateLinearCurveBuyInfo(numNfts);
 
         assertEq(0, AZUKI.balanceOf(nftRecipient));
 
-        vm.expectEmit(false, false, false, true, address(pair));
+        vm.expectEmit(false, false, false, true, pairAddr);
 
         emit SwapNFTOutPair();
 
         uint256 inputAmount = pair.swapTokenForAnyNFTs{
             value: maxExpectedTokenInput
-        }(numNFTs, maxExpectedTokenInput, nftRecipient, false, address(0));
+        }(numNfts, maxExpectedTokenInput, nftRecipient, false, address(0));
 
-        assertEq(numNFTs, AZUKI.balanceOf(nftRecipient));
+        assertEq(numNfts, AZUKI.balanceOf(nftRecipient));
+        assertEq(
+            balanceBeforeSwap - maxExpectedTokenInput,
+            address(this).balance
+        );
+        assertEq(inputAmount, maxExpectedTokenInput);
+        assertEq(price + fee + protocolFee, inputAmount);
+        assertEq(pairMintable, moon.mintable(pairAddr));
+        assertEq(buyerMintable, moon.mintable(nftRecipient));
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                        swapTokenForSpecificNFTs
+    //////////////////////////////////////////////////////////////*/
+
+    function testSwapTokenForSpecificNFTs() external {
+        uint256 numNfts = 1;
+        uint256[] memory nftIds = new uint256[](numNfts);
+        nftIds[0] = initialNftIds[0];
+
+        uint256 maxExpectedTokenInput = _getSwapInputValue(numNfts);
+        address nftRecipient = address(this);
+        bool isRouter = false;
+        address routerCaller = address(0);
+        uint256 balanceBeforeSwap = address(this).balance;
+        (
+            uint256 price,
+            uint256 fee,
+            uint256 protocolFee,
+            uint256 pairMintable,
+            uint256 buyerMintable
+        ) = _calculateLinearCurveBuyInfo(numNfts);
+
+        vm.expectEmit(false, false, false, true, pairAddr);
+
+        emit SwapNFTOutPair();
+
+        uint256 inputAmount = pair.swapTokenForSpecificNFTs{
+            value: maxExpectedTokenInput
+        }(nftIds, maxExpectedTokenInput, nftRecipient, isRouter, routerCaller);
+
+        assertEq(nftRecipient, AZUKI.ownerOf(nftIds[0]));
+        assertEq(
+            balanceBeforeSwap - maxExpectedTokenInput,
+            address(this).balance
+        );
+        assertEq(inputAmount, maxExpectedTokenInput);
+        assertEq(price + fee + protocolFee, inputAmount);
+        assertEq(pairMintable, moon.mintable(pairAddr));
+        assertEq(buyerMintable, moon.mintable(nftRecipient));
+    }
+
+    function testSwapTokenForSpecificNFTsFuzz(uint8 addNftRand) external {
+        uint256 numNfts = 1 + (addNftRand % 2 == 0 ? 1 : 2);
+        uint256[] memory nftIds = new uint256[](numNfts);
+
+        for (uint256 i; i < numNfts; ) {
+            nftIds[i] = initialNftIds[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 maxExpectedTokenInput = _getSwapInputValue(numNfts);
+        address nftRecipient = address(this);
+        uint256 balanceBeforeSwap = address(this).balance;
+        (
+            uint256 price,
+            uint256 fee,
+            uint256 protocolFee,
+            uint256 pairMintable,
+            uint256 buyerMintable
+        ) = _calculateLinearCurveBuyInfo(numNfts);
+
+        vm.expectEmit(false, false, false, true, pairAddr);
+
+        emit SwapNFTOutPair();
+
+        uint256 inputAmount = pair.swapTokenForSpecificNFTs{
+            value: maxExpectedTokenInput
+        }(nftIds, maxExpectedTokenInput, nftRecipient, false, address(0));
+
+        for (uint256 i; i < numNfts; ) {
+            assertEq(nftRecipient, AZUKI.ownerOf(nftIds[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+
         assertEq(
             balanceBeforeSwap - maxExpectedTokenInput,
             address(this).balance
