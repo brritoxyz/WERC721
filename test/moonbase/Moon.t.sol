@@ -201,14 +201,16 @@ contract MoonTest is Test {
         assertEq(0, moon.mintable(buyer));
         assertEq(buyerAmount, moon.balanceOf(buyer));
 
-        vm.startPrank(pair);
-        vm.expectEmit(true, true, false, true, address(moon));
+        if (pairAmount != 0) {
+            vm.startPrank(pair);
+            vm.expectEmit(true, true, false, true, address(moon));
 
-        emit Transfer(address(0), pair, pairAmount);
+            emit Transfer(address(0), pair, pairAmount);
 
-        moon.mint();
+            moon.mint();
 
-        vm.stopPrank();
+            vm.stopPrank();
+        }
 
         assertEq(0, moon.mintable(pair));
         assertEq(pairAmount, moon.balanceOf(pair));
