@@ -4,8 +4,13 @@ pragma solidity 0.8.19;
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
+    using FixedPointMathLib for uint96;
+    using SafeTransferLib for address payable;
+
     struct Fee {
         // Collection owner-specified address
         address recipient;
@@ -46,11 +51,26 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     event SetProtocolFees(address indexed recipient, uint96 bps);
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event ListMany(address indexed seller, uint256[] ids, uint96[] prices);
+    event Buy(
+        address indexed buyer,
+        address indexed seller,
+        uint256 indexed id,
+        uint96 price,
+        uint256 totalFees
+    );
+    event BuyMany(
+        address indexed buyer,
+        uint256[] ids,
+        uint256 totalPrice,
+        uint256 totalCollectionRoyalties,
+        uint256 totalProtocolFees
+    );
 
     error InvalidAddress();
     error InvalidNumber();
     error EmptyArray();
     error MismatchedArrays();
+    error InsufficientFunds();
 
     /**
      * @param _owner       address  Contract owner (can set royalties and fees only)
@@ -61,6 +81,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         if (address(_collection) == address(0)) revert InvalidAddress();
 
         collection = _collection;
+
+        // Set initial protocol fees to 0.5% (max)
+        protocolFees = Fee(_owner, 50);
     }
 
     /**
@@ -143,5 +166,155 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         }
 
         emit ListMany(msg.sender, ids, prices);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            Buyer Functions
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Buy a single NFT
+     * @param   id         uint256  NFT ID
+     * @return  totalFees  uint256  Total fees paid
+     */
+    function buy(
+        uint256 id
+    ) external payable nonReentrant returns (uint256 totalFees) {
+        if (msg.value == 0) revert InsufficientFunds();
+
+        Listing memory listing = collectionListings[id];
+
+        // Delete listing before transferring NFT and ETH as a best practice
+        delete collectionListings[id];
+
+        if (msg.value < listing.price) revert InsufficientFunds();
+
+        // Send NFT to buyer after verifying that they have enough ETH to cover the sale
+        collection.safeTransferFrom(address(this), msg.sender, id);
+
+        // Pay collection royalties
+        if (collectionRoyalties.bps != 0) {
+            uint256 _collectionRoyalties = listing.price.mulDivDown(
+                collectionRoyalties.bps,
+                BPS_BASE
+            );
+
+            totalFees += _collectionRoyalties;
+
+            payable(collectionRoyalties.recipient).safeTransferETH(
+                _collectionRoyalties
+            );
+        }
+
+        // Pay protocol fees
+        if (protocolFees.bps != 0) {
+            uint256 _protocolFees = listing.price.mulDivDown(
+                protocolFees.bps,
+                BPS_BASE
+            );
+
+            totalFees += _protocolFees;
+
+            payable(protocolFees.recipient).safeTransferETH(_protocolFees);
+        }
+
+        // Pay the listing price minus the total fees to the seller
+        payable(listing.seller).safeTransferETH(listing.price - totalFees);
+
+        emit Buy(msg.sender, listing.seller, id, listing.price, totalFees);
+    }
+
+    /**
+     * @notice Buy a single NFT
+     * @param   ids                       uint256[]  NFT IDs
+     * @return  totalPrice                uint256    Total NFT price
+     * @return  totalCollectionRoyalties  uint256    Total collection royalties
+     * @return  totalProtocolFees         uint256    Total protocol fees
+     */
+    function buyMany(
+        uint256[] calldata ids
+    )
+        external
+        payable
+        nonReentrant
+        returns (
+            uint256 totalPrice,
+            uint256 totalCollectionRoyalties,
+            uint256 totalProtocolFees
+        )
+    {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert EmptyArray();
+        if (msg.value == 0) revert InsufficientFunds();
+
+        // Cache these values to reduce redundant ops
+        bool hasCollectionRoyalties = collectionRoyalties.bps != 0;
+        bool hasProtocolFees = protocolFees.bps != 0;
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+
+            Listing memory listing = collectionListings[id];
+
+            totalPrice += listing.price;
+
+            // Check whether the buyer has enough ETH to cover all of the NFTs purchased
+            if (msg.value < totalPrice) revert InsufficientFunds();
+
+            delete collectionListings[id];
+
+            // Send NFT to buyer after verifying that they have enough ETH
+            collection.safeTransferFrom(address(this), msg.sender, id);
+
+            // Enables us to calculate the post-fee ETH amount to transfer to the seller
+            uint256 totalFees;
+
+            // Pay collection royalties
+            if (hasCollectionRoyalties) {
+                uint256 _collectionRoyalties = listing.price.mulDivDown(
+                    collectionRoyalties.bps,
+                    BPS_BASE
+                );
+
+                totalFees += _collectionRoyalties;
+
+                totalCollectionRoyalties += _collectionRoyalties;
+            }
+
+            // Pay protocol fees
+            if (hasProtocolFees) {
+                uint256 _protocolFees = listing.price.mulDivDown(
+                    protocolFees.bps,
+                    BPS_BASE
+                );
+
+                totalFees += _protocolFees;
+
+                totalProtocolFees += _protocolFees;
+            }
+
+            // Pay the listing price minus the total fees to the seller
+            payable(listing.seller).safeTransferETH(listing.price - totalFees);
+
+            // Will not overflow since it's bound by the `ids` array's length
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Pay collection royalties and protocol fees in a single batched transfer
+        payable(collectionRoyalties.recipient).safeTransferETH(
+            totalCollectionRoyalties
+        );
+        payable(protocolFees.recipient).safeTransferETH(totalProtocolFees);
+
+        emit BuyMany(
+            msg.sender,
+            ids,
+            totalPrice,
+            totalCollectionRoyalties,
+            totalProtocolFees
+        );
     }
 }
