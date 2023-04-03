@@ -1,3 +1,0 @@
-MoonPoolTest:testCannotSetFeeRecipientInvalidAddress() (gas: 8593)
-MoonPoolTest:testCannotSetFeeRecipientUnauthorized() (gas: 9111)
-MoonPoolTest:testSetFeeRecipient(address) (runs: 8, μ: 35481, ~: 35481)

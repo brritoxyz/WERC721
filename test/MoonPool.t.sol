@@ -5,19 +5,18 @@ import "forge-std/Test.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
 import {Moon} from "src/Moon.sol";
-import {MoonPool} from "src/MoonPool.sol";
+import {MoonBook} from "src/MoonBook.sol";
 
-contract MoonPoolTest is Test, ERC721TokenReceiver {
+contract MoonBookTest is Test, ERC721TokenReceiver {
     ERC721 private constant AZUKI =
         ERC721(0xED5AF388653567Af2F388E6224dC7C4b3241C544);
     address private constant AZUKI_OWNER =
         0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA;
 
     Moon private immutable moon;
-    MoonPool private immutable pool;
+    MoonBook private immutable book;
     uint128 private immutable feeBpsBase;
     uint128 private immutable feeBps;
-    address private immutable owner;
 
     // NFT IDs that are owned by the impersonated/pranked address
     uint256[] private initialNftIds = [0, 2, 7];
@@ -72,43 +71,8 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
         vm.stopPrank();
 
         moon = new Moon(address(this));
-        pool = new MoonPool(address(this), AZUKI, moon);
-        feeBpsBase = pool.FEE_BPS_BASE();
-        feeBps = pool.FEE_BPS();
-        owner = pool.owner();
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                            setFeeRecipient
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSetFeeRecipientUnauthorized() external {
-        vm.prank(address(0));
-        vm.expectRevert(bytes("UNAUTHORIZED"));
-
-        pool.setFeeRecipient(address(this));
-    }
-
-    function testCannotSetFeeRecipientInvalidAddress() external {
-        assertEq(address(this), owner);
-
-        vm.expectRevert(MoonPool.InvalidAddress.selector);
-
-        pool.setFeeRecipient(address(0));
-    }
-
-    function testSetFeeRecipient(address feeRecipient) external {
-        vm.assume(feeRecipient != address(0));
-
-        assertEq(address(this), owner);
-        assertEq(address(0), pool.feeRecipient());
-
-        vm.expectEmit(true, false, false, true, address(pool));
-
-        emit SetFeeRecipient(feeRecipient);
-
-        pool.setFeeRecipient(feeRecipient);
-
-        assertEq(feeRecipient, pool.feeRecipient());
+        book = new MoonBook(AZUKI, moon);
+        feeBpsBase = book.FEE_BPS_BASE();
+        feeBps = book.FEE_BPS();
     }
 }
