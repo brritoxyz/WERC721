@@ -38,6 +38,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     mapping(uint256 id => Listing listing) public collectionListings;
 
     // NFT collection offers (ID agnostic)
+    // There may be many offers made by many different buyers
     mapping(uint256 offer => address[] buyers) public collectionOffers;
 
     event List(address indexed seller, uint256 indexed id, uint96 price);
@@ -58,12 +59,18 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 totalFees
     );
     event MakeOffer(address indexed buyer, uint256 offer);
+    event MakeOfferMany(address indexed buyer, uint256[] offers);
     event CancelOffer(address indexed buyer, uint256 offer);
     event TakeOffer(
         address indexed buyer,
         address indexed seller,
         uint256 id,
         uint256 offer
+    );
+    event TakeOfferMany(
+        address indexed seller,
+        uint256[] ids,
+        uint256[] offers
     );
     event MatchOffer(
         address indexed matcher,
@@ -73,7 +80,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 offer
     );
 
-    error InvalidAddress();
+    error Unauthorized();
     error InvalidPrice();
     error InvalidOffer();
     error InvalidListing();
@@ -82,7 +89,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     error InsufficientFunds();
     error NotSeller();
     error NotBuyer();
-    error ZeroValue();
+    error ZeroOffer();
+    error ZeroMsgValue();
     error OfferTooLow();
 
     /**
@@ -158,7 +166,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         Listing storage listing = collectionListings[id];
 
         // Only the seller can edit the listing
-        if (listing.seller != msg.sender) revert NotSeller();
+        if (listing.seller != msg.sender) revert Unauthorized();
 
         listing.price = price;
 
@@ -171,7 +179,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
      */
     function cancelListing(uint256 id) external nonReentrant {
         // Only the seller can cancel the listing
-        if (collectionListings[id].seller != msg.sender) revert NotSeller();
+        if (collectionListings[id].seller != msg.sender) revert Unauthorized();
 
         delete collectionListings[id];
 
@@ -190,8 +198,11 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
      * @param  id  uint256  NFT ID
      */
     function buy(uint256 id) external payable nonReentrant {
+        if (msg.value == 0) revert ZeroMsgValue();
+
         Listing memory listing = collectionListings[id];
 
+        // Reverts if msg.value does not equal listing price and if listing is non-existent
         if (msg.value != listing.price) revert InsufficientFunds();
 
         // Delete listing before exchanging tokens
@@ -249,7 +260,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
             // Enables us to calculate the post-fee ETH amount to transfer to the seller
             uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-            // Accrue total fees and do a single payment at the end of this call
+            // Accrue to total fees and do a single transfer at the end of this call
             totalFees += fees;
 
             // Transfer the listing proceeds minus the fees to the seller
@@ -278,15 +289,57 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Make an offer for a single NFT
+     * @notice Make an offer at a single price point
      */
     function makeOffer() external payable nonReentrant {
-        if (msg.value == 0) revert ZeroValue();
+        if (msg.value == 0) revert ZeroMsgValue();
 
         // User offer is the amount of ETH sent with the transaction
         collectionOffers[msg.value].push(msg.sender);
 
         emit MakeOffer(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Make offers at multiple price points
+     * @param  offers  uint256[]  Offer amounts (msg.value must equal the total)
+     */
+    function makeOfferMany(
+        uint256[] calldata offers
+    ) external payable nonReentrant {
+        uint256 oLen = offers.length;
+
+        if (oLen == 0) revert EmptyArray();
+        if (msg.value == 0) revert ZeroMsgValue();
+
+        // Track the total offer amount to confirm sufficient ETH was sent
+        uint256 totalOffer;
+
+        for (uint256 i; i < oLen; ) {
+            uint256 offer = offers[i];
+
+            // Revert if offer is zero
+            if (offer == 0) revert ZeroOffer();
+
+            totalOffer += offer;
+
+            // Revert if msg.value does not cover the total offer amount
+            if (totalOffer > msg.value) revert InsufficientFunds();
+
+            collectionOffers[offer].push(msg.sender);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Consider removing this guardrail to save gas
+        if (msg.value > totalOffer) {
+            // Refund any excess ETH sent to this contract
+            payable(msg.sender).safeTransferETH(msg.value - totalOffer);
+        }
+
+        emit MakeOfferMany(msg.sender, offers);
     }
 
     /**
@@ -323,6 +376,66 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         moon.mint(buyer, msg.sender, fees);
 
         emit TakeOffer(buyer, msg.sender, id, offer);
+    }
+
+    /**
+     * @notice Take offer
+     * @param  ids           uint256[]  NFT IDs
+     * @param  offers        uint256[]  Offer amounts
+     * @param  buyerIndexes  uint256[]  Buyer indexes
+     */
+    function takeOfferMany(
+        uint256[] calldata ids,
+        uint256[] calldata offers,
+        uint256[] calldata buyerIndexes
+    ) external nonReentrant {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert EmptyArray();
+        if (iLen != offers.length) revert MismatchedArrays();
+        if (iLen != buyerIndexes.length) revert MismatchedArrays();
+
+        // Track the total offers to pay in a single transfer at the end
+        uint256 totalOffers;
+
+        // Track the total fees to pay in a single transfer at the end
+        uint256 totalFees;
+
+        for (uint256 i; i < iLen; ++i) {
+            uint256 id = ids[i];
+            uint256 offer = offers[i];
+            uint256 buyerIndex = buyerIndexes[i];
+            address buyer = collectionOffers[offer][buyerIndex];
+
+            // Move on to the next offer if this one does not exist
+            if (buyer == address(0)) continue;
+
+            // Remove the offer prior to exchanging tokens between buyer and seller
+            delete collectionOffers[offer][buyerIndex];
+
+            // Transfer NFT to the buyer - reverts if msg.sender does not have the NFT
+            collection.safeTransferFrom(msg.sender, buyer, id);
+
+            uint256 fees = offer.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+
+            totalFees += fees;
+
+            totalOffers += offer;
+
+            // Mint MOON rewards for the buyer, equal to the fees paid
+            moon.mint(buyer, fees);
+        }
+
+        // Transfer protocol fees to the deployer
+        deployer.safeTransferETH(totalFees);
+
+        // Transfer the post-fee sale proceeds to the offer taker
+        payable(msg.sender).safeTransferETH(totalOffers - totalFees);
+
+        // Mint MOON rewards for the seller, equal to the total fees
+        moon.mint(msg.sender, totalFees);
+
+        emit TakeOfferMany(msg.sender, ids, offers);
     }
 
     /**
