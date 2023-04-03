@@ -6,6 +6,7 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {Moon} from "src/Moon.sol";
 
 contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     using FixedPointMathLib for uint256;
@@ -27,6 +28,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
     // NFT collection contract
     ERC721 public immutable collection;
+
+    // MOON token contract
+    Moon public immutable moon;
 
     // NFT collection listings
     mapping(uint256 id => Listing listing) public collectionListings;
@@ -87,12 +91,15 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     /**
      * @param _owner       address  Contract owner (can set fee recipient only)
      * @param _collection  ERC721   NFT collection contract
+     * @param _moon        Moon     MOON token contract
      */
-    constructor(address _owner, ERC721 _collection) Owned(_owner) {
+    constructor(address _owner, ERC721 _collection, Moon _moon) Owned(_owner) {
         if (_owner == address(0)) revert InvalidAddress();
         if (address(_collection) == address(0)) revert InvalidAddress();
+        if (address(_moon) == address(0)) revert InvalidAddress();
 
         collection = _collection;
+        moon = _moon;
     }
 
     /**
@@ -221,6 +228,10 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
+        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
+        moon.mint(msg.sender, fees);
+        moon.mint(listing.seller, fees);
+
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
 
@@ -263,6 +274,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
             // Transfer the listing proceeds minus the fees to the seller
             payable(listing.seller).safeTransferETH(listing.price - fees);
+
+            // Mint MOON for the seller equal to the amount of fees paid
+            moon.mint(listing.seller, fees);
         }
 
         // Pay protocol fees in a single batched transfer
@@ -272,6 +286,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
             // Refund any excess ETH sent to this contract
             payable(msg.sender).safeTransferETH(msg.value - totalPrice);
         }
+
+        // Mint MOON for the buyer equal to the *total* amount of fees paid
+        moon.mint(msg.sender, totalFees);
 
         emit BuyMany(msg.sender, ids, totalPrice, totalFees);
     }
@@ -344,6 +361,10 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
 
+        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
+        moon.mint(buyer, fees);
+        moon.mint(msg.sender, fees);
+
         emit TakeOffer(buyer, msg.sender, id, offer);
     }
 
@@ -390,6 +411,10 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
             // Send the spread (margin between ETH offer and listing price) to the matcher
             payable(msg.sender).safeTransferETH(offer - listing.price);
         }
+
+        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
+        moon.mint(buyer, fees);
+        moon.mint(listing.seller, fees);
 
         emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
     }
