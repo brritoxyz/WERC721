@@ -8,14 +8,17 @@ import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
-    // Old factories will no longer be able to call `addMinter` (below), effectively
+    // Old factories will no longer be able to call `addMinter`, effectively
     // decomissioning them (since they can no longer deploy books that mint MOON)
     address public factory;
 
-    mapping(address minter => bool) public minters;
+    // Mapping of factory MoonBook minters - by having factory as a key, we can
+    // prevent deprecated MoonBooks (e.g. MoonBooks deployed by deprecated factories)
+    // from minting MOON rewards
+    mapping(address factory => mapping(address minter => bool)) public minters;
 
     event SetFactory(address indexed factory);
-    event AddMinter(address indexed minter);
+    event AddMinter(address indexed factory, address indexed minter);
 
     error InvalidAddress();
     error NotFactory();
@@ -43,11 +46,10 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
      */
     function addMinter(address minter) external {
         if (msg.sender != factory) revert NotFactory();
-        if (minter == address(0)) revert InvalidAddress();
 
-        minters[minter] = true;
+        minters[factory][minter] = true;
 
-        emit AddMinter(minter);
+        emit AddMinter(factory, minter);
     }
 
     /**
@@ -71,7 +73,7 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
      * @param  amount  uint256  Mint amount
      */
     function mint(address to, uint256 amount) external {
-        if (!minters[msg.sender]) revert NotMinter();
+        if (!minters[factory][msg.sender]) revert NotMinter();
 
         _mint(to, amount);
     }
@@ -83,7 +85,7 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
      * @param  amount  uint256  Mint amount
      */
     function mint(address buyer, address seller, uint256 amount) external {
-        if (!minters[msg.sender]) revert NotMinter();
+        if (!minters[factory][msg.sender]) revert NotMinter();
 
         _mint(buyer, amount);
         _mint(seller, amount);
