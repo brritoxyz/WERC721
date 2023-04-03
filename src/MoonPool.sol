@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
+    using FixedPointMathLib for uint256;
     using FixedPointMathLib for uint96;
     using SafeTransferLib for address payable;
 
@@ -65,14 +66,14 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     );
 
     error InvalidAddress();
-    error InvalidNumber();
+    error InvalidPrice();
+    error InvalidOffer();
     error EmptyArray();
     error MismatchedArrays();
     error InsufficientFunds();
     error NotSeller();
     error NotBuyer();
     error ZeroValue();
-    error InvalidOffer();
 
     /**
      * @param _owner       address  Contract owner (can set fee recipient only)
@@ -107,10 +108,12 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
      * @param  price  uint96   NFT price in ETH
      */
     function list(uint256 id, uint96 price) external nonReentrant {
-        if (price == 0) revert InvalidNumber();
+        if (price == 0) revert InvalidPrice();
 
+        // Reverts if the NFT is not owned by msg.sender
         collection.safeTransferFrom(msg.sender, address(this), id);
 
+        // Set listing details
         collectionListings[id] = Listing(msg.sender, price);
 
         emit List(msg.sender, id, price);
@@ -133,6 +136,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
 
+            // Reverts if the NFT is not owned by msg.sender
             collection.safeTransferFrom(msg.sender, address(this), id);
 
             collectionListings[id] = Listing(msg.sender, prices[i]);
@@ -156,6 +160,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
         delete collectionListings[id];
 
+        // Return the NFT to the seller
         collection.safeTransferFrom(address(this), msg.sender, id);
 
         emit CancelListing(msg.sender, id);
@@ -167,7 +172,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
      * @param  price  uint96   NFT price
      */
     function editListing(uint256 id, uint96 price) external nonReentrant {
-        if (price == 0) revert InvalidNumber();
+        if (price == 0) revert InvalidPrice();
 
         Listing storage listing = collectionListings[id];
 
@@ -188,16 +193,14 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
      * @param  id  uint256  NFT ID
      */
     function buy(uint256 id) external payable nonReentrant {
-        if (msg.value == 0) revert InsufficientFunds();
-
         Listing memory listing = collectionListings[id];
 
-        // Delete listing before transferring NFT and ETH as a best practice
+        if (msg.value != listing.price) revert InsufficientFunds();
+
+        // Delete listing before exchanging tokens
         delete collectionListings[id];
 
-        if (msg.value < listing.price) revert InsufficientFunds();
-
-        // Send NFT to buyer after verifying that they have enough ETH to cover the sale
+        // Send NFT to buyer after confirming sufficient ETH was sent
         collection.safeTransferFrom(address(this), msg.sender, id);
 
         // Calculate protocol fees
@@ -206,40 +209,34 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Transfer protocol fees to fee recipient
         feeRecipient.safeTransferETH(fees);
 
-        // Transfer the listing proceeds minus the fees to the seller
+        // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
 
     /**
-     * @notice Buy a single NFT
-     * @param   ids         uint256[]  NFT IDs
-     * @return  totalPrice  uint256    Total NFT price
-     * @return  totalFees   uint256    Total protocol fees
+     * @notice Buy many NFTs
+     * @param  ids  uint256[]  NFT IDs
      */
-    function buyMany(
-        uint256[] calldata ids
-    )
-        external
-        payable
-        nonReentrant
-        returns (uint256 totalPrice, uint256 totalFees)
-    {
+    function buyMany(uint256[] calldata ids) external payable nonReentrant {
         uint256 iLen = ids.length;
 
         if (iLen == 0) revert EmptyArray();
-        if (msg.value == 0) revert InsufficientFunds();
+
+        // Track the total price of all NFTs purchased to confirm sufficient ETH was sent
+        uint256 totalPrice;
+
+        // Track the total fees accrued to pay the fee recipient at the end of this call
+        uint256 totalFees;
 
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
-
             Listing memory listing = collectionListings[id];
 
-            totalPrice += listing.price;
-
             // Check whether the buyer has enough ETH to cover all of the NFTs purchased
-            if (msg.value < totalPrice) revert InsufficientFunds();
+            if (msg.value < (totalPrice += listing.price))
+                revert InsufficientFunds();
 
             delete collectionListings[id];
 
@@ -284,7 +281,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Cancel offer
+     * @notice Cancel offer and reclaim ETH
      * @param  offer       uint256  Offer amount
      * @param  buyerIndex  uint256  Buyer index
      */
@@ -292,14 +289,14 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         uint256 offer,
         uint256 buyerIndex
     ) external nonReentrant {
-        if (offer == 0) revert InvalidNumber();
-
         // Only the buyer can cancel their own offer
         if (collectionOffers[offer][buyerIndex] != msg.sender)
             revert NotBuyer();
 
+        // Delete offer prior to transferring ETH to the buyer
         delete collectionOffers[offer][buyerIndex];
 
+        // Return ETH to the offer maker
         payable(msg.sender).safeTransferETH(offer);
 
         emit CancelOffer(msg.sender, offer);
@@ -327,8 +324,13 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Transfer NFT to the buyer - reverts if msg.sender does not have the NFT
         collection.safeTransferFrom(msg.sender, buyer, id);
 
-        // Send ETH to the seller
-        payable(msg.sender).safeTransferETH(offer);
+        uint256 fees = offer.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+
+        // Transfer protocol fees to fee recipient
+        feeRecipient.safeTransferETH(fees);
+
+        // Transfer the post-fee sale proceeds to the seller
+        payable(msg.sender).safeTransferETH(offer - fees);
 
         emit TakeOffer(msg.sender, buyer, id, offer);
     }
