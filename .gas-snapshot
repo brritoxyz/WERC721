@@ -1,5 +1,3 @@
-MoonPoolTest:testCannotSetProtocolFeesBpsExceedsBase() (gas: 8941)
-MoonPoolTest:testCannotSetProtocolFeesBpsExceedsMax() (gas: 8930)
-MoonPoolTest:testCannotSetProtocolFeesRecipientInvalidAddress() (gas: 8716)
-MoonPoolTest:testCannotSetProtocolFeesUnauthorized() (gas: 9331)
-MoonPoolTest:testSetProtocolFees(uint96) (runs: 8, μ: 37233, ~: 37233)
+MoonPoolTest:testCannotSetFeeRecipientInvalidAddress() (gas: 8593)
+MoonPoolTest:testCannotSetFeeRecipientUnauthorized() (gas: 9111)
+MoonPoolTest:testSetFeeRecipient(address) (runs: 8, μ: 35481, ~: 35481)

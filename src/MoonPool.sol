@@ -11,13 +11,6 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     using FixedPointMathLib for uint96;
     using SafeTransferLib for address payable;
 
-    struct Fee {
-        // Collection owner-specified address
-        address recipient;
-        // Denominated in basis points (1 = 0.01%)
-        uint96 bps;
-    }
-
     struct Listing {
         // NFT seller, receives ETH upon sale
         address seller;
@@ -26,10 +19,10 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     }
 
     // 10,000 basis points = 100%
-    uint96 public constant BPS_BASE = 10_000;
+    uint128 public constant FEE_BPS_BASE = 10_000;
 
-    // Protocol fees can never exceed 0.5%
-    uint80 public constant MAX_PROTOCOL_FEES = 50;
+    // Fees are 0.50%
+    uint128 public constant FEE_BPS = 50;
 
     // NFT collection contract
     ERC721 public immutable collection;
@@ -42,9 +35,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
     // Protocol fees are charged upon each exchange and results in...
     // MOON rewards being minted for both the seller and the buyer
-    Fee public protocolFees;
+    address payable public feeRecipient;
 
-    event SetProtocolFees(address indexed recipient, uint96 bps);
+    event SetFeeRecipient(address indexed feeRecipient);
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event ListMany(address indexed seller, uint256[] ids, uint96[] prices);
     event CancelListing(address indexed seller, uint256 indexed id);
@@ -82,7 +75,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     error InvalidOffer();
 
     /**
-     * @param _owner       address  Contract owner (can set royalties and fees only)
+     * @param _owner       address  Contract owner (can set fee recipient only)
      * @param _collection  ERC721   NFT collection contract
      */
     constructor(address _owner, ERC721 _collection) Owned(_owner) {
@@ -93,18 +86,15 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Set protocol fees
-     * @param  recipient  address  Protocol fees recipient
-     * @param  bps        uint96   Protocol fees in basis points (1 = 0.01%)
+     * @notice Set fee recipient
+     * @param  _feeRecipient  address  Fee recipient address
      */
-    function setProtocolFees(address recipient, uint96 bps) external onlyOwner {
-        if (recipient == address(0)) revert InvalidAddress();
-        if (bps > BPS_BASE) revert InvalidNumber();
-        if (bps > MAX_PROTOCOL_FEES) revert InvalidNumber();
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        if (_feeRecipient == address(0)) revert InvalidAddress();
 
-        protocolFees = Fee(recipient, bps);
+        feeRecipient = payable(_feeRecipient);
 
-        emit SetProtocolFees(recipient, bps);
+        emit SetFeeRecipient(_feeRecipient);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -195,12 +185,9 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
     /**
      * @notice Buy a single NFT
-     * @param   id         uint256  NFT ID
-     * @return  totalFees  uint256  Total fees paid
+     * @param  id  uint256  NFT ID
      */
-    function buy(
-        uint256 id
-    ) external payable nonReentrant returns (uint256 totalFees) {
+    function buy(uint256 id) external payable nonReentrant {
         if (msg.value == 0) revert InsufficientFunds();
 
         Listing memory listing = collectionListings[id];
@@ -213,22 +200,16 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Send NFT to buyer after verifying that they have enough ETH to cover the sale
         collection.safeTransferFrom(address(this), msg.sender, id);
 
-        // Pay protocol fees
-        if (protocolFees.bps != 0) {
-            uint256 _protocolFees = listing.price.mulDivDown(
-                protocolFees.bps,
-                BPS_BASE
-            );
+        // Calculate protocol fees
+        uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-            totalFees += _protocolFees;
+        // Transfer protocol fees to fee recipient
+        feeRecipient.safeTransferETH(fees);
 
-            payable(protocolFees.recipient).safeTransferETH(_protocolFees);
-        }
+        // Transfer the listing proceeds minus the fees to the seller
+        payable(listing.seller).safeTransferETH(listing.price - fees);
 
-        // Pay the listing price minus the total fees to the seller
-        payable(listing.seller).safeTransferETH(listing.price - totalFees);
-
-        emit Buy(msg.sender, listing.seller, id, listing.price, totalFees);
+        emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
 
     /**
@@ -250,9 +231,6 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         if (iLen == 0) revert EmptyArray();
         if (msg.value == 0) revert InsufficientFunds();
 
-        // Cache to reduce redundant ops
-        bool hasProtocolFees = protocolFees.bps != 0;
-
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
 
@@ -269,18 +247,13 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
             collection.safeTransferFrom(address(this), msg.sender, id);
 
             // Enables us to calculate the post-fee ETH amount to transfer to the seller
-            uint256 _fees;
+            uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-            // Pay protocol fees
-            if (hasProtocolFees) {
-                _fees = listing.price.mulDivDown(protocolFees.bps, BPS_BASE);
+            // Accrue total fees and do a single payment at the end of this call
+            totalFees += fees;
 
-                // Accrue total fees and do a single payment at the end of this call
-                totalFees += _fees;
-            }
-
-            // Pay the listing price minus the total fees to the seller
-            payable(listing.seller).safeTransferETH(listing.price - totalFees);
+            // Transfer the listing proceeds minus the fees to the seller
+            payable(listing.seller).safeTransferETH(listing.price - fees);
 
             // Will not overflow since it's bound by the `ids` array's length
             unchecked {
@@ -289,7 +262,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         }
 
         // Pay protocol fees in a single batched transfer
-        payable(protocolFees.recipient).safeTransferETH(totalFees);
+        feeRecipient.safeTransferETH(totalFees);
 
         emit BuyMany(msg.sender, ids, totalPrice, totalFees);
     }
