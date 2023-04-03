@@ -52,6 +52,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event ListMany(address indexed seller, uint256[] ids, uint96[] prices);
     event CancelListing(address indexed seller, uint256 indexed id);
+    event EditListing(address indexed seller, uint256 indexed id, uint96 price);
     event Buy(
         address indexed buyer,
         address indexed seller,
@@ -180,6 +181,24 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         collection.safeTransferFrom(address(this), msg.sender, id);
 
         emit CancelListing(msg.sender, id);
+    }
+
+    /**
+     * @notice Edit NFT listing price
+     * @param  id     uint256  NFT ID
+     * @param  price  uint96   NFT price
+     */
+    function editListing(uint256 id, uint96 price) external nonReentrant {
+        if (price == 0) revert InvalidNumber();
+
+        Listing storage listing = collectionListings[id];
+
+        // Only the seller can edit the listing
+        if (listing.seller != msg.sender) revert NotSeller();
+
+        listing.price = price;
+
+        emit EditListing(msg.sender, id, price);
     }
 
     /*///////////////////////////////////////////////////////////////
