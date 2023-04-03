@@ -59,8 +59,15 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     event MakeOffer(address indexed buyer, uint256 offer);
     event CancelOffer(address indexed buyer, uint256 offer);
     event TakeOffer(
-        address indexed seller,
         address indexed buyer,
+        address indexed seller,
+        uint256 id,
+        uint256 offer
+    );
+    event MatchOffer(
+        address indexed matcher,
+        address indexed buyer,
+        address indexed seller,
         uint256 id,
         uint256 offer
     );
@@ -68,12 +75,14 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     error InvalidAddress();
     error InvalidPrice();
     error InvalidOffer();
+    error InvalidListing();
     error EmptyArray();
     error MismatchedArrays();
     error InsufficientFunds();
     error NotSeller();
     error NotBuyer();
     error ZeroValue();
+    error OfferTooLow();
 
     /**
      * @param _owner       address  Contract owner (can set fee recipient only)
@@ -335,6 +344,53 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
 
-        emit TakeOffer(msg.sender, buyer, id, offer);
+        emit TakeOffer(buyer, msg.sender, id, offer);
+    }
+
+    /**
+     * @notice Match an offer with a listing
+     * @param  id          uint256  NFT ID
+     * @param  offer       uint256  Offer amount
+     * @param  buyerIndex  uint256  Buyer index
+     */
+    function matchOffer(
+        uint256 id,
+        uint256 offer,
+        uint256 buyerIndex
+    ) external nonReentrant {
+        address buyer = collectionOffers[offer][buyerIndex];
+
+        // Revert if offer does not exist
+        if (buyer == address(0)) revert InvalidOffer();
+
+        Listing memory listing = collectionListings[id];
+
+        // Revert if listing does not exist
+        if (listing.price == 0) revert InvalidListing();
+
+        // Revert if offer is less than listing price
+        if (offer < listing.price) revert OfferTooLow();
+
+        // Delete offer and listing prior to exchanging tokens
+        delete collectionOffers[offer][buyerIndex];
+        delete collectionListings[id];
+
+        // Transfer NFT to the buyer (account that made offer)
+        collection.safeTransferFrom(address(this), buyer, id);
+
+        uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+
+        // Transfer protocol fees to fee recipient
+        feeRecipient.safeTransferETH(fees);
+
+        // Transfer the post-fee sale proceeds to the seller
+        payable(listing.seller).safeTransferETH(listing.price - fees);
+
+        if (offer > listing.price) {
+            // Send the spread (margin between ETH offer and listing price) to the matcher
+            payable(msg.sender).safeTransferETH(offer - listing.price);
+        }
+
+        emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
     }
 }
