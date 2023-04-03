@@ -216,7 +216,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Buy many NFTs
+     * @notice Buy many NFTs, without reverting if any of the NFTs are not listed
      * @param  ids  uint256[]  NFT IDs
      */
     function buyMany(uint256[] calldata ids) external payable nonReentrant {
@@ -230,9 +230,12 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         // Track the total fees accrued to pay the fee recipient at the end of this call
         uint256 totalFees;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < iLen; ++i) {
             uint256 id = ids[i];
             Listing memory listing = collectionListings[id];
+
+            // Move on to the next ID if this listing no longer exists
+            if (listing.price == 0) continue;
 
             // Check whether the buyer has enough ETH to cover all of the NFTs purchased
             if (msg.value < (totalPrice += listing.price))
@@ -251,15 +254,15 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
 
             // Transfer the listing proceeds minus the fees to the seller
             payable(listing.seller).safeTransferETH(listing.price - fees);
-
-            // Will not overflow since it's bound by the `ids` array's length
-            unchecked {
-                ++i;
-            }
         }
 
         // Pay protocol fees in a single batched transfer
         feeRecipient.safeTransferETH(totalFees);
+
+        if (msg.value > totalPrice) {
+            // Refund any excess ETH sent to this contract
+            payable(msg.sender).safeTransferETH(msg.value - totalPrice);
+        }
 
         emit BuyMany(msg.sender, ids, totalPrice, totalFees);
     }
