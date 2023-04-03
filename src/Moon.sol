@@ -6,11 +6,19 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 
 contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
+    // Factories deploy MoonBook contracts and enable them to mint MOON rewards
+    // When factories are upgraded, they are set as the new factory
+    // Old factories will no longer be able to call `addMinter` (below), effectively
+    // decomissioning them (since they can no longer deploy books that mint MOON)
+    address public factory;
+
     mapping(address minter => bool) public minters;
 
+    event SetFactory(address indexed factory);
     event AddMinter(address indexed minter);
 
     error InvalidAddress();
+    error NotFactory();
     error NotMinter();
 
     constructor(address _owner) Owned(_owner) {
@@ -18,10 +26,23 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
     }
 
     /**
+     * @notice Set factory
+     * @param  _factory  address  MoonBookFactory contract address
+     */
+    function setFactory(address _factory) external onlyOwner {
+        if (_factory == address(0)) revert InvalidAddress();
+
+        factory = _factory;
+
+        emit SetFactory(_factory);
+    }
+
+    /**
      * @notice Add new minter
      * @param  minter  address  Minter address
      */
-    function addMinter(address minter) external onlyOwner {
+    function addMinter(address minter) external {
+        if (msg.sender != factory) revert NotFactory();
         if (minter == address(0)) revert InvalidAddress();
 
         minters[minter] = true;
