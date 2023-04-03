@@ -81,9 +81,6 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         if (address(_collection) == address(0)) revert InvalidAddress();
 
         collection = _collection;
-
-        // Set initial protocol fees to 0.5% (max)
-        protocolFees = Fee(_owner, 50);
     }
 
     /**

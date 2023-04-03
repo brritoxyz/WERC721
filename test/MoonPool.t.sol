@@ -16,6 +16,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
     uint96 private immutable bpsBase;
     uint80 private immutable maxCollectionRoyalties;
     uint80 private immutable maxProtocolFees;
+    address private immutable owner;
 
     // NFT IDs that are owned by the impersonated/pranked address
     uint256[] private initialNftIds = [0, 2, 7];
@@ -65,6 +66,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
         bpsBase = pool.BPS_BASE();
         maxCollectionRoyalties = pool.MAX_COLLECTION_ROYALTIES();
         maxProtocolFees = pool.MAX_PROTOCOL_FEES();
+        owner = pool.owner();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -81,7 +83,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
     function testCannotSetCollectionRoyaltiesRecipientInvalidAddress()
         external
     {
-        assertEq(address(this), pool.owner());
+        assertEq(address(this), owner);
 
         vm.expectRevert(MoonPool.InvalidAddress.selector);
 
@@ -89,7 +91,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
     }
 
     function testCannotSetCollectionRoyaltiesBpsExceedsBase() external {
-        assertEq(address(this), pool.owner());
+        assertEq(address(this), owner);
 
         address recipient = address(this);
         uint96 bps = bpsBase + 1;
@@ -100,7 +102,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
     }
 
     function testCannotSetCollectionRoyaltiesBpsExceedsMax() external {
-        assertEq(address(this), pool.owner());
+        assertEq(address(this), owner);
 
         address recipient = address(this);
         uint96 bps = maxCollectionRoyalties + 1;
@@ -114,10 +116,9 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
         vm.assume(bps <= bpsBase);
         vm.assume(bps <= maxCollectionRoyalties);
 
-        assertEq(address(this), pool.owner());
+        assertEq(address(this), owner);
 
         address recipient = address(this);
-
         (address recipientBefore, uint96 bpsBefore) = pool
             .collectionRoyalties();
 
@@ -131,6 +132,71 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
         pool.setCollectionRoyalties(recipient, bps);
 
         (address recipientAfter, uint96 bpsAfter) = pool.collectionRoyalties();
+
+        assertEq(recipient, recipientAfter);
+        assertEq(bps, bpsAfter);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            setProtocolFees
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetProtocolFeesUnauthorized() external {
+        vm.prank(address(0));
+        vm.expectRevert(bytes("UNAUTHORIZED"));
+
+        pool.setProtocolFees(address(this), 1000);
+    }
+
+    function testCannotSetProtocolFeesRecipientInvalidAddress() external {
+        assertEq(address(this), owner);
+
+        vm.expectRevert(MoonPool.InvalidAddress.selector);
+
+        pool.setProtocolFees(address(0), 1000);
+    }
+
+    function testCannotSetProtocolFeesBpsExceedsBase() external {
+        assertEq(address(this), owner);
+
+        address recipient = address(this);
+        uint96 bps = bpsBase + 1;
+
+        vm.expectRevert(MoonPool.InvalidNumber.selector);
+
+        pool.setProtocolFees(recipient, bps);
+    }
+
+    function testCannotSetProtocolFeesBpsExceedsMax() external {
+        assertEq(address(this), owner);
+
+        address recipient = address(this);
+        uint96 bps = maxProtocolFees + 1;
+
+        vm.expectRevert(MoonPool.InvalidNumber.selector);
+
+        pool.setProtocolFees(recipient, bps);
+    }
+
+    function testSetProtocolFees(uint96 bps) external {
+        vm.assume(bps <= bpsBase);
+        vm.assume(bps <= maxProtocolFees);
+
+        assertEq(address(this), owner);
+
+        address recipient = address(this);
+        (address recipientBefore, uint96 bpsBefore) = pool.protocolFees();
+
+        assertEq(address(0), recipientBefore);
+        assertEq(0, bpsBefore);
+
+        vm.expectEmit(true, false, false, true, address(pool));
+
+        emit SetProtocolFees(recipient, bps);
+
+        pool.setProtocolFees(recipient, bps);
+
+        (address recipientAfter, uint96 bpsAfter) = pool.protocolFees();
 
         assertEq(recipient, recipientAfter);
         assertEq(bps, bpsAfter);
