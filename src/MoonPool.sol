@@ -64,6 +64,12 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     );
     event MakeOffer(address indexed buyer, uint256 offer);
     event CancelOffer(address indexed buyer, uint256 offer);
+    event TakeOffer(
+        address indexed seller,
+        address indexed buyer,
+        uint256 id,
+        uint256 offer
+    );
 
     error InvalidAddress();
     error InvalidNumber();
@@ -73,6 +79,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     error NotSeller();
     error NotBuyer();
     error ZeroValue();
+    error InvalidOffer();
 
     /**
      * @param _owner       address  Contract owner (can set royalties and fees only)
@@ -323,5 +330,33 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         payable(msg.sender).safeTransferETH(offer);
 
         emit CancelOffer(msg.sender, offer);
+    }
+
+    /**
+     * @notice Take offer
+     * @param  id          uint256  NFT ID
+     * @param  offer       uint256  Offer amount
+     * @param  buyerIndex  uint256  Buyer index
+     */
+    function takeOffer(
+        uint256 id,
+        uint256 offer,
+        uint256 buyerIndex
+    ) external nonReentrant {
+        address buyer = collectionOffers[offer][buyerIndex];
+
+        // Revert if offer does not exist
+        if (buyer == address(0)) revert InvalidOffer();
+
+        // Remove the offer prior to exchanging tokens between buyer and seller
+        delete collectionOffers[offer][buyerIndex];
+
+        // Transfer NFT to the buyer - reverts if msg.sender does not have the NFT
+        collection.safeTransferFrom(msg.sender, buyer, id);
+
+        // Send ETH to the seller
+        payable(msg.sender).safeTransferETH(offer);
+
+        emit TakeOffer(msg.sender, buyer, id, offer);
     }
 }
