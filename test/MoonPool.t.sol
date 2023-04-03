@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
+import {Moon} from "src/Moon.sol";
 import {MoonPool} from "src/MoonPool.sol";
 
 contract MoonPoolTest is Test, ERC721TokenReceiver {
@@ -12,6 +13,7 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
     address private constant AZUKI_OWNER =
         0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA;
 
+    Moon private immutable moon;
     MoonPool private immutable pool;
     uint128 private immutable feeBpsBase;
     uint128 private immutable feeBps;
@@ -69,7 +71,8 @@ contract MoonPoolTest is Test, ERC721TokenReceiver {
 
         vm.stopPrank();
 
-        pool = new MoonPool(address(this), AZUKI);
+        moon = new Moon(address(this));
+        pool = new MoonPool(address(this), AZUKI, moon);
         feeBpsBase = pool.FEE_BPS_BASE();
         feeBps = pool.FEE_BPS();
         owner = pool.owner();

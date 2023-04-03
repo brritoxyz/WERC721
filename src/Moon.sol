@@ -30,6 +30,21 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
     }
 
     /**
+     * @notice Overridden _mint with the Transfer event emission removed (to reduce gas)
+     * @param  to      address  Recipient address
+     * @param  amount  uint256  Mint amount
+     */
+    function _mint(address to, uint256 amount) internal override {
+        totalSupply += amount;
+
+        // Cannot overflow because the sum of all user
+        // balances can't exceed the max uint256 value.
+        unchecked {
+            balanceOf[to] += amount;
+        }
+    }
+
+    /**
      * @notice Mint MOON
      * @param  to      address  Recipient address
      * @param  amount  uint256  Mint amount
@@ -38,5 +53,18 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
         if (!minters[msg.sender]) revert NotMinter();
 
         _mint(to, amount);
+    }
+
+    /**
+     * @notice Mint MOON for a buyer and seller pair
+     * @param  buyer   address  Buyer address
+     * @param  seller  address  Seller address
+     * @param  amount  uint256  Mint amount
+     */
+    function mint(address buyer, address seller, uint256 amount) external {
+        if (!minters[msg.sender]) revert NotMinter();
+
+        _mint(buyer, amount);
+        _mint(seller, amount);
     }
 }

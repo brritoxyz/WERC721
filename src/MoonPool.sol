@@ -229,8 +229,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
         // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(msg.sender, fees);
-        moon.mint(listing.seller, fees);
+        moon.mint(msg.sender, listing.seller, fees);
 
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
@@ -362,8 +361,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         payable(msg.sender).safeTransferETH(offer - fees);
 
         // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(buyer, fees);
-        moon.mint(msg.sender, fees);
+        moon.mint(buyer, msg.sender, fees);
 
         emit TakeOffer(buyer, msg.sender, id, offer);
     }
@@ -413,8 +411,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         }
 
         // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(buyer, fees);
-        moon.mint(listing.seller, fees);
+        moon.mint(buyer, listing.seller, fees);
 
         emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
     }
