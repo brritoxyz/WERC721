@@ -51,6 +51,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     event SetProtocolFees(address indexed recipient, uint96 bps);
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event ListMany(address indexed seller, uint256[] ids, uint96[] prices);
+    event CancelListing(address indexed seller, uint256 indexed id);
     event Buy(
         address indexed buyer,
         address indexed seller,
@@ -71,6 +72,7 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
     error EmptyArray();
     error MismatchedArrays();
     error InsufficientFunds();
+    error NotSeller();
 
     /**
      * @param _owner       address  Contract owner (can set royalties and fees only)
@@ -163,6 +165,21 @@ contract MoonPool is ERC721TokenReceiver, Owned, ReentrancyGuard {
         }
 
         emit ListMany(msg.sender, ids, prices);
+    }
+
+    /**
+     * @notice Cancel NFT listing and reclaim NFT
+     * @param  id  uint256  NFT ID
+     */
+    function cancelListing(uint256 id) external nonReentrant {
+        // Only the seller can cancel the listing
+        if (collectionListings[id].seller != msg.sender) revert NotSeller();
+
+        delete collectionListings[id];
+
+        collection.safeTransferFrom(address(this), msg.sender, id);
+
+        emit CancelListing(msg.sender, id);
     }
 
     /*///////////////////////////////////////////////////////////////
