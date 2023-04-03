@@ -1,0 +1,5 @@
+MoonPoolTest:testCannotSetCollectionRoyaltiesBpsExceedsBase() (gas: 9786)
+MoonPoolTest:testCannotSetCollectionRoyaltiesBpsExceedsMax() (gas: 9820)
+MoonPoolTest:testCannotSetCollectionRoyaltiesRecipientInvalidAddress() (gas: 9562)
+MoonPoolTest:testCannotSetCollectionRoyaltiesUnauthorized() (gas: 9331)
+MoonPoolTest:testSetCollectionRoyalties(uint96) (runs: 8, μ: 38076, ~: 38076)
