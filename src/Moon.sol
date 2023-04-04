@@ -46,6 +46,7 @@ contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
      */
     function addMinter(address minter) external {
         if (msg.sender != factory) revert NotFactory();
+        if (minter == address(0)) revert InvalidAddress();
 
         minters[factory][minter] = true;
 

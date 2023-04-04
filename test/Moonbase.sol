@@ -8,6 +8,9 @@ import {Moon} from "src/Moon.sol";
 import {MoonBookFactory} from "src/MoonBookFactory.sol";
 
 contract Moonbase is Test {
+    // Commonly-used constants
+    bytes internal constant NOT_OWNER_ERROR = bytes("UNAUTHORIZED");
+
     Moon internal immutable moon;
     MoonBookFactory internal immutable factory;
 
