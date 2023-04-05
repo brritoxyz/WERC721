@@ -8,11 +8,17 @@ import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 
 // contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
+    // MOON snapshots can be taken *at most* once per hour
+    uint256 public constant SNAPSHOT_INTERVAL = 1 hours;
+
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
     // Old factories will no longer be able to call `addMinter`, effectively
     // decomissioning them (since they can no longer deploy books that mint MOON)
     address public factory;
+
+    // Last snapshot timestamp
+    uint256 public lastSnapshotAt;
 
     // Mapping of factory MoonBook minters - by having factory as a key, we can
     // prevent deprecated MoonBooks (e.g. MoonBooks deployed by deprecated factories)
@@ -22,6 +28,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
 
+    error CannotSnapshot();
     error InvalidAddress();
     error NotFactory();
     error NotMinter();
@@ -30,6 +37,22 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         address _owner
     ) Owned(_owner) ERC20("Moonbase Token", "MOON", 18) {
         if (_owner == address(0)) revert InvalidAddress();
+    }
+
+    function _snapshot() internal override returns (uint256) {
+        // Only allow snapshots to be taken at the specified interval (i.e. 1 hour)
+        if (lastSnapshotAt + SNAPSHOT_INTERVAL > block.timestamp)
+            revert CannotSnapshot();
+
+        // Update the last snapshot timestamp
+        lastSnapshotAt = block.timestamp;
+
+        // Increment the current snapshot ID
+        uint256 currentId = ++_currentSnapshotId;
+
+        emit Snapshot(currentId);
+
+        return currentId;
     }
 
     /**
