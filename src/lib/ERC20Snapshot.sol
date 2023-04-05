@@ -5,20 +5,19 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "src/lib/ERC20.sol";
 import "openzeppelin/utils/Arrays.sol";
-import "openzeppelin/utils/Counters.sol";
 
 /**
  * Original: https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/b709eae01d1da91902d06ace340df6b324e6f049/contracts/token/ERC20/extensions/ERC20Snapshot.sol
  *
  * @dev Changes:
  *      - Use slightly-modified (added _beforeTokenTransfer hook) transmissions11/solmate ERC20 for gas savings
+ *      - Replace `Counter` with `uint256` type for `_currentSnapshotId` and remove `_getCurrentSnapshotId`
  */
 abstract contract ERC20Snapshot is ERC20 {
     // Inspired by Jordi Baylina's MiniMeToken to record historical balances:
     // https://github.com/Giveth/minime/blob/ea04d950eea153a04c51fa510b068b9dded390cb/contracts/MiniMeToken.sol
 
     using Arrays for uint256[];
-    using Counters for Counters.Counter;
 
     // Snapshotted values have arrays of ids and the value corresponding to that id. These could be an array of a
     // Snapshot struct, but that would impede usage of functions that work on an array.
@@ -31,7 +30,7 @@ abstract contract ERC20Snapshot is ERC20 {
     Snapshots private _totalSupplySnapshots;
 
     // Snapshot ids increase monotonically, with the first value being 1. An id of 0 is invalid.
-    Counters.Counter private _currentSnapshotId;
+    uint256 internal _currentSnapshotId;
 
     /**
      * @dev Emitted by {_snapshot} when a snapshot identified by `id` is created.
@@ -60,18 +59,11 @@ abstract contract ERC20Snapshot is ERC20 {
      * ====
      */
     function _snapshot() internal virtual returns (uint256) {
-        _currentSnapshotId.increment();
+        uint256 currentId = ++_currentSnapshotId;
 
-        uint256 currentId = _getCurrentSnapshotId();
         emit Snapshot(currentId);
-        return currentId;
-    }
 
-    /**
-     * @dev Get the current snapshotId
-     */
-    function _getCurrentSnapshotId() internal view virtual returns (uint256) {
-        return _currentSnapshotId.current();
+        return currentId;
     }
 
     /**
@@ -130,7 +122,7 @@ abstract contract ERC20Snapshot is ERC20 {
     ) private view returns (bool, uint256) {
         require(snapshotId > 0, "ERC20Snapshot: id is 0");
         require(
-            snapshotId <= _getCurrentSnapshotId(),
+            snapshotId <= _currentSnapshotId,
             "ERC20Snapshot: nonexistent id"
         );
 
@@ -169,7 +161,8 @@ abstract contract ERC20Snapshot is ERC20 {
         Snapshots storage snapshots,
         uint256 currentValue
     ) private {
-        uint256 currentId = _getCurrentSnapshotId();
+        uint256 currentId = _currentSnapshotId;
+
         if (_lastSnapshotId(snapshots.ids) < currentId) {
             snapshots.ids.push(currentId);
             snapshots.values.push(currentValue);
