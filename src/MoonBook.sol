@@ -214,8 +214,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Calculate protocol fees
         uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Transfer protocol fees to the factory
-        factory.safeTransferETH(fees);
+        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
+        moon.depositFees{value: fees}();
 
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
@@ -270,8 +270,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
             moon.mint(listing.seller, fees);
         }
 
-        // Pay protocol fees in a single batched transfer
-        factory.safeTransferETH(totalFees);
+        // Deposit protocol fees in a single batched transfer
+        moon.depositFees{value: totalFees}();
 
         if (msg.value > totalPrice) {
             // Refund any excess ETH sent to this contract
@@ -366,8 +366,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         uint256 fees = offer.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Transfer protocol fees to the factory
-        factory.safeTransferETH(fees);
+        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
+        moon.depositFees{value: fees}();
 
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
@@ -426,8 +426,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
             moon.mint(buyer, fees);
         }
 
-        // Transfer protocol fees to the factory
-        factory.safeTransferETH(totalFees);
+        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
+        moon.depositFees{value: totalFees}();
 
         // Transfer the post-fee sale proceeds to the offer taker
         payable(msg.sender).safeTransferETH(totalOffers - totalFees);
@@ -471,8 +471,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Transfer protocol fees to the factory
-        factory.safeTransferETH(fees);
+        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
+        moon.depositFees{value: fees}();
 
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
