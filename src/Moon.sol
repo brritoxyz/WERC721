@@ -5,9 +5,12 @@ import {ERC20Snapshot} from "src/lib/ERC20Snapshot.sol";
 import {ERC20} from "src/lib/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
+import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
 
 // contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
+    using SafeCastLib for uint256;
+
     // MOON snapshots can be taken *at most* once per hour
     uint256 public constant SNAPSHOT_INTERVAL = 1 hours;
 
@@ -18,7 +21,13 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     address public factory;
 
     // Last snapshot timestamp
-    uint256 public lastSnapshotAt;
+    uint128 public lastSnapshotAt;
+
+    // Fees accrued since the last snapshot
+    uint128 public feesSinceLastSnapshot;
+
+    // Snapshot IDs mapped to fees accrued at that snapshot
+    mapping(uint256 => uint256) public feeSnapshots;
 
     // Mapping of factory MoonBook minters - by having factory as a key, we can
     // prevent deprecated MoonBooks (e.g. MoonBooks deployed by deprecated factories)
@@ -40,19 +49,35 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     }
 
     function _snapshot() internal override returns (uint256) {
-        // Only allow snapshots to be taken at the specified interval (i.e. 1 hour)
+        // Only allow snapshots to be taken at set intervals (i.e. 1 hour)
+        // Return the current snapshot ID either way
         if (lastSnapshotAt + SNAPSHOT_INTERVAL > block.timestamp)
-            revert CannotSnapshot();
+            return _currentSnapshotId;
 
         // Update the last snapshot timestamp
-        lastSnapshotAt = block.timestamp;
+        lastSnapshotAt = block.timestamp.safeCastTo128();
 
         // Increment the current snapshot ID
         uint256 currentId = ++_currentSnapshotId;
 
+        // Store the accrued fee amount to the current snapshot ID
+        feeSnapshots[currentId] = feesSinceLastSnapshot;
+
+        // Reset the fee accrual tracker variable to 0 for the next snapshot
+        feesSinceLastSnapshot = 0;
+
         emit Snapshot(currentId);
 
         return currentId;
+    }
+
+    /**
+     * @notice Deposit ETH fees
+     */
+    function depositFees() external payable {
+        // Track fees accrued since the last snapshot, which will be claimable
+        // by MOON holders after the next snapshot is taken
+        feesSinceLastSnapshot += msg.value.safeCastTo128();
     }
 
     /**
