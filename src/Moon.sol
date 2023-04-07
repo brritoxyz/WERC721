@@ -71,6 +71,10 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         return currentId;
     }
 
+    function getSnapshotId() external view returns (uint256) {
+        return _currentSnapshotId;
+    }
+
     function snapshot() external returns (uint256) {
         return _snapshot();
     }

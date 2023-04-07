@@ -7,8 +7,18 @@ import {Moon} from "src/Moon.sol";
 import {Moonbase} from "test/Moonbase.sol";
 
 contract MoonTest is Test, Moonbase {
+    uint256 private immutable snapshotInterval;
+
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
+
+    constructor() {
+        snapshotInterval = moon.SNAPSHOT_INTERVAL();
+    }
+
+    function _canSnapshot() private view returns (bool) {
+        return moon.lastSnapshotAt() + snapshotInterval <= block.timestamp;
+    }
 
     /*//////////////////////////////////////////////////////////////
                                 setFactory
@@ -208,5 +218,28 @@ contract MoonTest is Test, Moonbase {
         }
 
         assertEq(totalSupply, moon.totalSupply());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                snapshot
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSnapshotTooSoon() external {
+        uint256 lastSnapshotAt = moon.lastSnapshotAt();
+
+        assertTrue(_canSnapshot());
+
+        moon.snapshot();
+
+        assertEq(1, moon.getSnapshotId());
+
+        lastSnapshotAt = moon.lastSnapshotAt();
+
+        assertFalse(_canSnapshot());
+
+        moon.snapshot();
+
+        // Snapshot ID remains unchanged
+        assertEq(1, moon.getSnapshotId());
     }
 }
