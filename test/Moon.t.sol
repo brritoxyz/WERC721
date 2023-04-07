@@ -242,4 +242,24 @@ contract MoonTest is Test, Moonbase {
         // Snapshot ID remains unchanged
         assertEq(1, moon.getSnapshotId());
     }
+
+    function testSnapshot(uint8 iterations) external {
+        vm.assume(iterations != 0);
+
+        uint256 snapshotId = moon.getSnapshotId();
+
+        for (uint256 i; i < iterations; ) {
+            vm.warp(block.timestamp + snapshotInterval);
+
+            assertTrue(_canSnapshot());
+
+            moon.snapshot();
+
+            unchecked {
+                assertEq(++snapshotId, moon.getSnapshotId());
+
+                ++i;
+            }
+        }
+    }
 }
