@@ -6,9 +6,11 @@ import {ERC20} from "src/lib/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
+    using FixedPointMathLib for uint256;
 
     uint128 public constant FEE_BASE = 10000;
 
@@ -162,8 +164,23 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
      */
     function mint(address buyer, address seller, uint256 amount) external {
         if (!minters[factory][msg.sender]) revert NotMinter();
+        if (buyer == address(0)) revert InvalidAddress();
+        if (seller == address(0)) revert InvalidAddress();
 
-        _mint(buyer, amount);
-        _mint(seller, amount);
+        // TODO: Consider returning the function early if amount is less than 2
+        if (amount == 0) revert InvalidAmount();
+
+        // Calculate the protocol team MOON amount
+        uint256 teamMoonAmount = amount.mulDivDown(moonFee, FEE_BASE);
+
+        // Calculate the buyer MOON amount - half of the remaining amount
+        uint256 buyerMoonAmount = (amount - teamMoonAmount) / 2;
+
+        // TODO: Add _mint logic here directly for the purposes of saving gas
+        _mint(owner, teamMoonAmount);
+        _mint(buyer, buyerMoonAmount);
+
+        // Mint the remaining amount to the seller
+        _mint(seller, amount - teamMoonAmount - buyerMoonAmount);
     }
 }
