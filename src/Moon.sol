@@ -10,6 +10,14 @@ import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
 
+    uint128 public constant FEE_BASE = 10000;
+
+    // Maximum MOON fee (20%) that can be earned by the protocol team
+    uint64 public MAX_FEE = 2000;
+
+    // Used for calculating the protocol team MOON amount (since they don't earn fees directly)
+    uint64 public moonFee = 2000;
+
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
     // Old factories will no longer be able to call `addMinter`, effectively
@@ -33,7 +41,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // from minting MOON rewards
     mapping(address factory => mapping(address minter => bool)) public minters;
 
-    event SetSnapshotInterval(address indexed caller, uint96 snapshotInterval);
+    event SetMoonFee(uint64 moonFee);
+    event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
 
@@ -49,12 +58,20 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
+    function setMoonFee(uint64 _moonFee) external onlyOwner {
+        if (_moonFee > MAX_FEE) revert InvalidAmount();
+
+        moonFee = _moonFee;
+
+        emit SetMoonFee(_moonFee);
+    }
+
     function setSnapshotInterval(uint96 _snapshotInterval) external onlyOwner {
         if (_snapshotInterval == 0) revert InvalidAmount();
 
         snapshotInterval = _snapshotInterval;
 
-        emit SetSnapshotInterval(msg.sender, _snapshotInterval);
+        emit SetSnapshotInterval(_snapshotInterval);
     }
 
     function _snapshot() internal override returns (uint256) {
