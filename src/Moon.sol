@@ -12,13 +12,17 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
     using FixedPointMathLib for uint256;
 
-    uint256 public constant USER_SHARE_BASE = 10000;
+    // Fixed parameters for calculating user MOON reward amounts
+    uint256 public constant USER_SHARE_BASE = 10_000;
 
-    // Maximum percent share of MOON rewards that are reserved for users (i.e. buyers and sellers)
-    uint128 public MAX_USER_SHARE = 9000;
+    // Max MOON allocated to users is 90%
+    uint128 public constant MAX_USER_SHARE = 9_000;
+
+    // Min MOON allocated to users is 50%
+    uint128 public constant MIN_USER_SHARE = 5_000;
 
     // Used for calculating the mintable MOON amounts for user (default is 90% of all MOON)
-    uint128 public userShare = 9000;
+    uint96 public userShare = 9_000;
 
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
@@ -27,10 +31,10 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     address public factory;
 
     // Time interval (seconds) between snapshots
-    uint96 public snapshotInterval = 1 hours;
+    uint64 public snapshotInterval = 1 hours;
 
     // Last snapshot timestamp
-    uint128 public lastSnapshotAt;
+    uint64 public lastSnapshotAt;
 
     // Fees accrued since the last snapshot
     uint128 public feesSinceLastSnapshot;
@@ -46,8 +50,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // Tracks the amount of mintable MOON for each user
     mapping(address user => uint256 mintable) public mintable;
 
-    event SetUserShare(uint128 userShare);
-    event SetSnapshotInterval(uint96 snapshotInterval);
+    event SetUserShare(uint96 userShare);
+    event SetSnapshotInterval(uint64 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
     event DepositFees(
@@ -68,15 +72,16 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
-    function setUserShare(uint128 _userShare) external onlyOwner {
+    function setUserShare(uint96 _userShare) external onlyOwner {
         if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
+        if (_userShare < MIN_USER_SHARE) revert InvalidAmount();
 
         userShare = _userShare;
 
         emit SetUserShare(_userShare);
     }
 
-    function setSnapshotInterval(uint96 _snapshotInterval) external onlyOwner {
+    function setSnapshotInterval(uint64 _snapshotInterval) external onlyOwner {
         if (_snapshotInterval == 0) revert InvalidAmount();
 
         snapshotInterval = _snapshotInterval;
@@ -91,7 +96,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
             return _currentSnapshotId;
 
         // Update the last snapshot timestamp
-        lastSnapshotAt = block.timestamp.safeCastTo128();
+        lastSnapshotAt = block.timestamp.safeCastTo64();
 
         // Increment the current snapshot ID
         uint256 currentId = ++_currentSnapshotId;

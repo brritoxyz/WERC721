@@ -12,10 +12,12 @@ contract MoonTest is Test, Moonbase {
 
     uint256 private immutable snapshotInterval;
     uint256 private immutable userShareBase;
-    uint128 private immutable userShare;
+    uint128 private immutable maxUserShare;
+    uint128 private immutable minUserShare;
+    uint128 private immutable defaultUserShare;
 
-    event SetUserShare(uint128 userShare);
-    event SetSnapshotInterval(uint96 snapshotInterval);
+    event SetUserShare(uint96 userShare);
+    event SetSnapshotInterval(uint64 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
     event DepositFees(
@@ -27,7 +29,9 @@ contract MoonTest is Test, Moonbase {
     constructor() {
         snapshotInterval = moon.snapshotInterval();
         userShareBase = moon.USER_SHARE_BASE();
-        userShare = moon.userShare();
+        maxUserShare = moon.MAX_USER_SHARE();
+        minUserShare = moon.MIN_USER_SHARE();
+        defaultUserShare = moon.userShare();
     }
 
     function _canSnapshot() private view returns (bool) {
@@ -37,7 +41,54 @@ contract MoonTest is Test, Moonbase {
     function _calculateUserRewards(
         uint256 amount
     ) private view returns (uint256) {
-        return amount.mulDivDown(userShare, userShareBase) / 2;
+        return amount.mulDivDown(moon.userShare(), userShareBase) / 2;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            setUserShare
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetUserShareNotOwner() external {
+        vm.prank(address(0));
+        vm.expectRevert(NOT_OWNER_ERROR);
+
+        moon.setUserShare(uint96(minUserShare));
+    }
+
+    function testCannotSetUserShareAboveMax() external {
+        assertEq(address(this), moon.owner());
+
+        uint96 aboveMax = uint96(maxUserShare) + 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.setUserShare(aboveMax);
+    }
+
+    function testCannotSetUserShareBelowMin() external {
+        assertEq(address(this), moon.owner());
+
+        uint96 belowMin = uint96(minUserShare) - 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.setUserShare(belowMin);
+    }
+
+    function testSetUserShare(uint96 _userShare) external {
+        vm.assume(_userShare < maxUserShare);
+        vm.assume(_userShare > minUserShare);
+        vm.assume(_userShare != defaultUserShare);
+
+        assertEq(address(this), moon.owner());
+
+        vm.expectEmit(false, false, false, true, address(moon));
+
+        emit SetUserShare(_userShare);
+
+        moon.setUserShare(_userShare);
+
+        assertEq(_userShare, moon.userShare());
     }
 
     /*//////////////////////////////////////////////////////////////
