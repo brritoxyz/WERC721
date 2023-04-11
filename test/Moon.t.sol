@@ -3,21 +3,37 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Moon} from "src/Moon.sol";
 import {Moonbase} from "test/Moonbase.sol";
 
 contract MoonTest is Test, Moonbase {
-    uint256 private immutable snapshotInterval;
+    using FixedPointMathLib for uint256;
 
+    uint256 private immutable snapshotInterval;
+    uint256 private immutable userShareBase;
+    uint128 private immutable userShare;
+
+    event SetUserShare(uint128 userShare);
+    event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
+    event Mint(address indexed buyer, address indexed seller, uint256 amount);
 
     constructor() {
         snapshotInterval = moon.snapshotInterval();
+        userShareBase = moon.USER_SHARE_BASE();
+        userShare = moon.userShare();
     }
 
     function _canSnapshot() private view returns (bool) {
         return moon.lastSnapshotAt() + snapshotInterval <= block.timestamp;
+    }
+
+    function _calculateUserRewards(
+        uint256 amount
+    ) private view returns (uint256) {
+        return amount.mulDivDown(userShare, userShareBase) / 2;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -112,19 +128,14 @@ contract MoonTest is Test, Moonbase {
         address seller = testAccounts[1];
         uint256 amount = 1;
 
-        assertEq(0, moon.balanceOf(buyer));
-        assertEq(0, moon.balanceOf(seller));
-
+        // Minting functions until the factory changes
         moon.mint(buyer, seller, amount);
-
-        assertEq(amount, moon.balanceOf(buyer));
-        assertEq(amount, moon.balanceOf(seller));
 
         moon.setFactory(address(factory));
 
         vm.expectRevert(Moon.NotMinter.selector);
 
-        moon.mint(buyer, seller, 1);
+        moon.mint(buyer, seller, amount);
     }
 
     function testMint(
@@ -135,24 +146,33 @@ contract MoonTest is Test, Moonbase {
         moon.setFactory(address(this));
         moon.addMinter(address(this));
 
+        uint256 teamRewards;
         uint256 totalSupply;
 
         for (uint256 i; i < buyers.length; ) {
             address buyer = buyers[i];
             address seller = sellers[i];
             uint256 amount = amounts[i];
+            uint256 userRewards = _calculateUserRewards(amount);
+            uint256 _teamRewards = amount - (userRewards * 2);
 
-            // Multiply by 2, since we're minting MOON for both buyer and seller
-            totalSupply += amount * 2;
+            // Only the amount minted for the protocol team affects the supply
+            teamRewards += _teamRewards;
+            totalSupply += _teamRewards;
 
             if (buyer != address(0) && seller != address(0) && amount != 0) {
-                assertEq(0, moon.balanceOf(buyer));
-                assertEq(0, moon.balanceOf(seller));
+                assertEq(0, moon.mintable(buyer));
+                assertEq(0, moon.mintable(seller));
 
-                moon.mint(buyer, seller, amount);
+                vm.expectEmit(true, true, false, true, address(moon));
 
-                assertEq(amount, moon.balanceOf(buyer));
-                assertEq(amount, moon.balanceOf(seller));
+                emit Mint(buyer, seller, amount);
+
+                uint256 _userRewards = moon.mint(buyer, seller, amount);
+
+                assertEq(userRewards, _userRewards);
+                assertEq(userRewards, moon.mintable(buyer));
+                assertEq(userRewards, moon.mintable(seller));
             }
 
             unchecked {
@@ -160,6 +180,7 @@ contract MoonTest is Test, Moonbase {
             }
         }
 
+        assertEq(teamRewards, moon.balanceOf(moon.owner()));
         assertEq(totalSupply, moon.totalSupply());
     }
 

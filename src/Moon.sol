@@ -12,13 +12,13 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
     using FixedPointMathLib for uint256;
 
-    uint128 public constant USER_SHARE_BASE = 10000;
+    uint256 public constant USER_SHARE_BASE = 10000;
 
     // Maximum percent share of MOON rewards that are reserved for users (i.e. buyers and sellers)
-    uint64 public MAX_USER_SHARE = 9000;
+    uint128 public MAX_USER_SHARE = 9000;
 
     // Used for calculating the mintable MOON amounts for user (default is 90% of all MOON)
-    uint64 public userShare = 9000;
+    uint128 public userShare = 9000;
 
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
@@ -46,7 +46,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // Tracks the amount of mintable MOON for each user
     mapping(address user => uint256 mintable) public mintable;
 
-    event SetUserShare(uint64 userShare);
+    event SetUserShare(uint128 userShare);
     event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
@@ -64,7 +64,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
-    function setUserShare(uint64 _userShare) external onlyOwner {
+    function setUserShare(uint128 _userShare) external onlyOwner {
         if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
 
         userShare = _userShare;
