@@ -150,10 +150,13 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Buy a single NFT
-     * @param  id  uint256  NFT ID
+     * @notice Buy a single NFT, earn MOON rewards
+     * @param  id           uint256  NFT ID
+     * @return userRewards  uint256  Reward amount for each user
      */
-    function buy(uint256 id) external payable nonReentrant {
+    function buy(
+        uint256 id
+    ) external payable nonReentrant returns (uint256 userRewards) {
         if (msg.value == 0) revert ZeroMsgValue();
 
         Listing memory listing = collectionListings[id];
@@ -176,8 +179,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
-        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(msg.sender, listing.seller, fees);
+        // Allocate MOON rewards for both the buyer and seller, equal to the fees paid
+        userRewards = moon.mint(msg.sender, listing.seller, fees);
 
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
@@ -208,7 +211,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 id,
         uint256 offer,
         uint256 buyerIndex
-    ) external nonReentrant {
+    ) external nonReentrant returns (uint256 userRewards) {
         address buyer = collectionOffers[offer][buyerIndex];
 
         // Revert if offer does not exist
@@ -228,8 +231,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
 
-        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(buyer, msg.sender, fees);
+        // Allocate MOON rewards for both the seller and buyer, equal to the fees paid
+        userRewards = moon.mint(msg.sender, buyer, fees);
 
         emit TakeOffer(buyer, msg.sender, id, offer);
     }
@@ -244,7 +247,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 id,
         uint256 offer,
         uint256 buyerIndex
-    ) external nonReentrant {
+    ) external nonReentrant returns (uint256 userRewards) {
         address buyer = collectionOffers[offer][buyerIndex];
 
         // Revert if offer does not exist
@@ -278,8 +281,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
             payable(msg.sender).safeTransferETH(offer - listing.price);
         }
 
-        // Mint MOON rewards for both the buyer and seller, equal to the fees paid
-        moon.mint(buyer, listing.seller, fees);
+        // Allocate MOON rewards for both the buyer and seller, equal to the fees paid
+        userRewards = moon.mint(buyer, listing.seller, fees);
 
         emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
     }

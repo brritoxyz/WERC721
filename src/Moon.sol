@@ -12,13 +12,13 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
     using FixedPointMathLib for uint256;
 
-    uint128 public constant FEE_BASE = 10000;
+    uint128 public constant USER_SHARE_BASE = 10000;
 
-    // Maximum MOON fee (20%) that can be earned by the protocol team
-    uint64 public MAX_FEE = 2000;
+    // Maximum percent share of MOON rewards that are reserved for users (i.e. buyers and sellers)
+    uint64 public MAX_USER_SHARE = 9000;
 
-    // Used for calculating the protocol team MOON amount (since they don't earn fees directly)
-    uint64 public moonFee = 2000;
+    // Used for calculating the mintable MOON amounts for user (default is 90% of all MOON)
+    uint64 public userShare = 9000;
 
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
@@ -43,10 +43,14 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // from minting MOON rewards
     mapping(address factory => mapping(address minter => bool)) public minters;
 
-    event SetMoonFee(uint64 moonFee);
+    // Tracks the amount of mintable MOON for each user
+    mapping(address user => uint256 mintable) public mintable;
+
+    event SetUserShare(uint64 userShare);
     event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
+    event Mint(address indexed buyer, address indexed seller, uint256 amount);
 
     error InvalidAddress();
     error InvalidAmount();
@@ -60,12 +64,12 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
-    function setMoonFee(uint64 _moonFee) external onlyOwner {
-        if (_moonFee > MAX_FEE) revert InvalidAmount();
+    function setUserShare(uint64 _userShare) external onlyOwner {
+        if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
 
-        moonFee = _moonFee;
+        userShare = _userShare;
 
-        emit SetMoonFee(_moonFee);
+        emit SetUserShare(_userShare);
     }
 
     function setSnapshotInterval(uint96 _snapshotInterval) external onlyOwner {
@@ -157,12 +161,17 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Mint MOON for a buyer and seller pair
-     * @param  buyer   address  Buyer address
-     * @param  seller  address  Seller address
-     * @param  amount  uint256  Mint amount
+     * @notice Increase the mintable MOON amounts for users, and mint MOON for team
+     * @param  buyer        address  Buyer address
+     * @param  seller       address  Seller address
+     * @param  amount       uint256  Total reward amount
+     * @return userRewards  uint256  Reward amount for each user
      */
-    function mint(address buyer, address seller, uint256 amount) external {
+    function mint(
+        address buyer,
+        address seller,
+        uint256 amount
+    ) external returns (uint256 userRewards) {
         if (!minters[factory][msg.sender]) revert NotMinter();
         if (buyer == address(0)) revert InvalidAddress();
         if (seller == address(0)) revert InvalidAddress();
@@ -170,17 +179,18 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         // TODO: Consider returning the function early if amount is less than 2
         if (amount == 0) revert InvalidAmount();
 
-        // Calculate the protocol team MOON amount
-        uint256 teamMoonAmount = amount.mulDivDown(moonFee, FEE_BASE);
+        // Calculate the total mintable MOON for each user. If the user share is 90%
+        // then each user will be able to mint 45% of the amount. Remainder goes to the team
+        userRewards = amount.mulDivDown(userShare, USER_SHARE_BASE) / 2;
 
-        // Calculate the buyer MOON amount - half of the remaining amount
-        uint256 buyerMoonAmount = (amount - teamMoonAmount) / 2;
+        // Increase the mintable amounts for users, who must later manually claim/mint MOON
+        mintable[buyer] += userRewards;
+        mintable[seller] += userRewards;
 
-        // TODO: Add _mint logic here directly for the purposes of saving gas
-        _mint(owner, teamMoonAmount);
-        _mint(buyer, buyerMoonAmount);
+        // Mint the remaining amount to the protocol team multisig - due to rounding, the
+        // value may be less than amount * (USER_SHARE_BASE - userShare) / USER_SHARE_BASE
+        _mint(owner, amount - (userRewards * 2));
 
-        // Mint the remaining amount to the seller
-        _mint(seller, amount - teamMoonAmount - buyerMoonAmount);
+        emit Mint(buyer, seller, amount);
     }
 }
