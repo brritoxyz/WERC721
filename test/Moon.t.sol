@@ -13,7 +13,7 @@ contract MoonTest is Test, Moonbase {
     event AddMinter(address indexed factory, address indexed minter);
 
     constructor() {
-        snapshotInterval = moon.SNAPSHOT_INTERVAL();
+        snapshotInterval = moon.snapshotInterval();
     }
 
     function _canSnapshot() private view returns (bool) {

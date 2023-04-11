@@ -7,18 +7,17 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
 
-// contract Moon is ERC20("Moonbase Token", "MOON", 18), Owned, ReentrancyGuard {
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
-
-    // MOON snapshots can be taken *at most* once per hour
-    uint256 public constant SNAPSHOT_INTERVAL = 1 hours;
 
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
     // Old factories will no longer be able to call `addMinter`, effectively
     // decomissioning them (since they can no longer deploy books that mint MOON)
     address public factory;
+
+    // Time interval (seconds) between snapshots
+    uint96 public snapshotInterval = 1 hours;
 
     // Last snapshot timestamp
     uint128 public lastSnapshotAt;
@@ -34,11 +33,13 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // from minting MOON rewards
     mapping(address factory => mapping(address minter => bool)) public minters;
 
+    event SetSnapshotInterval(address indexed caller, uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
 
-    error CannotSnapshot();
     error InvalidAddress();
+    error InvalidAmount();
+    error CannotSnapshot();
     error NotFactory();
     error NotMinter();
 
@@ -48,10 +49,18 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
+    function setSnapshotInterval(uint96 _snapshotInterval) external onlyOwner {
+        if (_snapshotInterval == 0) revert InvalidAmount();
+
+        snapshotInterval = _snapshotInterval;
+
+        emit SetSnapshotInterval(msg.sender, _snapshotInterval);
+    }
+
     function _snapshot() internal override returns (uint256) {
         // Only allow snapshots to be taken at set intervals (i.e. 1 hour)
         // Return the current snapshot ID either way
-        if (lastSnapshotAt + SNAPSHOT_INTERVAL > block.timestamp)
+        if (lastSnapshotAt + snapshotInterval > block.timestamp)
             return _currentSnapshotId;
 
         // Update the last snapshot timestamp
