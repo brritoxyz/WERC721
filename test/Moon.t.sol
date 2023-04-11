@@ -101,37 +101,10 @@ contract MoonTest is Test, Moonbase {
         vm.startPrank(address(0));
         vm.expectRevert(Moon.NotMinter.selector);
 
-        moon.mint(address(this), 1);
-    }
-
-    function testCannotOverloadedMintNotMinter() external {
-        vm.startPrank(address(0));
-        vm.expectRevert(Moon.NotMinter.selector);
-
         moon.mint(address(this), address(this), 1);
     }
 
     function testCannotMintFactoryChanged() external {
-        moon.setFactory(address(this));
-        moon.addMinter(address(this));
-
-        address to = address(this);
-        uint256 amount = 1;
-
-        assertEq(0, moon.balanceOf(to));
-
-        moon.mint(to, amount);
-
-        assertEq(amount, moon.balanceOf(to));
-
-        moon.setFactory(address(factory));
-
-        vm.expectRevert(Moon.NotMinter.selector);
-
-        moon.mint(address(this), 1);
-    }
-
-    function testCannotOverloadedMintFactoryChanged() external {
         moon.setFactory(address(this));
         moon.addMinter(address(this));
 
@@ -155,36 +128,6 @@ contract MoonTest is Test, Moonbase {
     }
 
     function testMint(
-        address[3] calldata to,
-        uint80[3] calldata amount
-    ) external {
-        moon.setFactory(address(this));
-        moon.addMinter(address(this));
-
-        uint256 totalSupply;
-
-        for (uint256 i; i < to.length; ) {
-            address _to = to[i];
-            uint256 _amount = amount[i];
-            totalSupply += _amount;
-
-            if (_to != address(0) && _amount != 0) {
-                assertEq(0, moon.balanceOf(_to));
-
-                moon.mint(_to, _amount);
-
-                assertEq(_amount, moon.balanceOf(_to));
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        assertEq(totalSupply, moon.totalSupply());
-    }
-
-    function testOverloadedMint(
         address[3] calldata buyers,
         address[3] calldata sellers,
         uint80[3] calldata amounts

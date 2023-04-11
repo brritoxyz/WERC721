@@ -138,17 +138,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Mint MOON
-     * @param  to      address  Recipient address
-     * @param  amount  uint256  Mint amount
-     */
-    function mint(address to, uint256 amount) external {
-        if (!minters[factory][msg.sender]) revert NotMinter();
-
-        _mint(to, amount);
-    }
-
-    /**
      * @notice Mint MOON for a buyer and seller pair
      * @param  buyer   address  Buyer address
      * @param  seller  address  Seller address
