@@ -18,7 +18,11 @@ contract MoonTest is Test, Moonbase {
     event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
-    event Mint(address indexed buyer, address indexed seller, uint256 amount);
+    event DepositFees(
+        address indexed buyer,
+        address indexed seller,
+        uint256 amount
+    );
 
     constructor() {
         snapshotInterval = moon.snapshotInterval();
@@ -110,17 +114,17 @@ contract MoonTest is Test, Moonbase {
     }
 
     /*//////////////////////////////////////////////////////////////
-                                mint
+                            depositFees
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotMintNotMinter() external {
+    function testCannotDepositFeesNotMinter() external {
         vm.startPrank(address(0));
         vm.expectRevert(Moon.NotMinter.selector);
 
-        moon.mint(address(this), address(this), 1);
+        moon.depositFees{value: 1}(address(this), address(this));
     }
 
-    function testCannotMintFactoryChanged() external {
+    function testCannotDepositFeesFactoryChanged() external {
         moon.setFactory(address(this));
         moon.addMinter(address(this));
 
@@ -128,17 +132,17 @@ contract MoonTest is Test, Moonbase {
         address seller = testAccounts[1];
         uint256 amount = 1;
 
-        // Minting functions until the factory changes
-        moon.mint(buyer, seller, amount);
+        // Functions properly until the factory changes
+        moon.depositFees{value: amount}(buyer, seller);
 
         moon.setFactory(address(factory));
 
         vm.expectRevert(Moon.NotMinter.selector);
 
-        moon.mint(buyer, seller, amount);
+        moon.depositFees{value: amount}(buyer, seller);
     }
 
-    function testMint(
+    function testDepositFees(
         address[3] calldata buyers,
         address[3] calldata sellers,
         uint80[3] calldata amounts
@@ -166,9 +170,12 @@ contract MoonTest is Test, Moonbase {
 
                 vm.expectEmit(true, true, false, true, address(moon));
 
-                emit Mint(buyer, seller, amount);
+                emit DepositFees(buyer, seller, amount);
 
-                uint256 _userRewards = moon.mint(buyer, seller, amount);
+                uint256 _userRewards = moon.depositFees{value: amount}(
+                    buyer,
+                    seller
+                );
 
                 assertEq(userRewards, _userRewards);
                 assertEq(userRewards, moon.mintable(buyer));

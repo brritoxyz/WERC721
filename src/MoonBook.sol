@@ -173,14 +173,12 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Calculate protocol fees
         uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
-        moon.depositFees{value: fees}();
-
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
-        // Allocate MOON rewards for both the buyer and seller, equal to the fees paid
-        userRewards = moon.mint(msg.sender, listing.seller, fees);
+        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
+        // and distribute MOON rewards to both the buyer and seller, equal to the fees paid
+        userRewards = moon.depositFees{value: fees}(msg.sender, listing.seller);
 
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
@@ -225,14 +223,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         uint256 fees = offer.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
-        moon.depositFees{value: fees}();
-
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
 
-        // Allocate MOON rewards for both the seller and buyer, equal to the fees paid
-        userRewards = moon.mint(msg.sender, buyer, fees);
+        userRewards = moon.depositFees{value: fees}(buyer, msg.sender);
 
         emit TakeOffer(buyer, msg.sender, id, offer);
     }
@@ -256,7 +250,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         Listing memory listing = collectionListings[id];
 
         // Revert if listing does not exist
-        if (listing.price == 0) revert InvalidListing();
+        if (listing.seller == address(0)) revert InvalidListing();
 
         // Revert if offer is less than listing price
         if (offer < listing.price) revert OfferTooLow();
@@ -270,9 +264,6 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
 
-        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
-        moon.depositFees{value: fees}();
-
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
@@ -281,8 +272,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
             payable(msg.sender).safeTransferETH(offer - listing.price);
         }
 
-        // Allocate MOON rewards for both the buyer and seller, equal to the fees paid
-        userRewards = moon.mint(buyer, listing.seller, fees);
+        userRewards = moon.depositFees{value: fees}(buyer, listing.seller);
 
         emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
     }

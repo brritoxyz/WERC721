@@ -50,7 +50,11 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     event SetSnapshotInterval(uint96 snapshotInterval);
     event SetFactory(address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
-    event Mint(address indexed buyer, address indexed seller, uint256 amount);
+    event DepositFees(
+        address indexed buyer,
+        address indexed seller,
+        uint256 amount
+    );
 
     error InvalidAddress();
     error InvalidAmount();
@@ -112,15 +116,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Deposit ETH fees
-     */
-    function depositFees() external payable {
-        // Track fees accrued since the last snapshot, which will be claimable
-        // by MOON holders after the next snapshot is taken
-        feesSinceLastSnapshot += msg.value.safeCastTo128();
-    }
-
-    /**
      * @notice Set factory
      * @param  _factory  address  MoonBookFactory contract address
      */
@@ -146,42 +141,29 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     }
 
     /**
-     * @notice Overridden _mint with the Transfer event emission removed (to reduce gas)
-     * @param  to      address  Recipient address
-     * @param  amount  uint256  Mint amount
-     */
-    function _mint(address to, uint256 amount) internal override {
-        totalSupply += amount;
-
-        // Cannot overflow because the sum of all user
-        // balances can't exceed the max uint256 value.
-        unchecked {
-            balanceOf[to] += amount;
-        }
-    }
-
-    /**
-     * @notice Increase the mintable MOON amounts for users, and mint MOON for team
+     * @notice Deposit exchange fees, and distribute MOON rewards
      * @param  buyer        address  Buyer address
      * @param  seller       address  Seller address
-     * @param  amount       uint256  Total reward amount
      * @return userRewards  uint256  Reward amount for each user
      */
-    function mint(
+    function depositFees(
         address buyer,
-        address seller,
-        uint256 amount
-    ) external returns (uint256 userRewards) {
+        address seller
+    ) external payable returns (uint256 userRewards) {
         if (!minters[factory][msg.sender]) revert NotMinter();
         if (buyer == address(0)) revert InvalidAddress();
         if (seller == address(0)) revert InvalidAddress();
 
-        // TODO: Consider returning the function early if amount is less than 2
-        if (amount == 0) revert InvalidAmount();
+        // No fees, no MOON - return function early
+        if (msg.value == 0) return 0;
+
+        // Track fees accrued since the last snapshot, which will be claimable
+        // by MOON holders after the next snapshot is taken
+        feesSinceLastSnapshot += msg.value.safeCastTo128();
 
         // Calculate the total mintable MOON for each user. If the user share is 90%
         // then each user will be able to mint 45% of the amount. Remainder goes to the team
-        userRewards = amount.mulDivDown(userShare, USER_SHARE_BASE) / 2;
+        userRewards = msg.value.mulDivDown(userShare, USER_SHARE_BASE) / 2;
 
         // Increase the mintable amounts for users, who must later manually claim/mint MOON
         mintable[buyer] += userRewards;
@@ -189,8 +171,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
         // Mint the remaining amount to the protocol team multisig - due to rounding, the
         // value may be less than amount * (USER_SHARE_BASE - userShare) / USER_SHARE_BASE
-        _mint(owner, amount - (userRewards * 2));
+        _mint(owner, msg.value - (userRewards * 2));
 
-        emit Mint(buyer, seller, amount);
+        emit DepositFees(buyer, seller, msg.value);
     }
 }
