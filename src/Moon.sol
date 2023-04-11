@@ -21,6 +21,9 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // Min MOON allocated to users is 50%
     uint128 public constant MIN_USER_SHARE = 5_000;
 
+    // Max time interval between snapshots
+    uint256 public constant MAX_SNAPSHOT_INTERVAL = 24 hours;
+
     // Used for calculating the mintable MOON amounts for user (default is 90% of all MOON)
     uint96 public userShare = 9_000;
 
@@ -83,6 +86,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
     function setSnapshotInterval(uint64 _snapshotInterval) external onlyOwner {
         if (_snapshotInterval == 0) revert InvalidAmount();
+        if (_snapshotInterval > MAX_SNAPSHOT_INTERVAL) revert InvalidAmount();
 
         snapshotInterval = _snapshotInterval;
 

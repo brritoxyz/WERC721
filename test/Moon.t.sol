@@ -10,11 +10,13 @@ import {Moonbase} from "test/Moonbase.sol";
 contract MoonTest is Test, Moonbase {
     using FixedPointMathLib for uint256;
 
-    uint256 private immutable snapshotInterval;
     uint256 private immutable userShareBase;
     uint128 private immutable maxUserShare;
     uint128 private immutable minUserShare;
+    uint256 private immutable maxSnapshotInterval;
     uint128 private immutable defaultUserShare;
+    uint256 private immutable defaultSnapshotInterval;
+    address private immutable moonOwner;
 
     event SetUserShare(uint96 userShare);
     event SetSnapshotInterval(uint64 snapshotInterval);
@@ -27,15 +29,18 @@ contract MoonTest is Test, Moonbase {
     );
 
     constructor() {
-        snapshotInterval = moon.snapshotInterval();
         userShareBase = moon.USER_SHARE_BASE();
         maxUserShare = moon.MAX_USER_SHARE();
         minUserShare = moon.MIN_USER_SHARE();
+        maxSnapshotInterval = moon.MAX_SNAPSHOT_INTERVAL();
         defaultUserShare = moon.userShare();
+        defaultSnapshotInterval = moon.snapshotInterval();
+        moonOwner = moon.owner();
     }
 
     function _canSnapshot() private view returns (bool) {
-        return moon.lastSnapshotAt() + snapshotInterval <= block.timestamp;
+        return
+            moon.lastSnapshotAt() + defaultSnapshotInterval <= block.timestamp;
     }
 
     function _calculateUserRewards(
@@ -56,7 +61,7 @@ contract MoonTest is Test, Moonbase {
     }
 
     function testCannotSetUserShareAboveMax() external {
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), moonOwner);
 
         uint96 aboveMax = uint96(maxUserShare) + 1;
 
@@ -66,7 +71,7 @@ contract MoonTest is Test, Moonbase {
     }
 
     function testCannotSetUserShareBelowMin() external {
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), moonOwner);
 
         uint96 belowMin = uint96(minUserShare) - 1;
 
@@ -76,11 +81,11 @@ contract MoonTest is Test, Moonbase {
     }
 
     function testSetUserShare(uint96 _userShare) external {
-        vm.assume(_userShare < maxUserShare);
-        vm.assume(_userShare > minUserShare);
+        vm.assume(_userShare <= maxUserShare);
+        vm.assume(_userShare >= minUserShare);
         vm.assume(_userShare != defaultUserShare);
 
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), moonOwner);
 
         vm.expectEmit(false, false, false, true, address(moon));
 
@@ -89,6 +94,51 @@ contract MoonTest is Test, Moonbase {
         moon.setUserShare(_userShare);
 
         assertEq(_userShare, moon.userShare());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            setSnapshotInterval
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetSnapshotIntervalNotOwner() external {
+        vm.prank(address(0));
+        vm.expectRevert(NOT_OWNER_ERROR);
+
+        moon.setSnapshotInterval(1 hours);
+    }
+
+    function testCannotSetSnapshotIntervalZero() external {
+        assertEq(address(this), moonOwner);
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.setSnapshotInterval(0);
+    }
+
+    function testCannotSetSnapshotIntervalAboveMax() external {
+        assertEq(address(this), moonOwner);
+
+        uint64 aboveMax = uint64(maxSnapshotInterval) + 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.setSnapshotInterval(aboveMax);
+    }
+
+    function testSetSnapshotInterval(uint64 _snapshotInterval) external {
+        vm.assume(_snapshotInterval != 0);
+        vm.assume(_snapshotInterval <= maxSnapshotInterval);
+        vm.assume(_snapshotInterval != defaultSnapshotInterval);
+
+        assertEq(address(this), moonOwner);
+
+        vm.expectEmit(false, false, false, true, address(moon));
+
+        emit SetSnapshotInterval(_snapshotInterval);
+
+        moon.setSnapshotInterval(_snapshotInterval);
+
+        assertEq(_snapshotInterval, moon.snapshotInterval());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -103,7 +153,7 @@ contract MoonTest is Test, Moonbase {
     }
 
     function testCannotSetFactoryInvalidAddress() external {
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), moonOwner);
 
         vm.expectRevert(Moon.InvalidAddress.selector);
 
@@ -114,7 +164,7 @@ contract MoonTest is Test, Moonbase {
         vm.assume(_factory != address(0));
         vm.assume(_factory != address(factory));
 
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), moonOwner);
         assertFalse(_factory == moon.factory());
 
         vm.expectEmit(true, false, false, true, address(moon));
@@ -238,7 +288,7 @@ contract MoonTest is Test, Moonbase {
             }
         }
 
-        assertEq(teamRewards, moon.balanceOf(moon.owner()));
+        assertEq(teamRewards, moon.balanceOf(moonOwner));
         assertEq(totalSupply, moon.totalSupply());
     }
 
@@ -271,7 +321,7 @@ contract MoonTest is Test, Moonbase {
         uint256 snapshotId = moon.getSnapshotId();
 
         for (uint256 i; i < iterations; ) {
-            vm.warp(block.timestamp + snapshotInterval);
+            vm.warp(block.timestamp + defaultSnapshotInterval);
 
             assertTrue(_canSnapshot());
 
