@@ -16,5 +16,5 @@ MoonTest:testDepositFees(address[3],address[3],uint80[3]) (runs: 8, μ: 302198, 
 MoonTest:testSetFactory(address) (runs: 8, μ: 19099, ~: 19099)
 MoonTest:testSetSnapshotInterval(uint64) (runs: 8, μ: 18145, ~: 18145)
 MoonTest:testSetUserShare(uint96) (runs: 8, μ: 18392, ~: 18392)
-MoonTest:testSnapshot(uint8) (runs: 8, μ: 349452, ~: 224368)
-MoonTest:testSnapshotWithFeesBalancesSupply() (gas: 187893)
+MoonTest:testSnapshot(uint8) (runs: 8, μ: 884613, ~: 1105913)
+MoonTest:testSnapshotWithFeesBalancesSupply() (gas: 640128)

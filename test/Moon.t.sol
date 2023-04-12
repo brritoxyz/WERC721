@@ -67,6 +67,8 @@ contract MoonTest is Test, Moonbase {
         assertEq(ethBalanceBefore + amount, address(moon).balance);
         assertEq(feesBefore + amount, moon.feesSinceLastSnapshot());
 
+        uint256 buyerBalanceBefore = moon.balanceOf(buyer);
+        uint256 sellerBalanceBefore = moon.balanceOf(seller);
         uint256 buyerMintable = moon.mintable(buyer);
         uint256 sellerMintable = moon.mintable(seller);
 
@@ -80,8 +82,8 @@ contract MoonTest is Test, Moonbase {
 
         assertEq(0, moon.mintable(buyer));
         assertEq(0, moon.mintable(seller));
-        assertEq(buyerMintable, moon.balanceOf(buyer));
-        assertEq(sellerMintable, moon.balanceOf(seller));
+        assertEq(buyerBalanceBefore + buyerMintable, moon.balanceOf(buyer));
+        assertEq(sellerBalanceBefore + sellerMintable, moon.balanceOf(seller));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -381,5 +383,43 @@ contract MoonTest is Test, Moonbase {
                 ++i;
             }
         }
+    }
+
+    function testSnapshotWithFeesBalancesSupply() external {
+        address buyer = testAccounts[0];
+        address seller = testAccounts[1];
+
+        _depositFeesAndMint(buyer, seller, 1 ether);
+
+        assertEq(0, moon.getSnapshotId());
+        assertEq(0, moon.lastSnapshotAt());
+
+        uint256 buyerBalanceBeforeSnapshot = moon.balanceOf(buyer);
+        uint256 sellerBalanceBeforeSnapshot = moon.balanceOf(seller);
+        uint256 ownerBalanceBeforeSnapshot = moon.balanceOf(moonOwner);
+        uint256 totalSupplyBeforeSnapshot = moon.totalSupply();
+        uint256 feesBeforeSnapshot = moon.feesSinceLastSnapshot();
+        uint256 snapshotId = moon.snapshot();
+
+        // Should now be zero
+        assertEq(0, moon.feesSinceLastSnapshot());
+
+        // Affect balances, supply, and fees, to verify snapshot unchanged
+        _depositFeesAndMint(buyer, seller, 1 ether);
+
+        assertEq(
+            buyerBalanceBeforeSnapshot,
+            moon.balanceOfAt(buyer, snapshotId)
+        );
+        assertEq(
+            sellerBalanceBeforeSnapshot,
+            moon.balanceOfAt(seller, snapshotId)
+        );
+        assertEq(
+            ownerBalanceBeforeSnapshot,
+            moon.balanceOfAt(moonOwner, snapshotId)
+        );
+        assertEq(totalSupplyBeforeSnapshot, moon.totalSupplyAt(snapshotId));
+        assertEq(feesBeforeSnapshot, moon.feeSnapshots(snapshotId));
     }
 }
