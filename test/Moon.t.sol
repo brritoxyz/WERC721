@@ -49,6 +49,41 @@ contract MoonTest is Test, Moonbase {
         return amount.mulDivDown(moon.userShare(), userShareBase) / 2;
     }
 
+    function _depositFeesAndMint(
+        address buyer,
+        address seller,
+        uint256 amount
+    ) private {
+        if (address(this) != moon.factory()) {
+            moon.setFactory(address(this));
+            moon.addMinter(address(this));
+        }
+
+        uint256 ethBalanceBefore = address(moon).balance;
+        uint256 feesBefore = moon.feesSinceLastSnapshot();
+
+        moon.depositFees{value: amount}(buyer, seller);
+
+        assertEq(ethBalanceBefore + amount, address(moon).balance);
+        assertEq(feesBefore + amount, moon.feesSinceLastSnapshot());
+
+        uint256 buyerMintable = moon.mintable(buyer);
+        uint256 sellerMintable = moon.mintable(seller);
+
+        vm.prank(buyer);
+
+        moon.mint(buyer);
+
+        vm.prank(seller);
+
+        moon.mint(seller);
+
+        assertEq(0, moon.mintable(buyer));
+        assertEq(0, moon.mintable(seller));
+        assertEq(buyerMintable, moon.balanceOf(buyer));
+        assertEq(sellerMintable, moon.balanceOf(seller));
+    }
+
     /*//////////////////////////////////////////////////////////////
                             setUserShare
     //////////////////////////////////////////////////////////////*/
@@ -253,6 +288,8 @@ contract MoonTest is Test, Moonbase {
 
         uint256 teamRewards;
         uint256 totalSupply;
+        uint256 totalMintable;
+        uint256 totalAmount;
 
         for (uint256 i; i < buyers.length; ) {
             address buyer = buyers[i];
@@ -264,6 +301,8 @@ contract MoonTest is Test, Moonbase {
             // Only the amount minted for the protocol team affects the supply
             teamRewards += _teamRewards;
             totalSupply += _teamRewards;
+            totalMintable += userRewards * 2;
+            totalAmount += amount;
 
             if (buyer != address(0) && seller != address(0) && amount != 0) {
                 assertEq(0, moon.mintable(buyer));
@@ -290,6 +329,9 @@ contract MoonTest is Test, Moonbase {
 
         assertEq(teamRewards, moon.balanceOf(moonOwner));
         assertEq(totalSupply, moon.totalSupply());
+
+        // 1 MOON (mintable and minted) = 1 ETH
+        assertEq(totalMintable + teamRewards, totalAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -301,34 +343,40 @@ contract MoonTest is Test, Moonbase {
 
         assertTrue(_canSnapshot());
 
-        moon.snapshot();
+        uint256 snapshotId = moon.snapshot();
 
-        assertEq(1, moon.getSnapshotId());
+        assertEq(1, snapshotId);
 
         lastSnapshotAt = moon.lastSnapshotAt();
 
         assertFalse(_canSnapshot());
 
-        moon.snapshot();
+        snapshotId = moon.snapshot();
 
         // Snapshot ID remains unchanged
-        assertEq(1, moon.getSnapshotId());
+        assertEq(1, snapshotId);
     }
 
     function testSnapshot(uint8 iterations) external {
         vm.assume(iterations != 0);
 
-        uint256 snapshotId = moon.getSnapshotId();
+        // Initialize with a snapshot
+        uint256 snapshotId = moon.snapshot();
 
         for (uint256 i; i < iterations; ) {
+            // Snapshot cannot be taken until adequate time elapses
+            assertFalse(_canSnapshot());
+
             vm.warp(block.timestamp + defaultSnapshotInterval);
 
+            // Snapshot can now be taken
             assertTrue(_canSnapshot());
 
-            moon.snapshot();
+            uint256 _snapshotId = moon.snapshot();
 
             unchecked {
-                assertEq(++snapshotId, moon.getSnapshotId());
+                // Increment local snapshot ID tracker and compare
+                assertEq(++snapshotId, _snapshotId);
 
                 ++i;
             }
