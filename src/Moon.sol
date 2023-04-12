@@ -65,7 +65,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
     error InvalidAddress();
     error InvalidAmount();
-    error CannotSnapshot();
     error NotFactory();
     error NotMinter();
 
@@ -73,24 +72,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         address _owner
     ) Owned(_owner) ERC20("Moonbase Token", "MOON", 18) {
         if (_owner == address(0)) revert InvalidAddress();
-    }
-
-    function setUserShare(uint96 _userShare) external onlyOwner {
-        if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
-        if (_userShare < MIN_USER_SHARE) revert InvalidAmount();
-
-        userShare = _userShare;
-
-        emit SetUserShare(_userShare);
-    }
-
-    function setSnapshotInterval(uint64 _snapshotInterval) external onlyOwner {
-        if (_snapshotInterval == 0) revert InvalidAmount();
-        if (_snapshotInterval > MAX_SNAPSHOT_INTERVAL) revert InvalidAmount();
-
-        snapshotInterval = _snapshotInterval;
-
-        emit SetSnapshotInterval(_snapshotInterval);
     }
 
     function _snapshot() internal override returns (uint256) {
@@ -116,12 +97,26 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         return currentId;
     }
 
-    function getSnapshotId() external view returns (uint256) {
-        return _currentSnapshotId;
+    /*//////////////////////////////////////////////////////////////
+                            PERMISSIONED - OWNER
+    //////////////////////////////////////////////////////////////*/
+
+    function setUserShare(uint96 _userShare) external onlyOwner {
+        if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
+        if (_userShare < MIN_USER_SHARE) revert InvalidAmount();
+
+        userShare = _userShare;
+
+        emit SetUserShare(_userShare);
     }
 
-    function snapshot() external returns (uint256) {
-        return _snapshot();
+    function setSnapshotInterval(uint64 _snapshotInterval) external onlyOwner {
+        if (_snapshotInterval == 0) revert InvalidAmount();
+        if (_snapshotInterval > MAX_SNAPSHOT_INTERVAL) revert InvalidAmount();
+
+        snapshotInterval = _snapshotInterval;
+
+        emit SetSnapshotInterval(_snapshotInterval);
     }
 
     /**
@@ -136,6 +131,10 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         emit SetFactory(_factory);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        PERMISSIONED - FACTORY
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Add new minter
      * @param  minter  address  Minter address
@@ -148,6 +147,10 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
         emit AddMinter(factory, minter);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        PERMISSIONED - MINTER
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Deposit exchange fees, and distribute MOON rewards
@@ -183,5 +186,13 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         _mint(owner, msg.value - (userRewards * 2));
 
         emit DepositFees(buyer, seller, msg.value);
+    }
+
+    function getSnapshotId() external view returns (uint256) {
+        return _currentSnapshotId;
+    }
+
+    function snapshot() external returns (uint256) {
+        return _snapshot();
     }
 }
