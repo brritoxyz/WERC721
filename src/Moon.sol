@@ -166,6 +166,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (buyer == address(0)) revert InvalidAddress();
         if (seller == address(0)) revert InvalidAddress();
 
+        // Take a snapshot, if necessary, to ensure fees are slotted correctly
+
         // No fees, no MOON - return function early
         if (msg.value == 0) return 0;
 
@@ -186,6 +188,27 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         _mint(owner, msg.value - (userRewards * 2));
 
         emit DepositFees(buyer, seller, msg.value);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                    mint
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Mint MOON
+     * @param  recipient  address  MOON recipient address
+     */
+    function mint(address recipient) external nonReentrant {
+        if (recipient == address(0)) revert InvalidAddress();
+
+        // Amount is based on the mintable amount of msg.sender
+        uint256 amount = mintable[msg.sender];
+
+        // Set the mintable amount to 0, so that the user cannot mint again
+        mintable[msg.sender] = 0;
+
+        // Mint MOON for the recipient
+        _mint(recipient, amount);
     }
 
     function getSnapshotId() external view returns (uint256) {
