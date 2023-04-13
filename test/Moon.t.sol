@@ -27,6 +27,7 @@ contract MoonTest is Test, Moonbase {
         address indexed seller,
         uint256 amount
     );
+    event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
         userShareBase = moon.USER_SHARE_BASE();
@@ -334,6 +335,65 @@ contract MoonTest is Test, Moonbase {
 
         // 1 MOON (mintable and minted) = 1 ETH
         assertEq(totalMintable + teamRewards, totalAmount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                mint
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotMintInvalidAddress() external {
+        vm.expectRevert(Moon.InvalidAddress.selector);
+
+        moon.mint(address(0));
+    }
+
+    function testCannotMintInvalidAmount() external {
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.mint(address(this));
+    }
+
+    function testMint(
+        uint80 fees,
+        address buyer,
+        address seller,
+        address buyerMintRecipient,
+        address sellerMintRecipient
+    ) external {
+        vm.assume(fees != 0);
+        vm.assume(buyer != address(0));
+        vm.assume(seller != address(0));
+        vm.assume(buyerMintRecipient != address(0));
+        vm.assume(sellerMintRecipient != address(0));
+
+        moon.setFactory(address(this));
+        moon.addMinter(address(this));
+
+        uint256 userRewards = _calculateUserRewards(fees);
+
+        moon.depositFees{value: fees}(buyer, seller);
+
+        assertEq(userRewards, moon.mintable(buyer));
+        assertEq(userRewards, moon.mintable(seller));
+
+        vm.prank(buyer);
+        vm.expectEmit(true, true, false, true, address(moon));
+
+        emit Transfer(address(0), buyerMintRecipient, userRewards);
+
+        moon.mint(buyerMintRecipient);
+
+        vm.prank(seller);
+        vm.expectEmit(true, true, false, true, address(moon));
+
+        emit Transfer(address(0), sellerMintRecipient, userRewards);
+
+        moon.mint(sellerMintRecipient);
+
+        assertEq(0, moon.mintable(buyer));
+        assertEq(0, moon.mintable(seller));
+        assertEq(userRewards, moon.balanceOf(buyerMintRecipient));
+        assertEq(userRewards, moon.balanceOf(sellerMintRecipient));
     }
 
     /*//////////////////////////////////////////////////////////////

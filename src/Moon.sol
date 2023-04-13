@@ -204,6 +204,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         // Amount is based on the mintable amount of msg.sender
         uint256 amount = mintable[msg.sender];
 
+        if (amount == 0) revert InvalidAmount();
+
         // Set the mintable amount to 0, so that the user cannot mint again
         mintable[msg.sender] = 0;
 
