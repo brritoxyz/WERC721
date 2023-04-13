@@ -6,4 +6,4 @@ libs = ['lib']
 verbosity = 3
 
 [fuzz]
-runs = 8
+runs = 100

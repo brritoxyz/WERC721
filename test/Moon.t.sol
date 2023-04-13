@@ -73,18 +73,26 @@ contract MoonTest is Test, Moonbase {
         uint256 buyerMintable = moon.mintable(buyer);
         uint256 sellerMintable = moon.mintable(seller);
 
-        vm.prank(buyer);
+        if (buyerMintable != 0) {
+            vm.prank(buyer);
 
-        moon.mint(buyer);
+            moon.mint(buyer);
 
-        vm.prank(seller);
+            assertEq(0, moon.mintable(buyer));
+            assertEq(buyerBalanceBefore + buyerMintable, moon.balanceOf(buyer));
+        }
 
-        moon.mint(seller);
+        if (sellerMintable != 0) {
+            vm.prank(seller);
 
-        assertEq(0, moon.mintable(buyer));
-        assertEq(0, moon.mintable(seller));
-        assertEq(buyerBalanceBefore + buyerMintable, moon.balanceOf(buyer));
-        assertEq(sellerBalanceBefore + sellerMintable, moon.balanceOf(seller));
+            moon.mint(seller);
+
+            assertEq(0, moon.mintable(seller));
+            assertEq(
+                sellerBalanceBefore + sellerMintable,
+                moon.balanceOf(seller)
+            );
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -370,6 +378,10 @@ contract MoonTest is Test, Moonbase {
         moon.addMinter(address(this));
 
         uint256 userRewards = _calculateUserRewards(fees);
+
+        // When fees are LTE to 2e-18 (0.000000000000000002) rewards will be 0,
+        // due to Solidity rounding down decimal numbers, causing mint to revert
+        if (userRewards == 0) return;
 
         moon.depositFees{value: fees}(buyer, seller);
 
