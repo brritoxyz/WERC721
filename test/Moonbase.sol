@@ -19,6 +19,16 @@ contract Moonbase is Test {
         0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
         0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
     ];
+    address[3] internal testBuyers = [
+        address(1e18),
+        address(2e18),
+        address(3e18)
+    ];
+    address[3] internal testSellers = [
+        address(4e18),
+        address(5e18),
+        address(6e18)
+    ];
 
     constructor() {
         MoonDeployment deployment = new MoonDeployment(address(this));

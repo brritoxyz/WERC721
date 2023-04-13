@@ -289,11 +289,7 @@ contract MoonTest is Test, Moonbase {
         moon.depositFees{value: amount}(buyer, seller);
     }
 
-    function testDepositFees(
-        address[3] calldata buyers,
-        address[3] calldata sellers,
-        uint80[3] calldata amounts
-    ) external {
+    function testDepositFees(uint80[3] calldata amounts) external {
         moon.setFactory(address(this));
         moon.addMinter(address(this));
 
@@ -302,9 +298,9 @@ contract MoonTest is Test, Moonbase {
         uint256 totalMintable;
         uint256 totalAmount;
 
-        for (uint256 i; i < buyers.length; ) {
-            address buyer = buyers[i];
-            address seller = sellers[i];
+        for (uint256 i; i < testBuyers.length; ) {
+            address buyer = testBuyers[i];
+            address seller = testSellers[i];
             uint256 amount = amounts[i];
             uint256 userRewards = _calculateUserRewards(amount);
             uint256 _teamRewards = amount - (userRewards * 2);

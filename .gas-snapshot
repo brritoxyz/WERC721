@@ -1,1 +1,1 @@
-MoonTest:testMint(uint80,address,address,address,address) (runs: 100, μ: 173179, ~: 189266)
+MoonTest:testDepositFees(uint80[3]) (runs: 100, μ: 294373, ~: 313992)
