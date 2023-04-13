@@ -74,6 +74,10 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
+    /*//////////////////////////////////////////////////////////////
+                                INTERNAL
+    //////////////////////////////////////////////////////////////*/
+
     function _snapshot() internal override returns (uint256) {
         // Only allow snapshots to be taken at set intervals (i.e. 1 hour)
         // Return the current snapshot ID either way
@@ -96,10 +100,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
         return currentId;
     }
-
-    /*//////////////////////////////////////////////////////////////
-                            PERMISSIONED - OWNER
-    //////////////////////////////////////////////////////////////*/
 
     function setUserShare(uint96 _userShare) external onlyOwner {
         if (_userShare > MAX_USER_SHARE) revert InvalidAmount();
@@ -131,10 +131,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         emit SetFactory(_factory);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                        PERMISSIONED - FACTORY
-    //////////////////////////////////////////////////////////////*/
-
     /**
      * @notice Add new minter
      * @param  minter  address  Minter address
@@ -147,10 +143,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
         emit AddMinter(factory, minter);
     }
-
-    /*//////////////////////////////////////////////////////////////
-                        PERMISSIONED - MINTER
-    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Deposit exchange fees, and distribute MOON rewards
@@ -183,16 +175,12 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         mintable[buyer] += userRewards;
         mintable[seller] += userRewards;
 
-        // Mint the remaining amount to the protocol team multisig - due to rounding, the
-        // value may be less than amount * (USER_SHARE_BASE - userShare) / USER_SHARE_BASE
+        // Mint the remaining amount to the protocol team multisig - due to rounding, the value
+        // may be less by 1 than amount * (USER_SHARE_BASE - userShare) / USER_SHARE_BASE
         _mint(owner, msg.value - (userRewards * 2));
 
         emit DepositFees(buyer, seller, msg.value);
     }
-
-    /*//////////////////////////////////////////////////////////////
-                                    mint
-    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Mint MOON
@@ -213,11 +201,11 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         _mint(recipient, amount);
     }
 
-    function getSnapshotId() external view returns (uint256) {
-        return _currentSnapshotId;
-    }
-
     function snapshot() external returns (uint256) {
         return _snapshot();
+    }
+
+    function getSnapshotId() external view returns (uint256) {
+        return _currentSnapshotId;
     }
 }
