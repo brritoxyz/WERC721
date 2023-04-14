@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {ERC20Snapshot} from "src/lib/ERC20Snapshot.sol";
-import {ERC20} from "src/lib/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {ERC20Snapshot} from "src/lib/ERC20Snapshot.sol";
+import {ERC20} from "src/lib/ERC20.sol";
 
 contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     using SafeCastLib for uint256;
     using FixedPointMathLib for uint256;
+    using SafeTransferLib for address payable;
 
     // Fixed parameters for calculating user MOON reward amounts
     uint256 public constant USER_SHARE_BASE = 10_000;
@@ -45,6 +47,9 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     // Snapshot IDs mapped to fees accrued at that snapshot
     mapping(uint256 => uint256) public feeSnapshots;
 
+    // User fee claims (user => snapshot ID => claim status)
+    mapping(address user => mapping(uint256 => bool)) public claimedFees;
+
     // Mapping of factory MoonBook minters - by having factory as a key, we can
     // prevent deprecated MoonBooks (e.g. MoonBooks deployed by deprecated factories)
     // from minting MOON rewards
@@ -62,11 +67,21 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         address indexed seller,
         uint256 amount
     );
+    event ClaimFees(
+        address indexed caller,
+        uint256 indexed snapshotId,
+        address indexed recipient,
+        uint256 fees,
+        uint256 balance,
+        uint256 totalSupply
+    );
 
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidSnapshot();
     error NotFactory();
     error NotMinter();
+    error AlreadyClaimed();
 
     constructor(
         address _owner
@@ -203,6 +218,44 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
 
     function snapshot() external returns (uint256) {
         return _snapshot();
+    }
+
+    function claimFees(
+        uint256 snapshotId,
+        address payable recipient
+    ) external nonReentrant {
+        // Valid snapshot IDs are 1+
+        if (snapshotId == 0) revert InvalidSnapshot();
+
+        // Cannot claim fees for snapshots that haven't been taken
+        if (snapshotId > _currentSnapshotId) revert InvalidSnapshot();
+
+        if (recipient == address(0)) revert InvalidAddress();
+
+        // Cannot claim fees twice
+        if (claimedFees[msg.sender][snapshotId]) revert AlreadyClaimed();
+
+        // Mark fees as claimed
+        claimedFees[msg.sender][snapshotId] = true;
+
+        uint256 snapshotFees = feeSnapshots[snapshotId];
+        uint256 snapshotBalance = balanceOfAt(msg.sender, snapshotId);
+        uint256 snapshotTotalSupply = totalSupplyAt(snapshotId);
+
+        // Transfer recipient an amount of ETH proportional to msg.sender's
+        // share of the total supply at the time of the snapshot
+        recipient.safeTransferETH(
+            snapshotFees.mulDivDown(snapshotBalance, snapshotTotalSupply)
+        );
+
+        emit ClaimFees(
+            msg.sender,
+            snapshotId,
+            recipient,
+            snapshotFees,
+            snapshotBalance,
+            snapshotTotalSupply
+        );
     }
 
     function getSnapshotId() external view returns (uint256) {
