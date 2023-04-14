@@ -408,12 +408,14 @@ contract MoonTest is Test, Moonbase {
                                 snapshot
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotSnapshotTooSoon() external {
+    function testCannotSnapshotTooEarly() external {
         uint256 lastSnapshotAt = moon.lastSnapshotAt();
 
         assertTrue(_canSnapshot());
 
-        uint256 snapshotId = moon.snapshot();
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
 
         assertEq(1, snapshotId);
 
@@ -421,17 +423,18 @@ contract MoonTest is Test, Moonbase {
 
         assertFalse(_canSnapshot());
 
-        snapshotId = moon.snapshot();
+        vm.expectRevert(Moon.TooEarly.selector);
 
-        // Snapshot ID remains unchanged
-        assertEq(1, snapshotId);
+        moon.snapshot();
     }
 
     function testSnapshot(uint8 iterations) external {
         vm.assume(iterations != 0);
 
         // Initialize with a snapshot
-        uint256 snapshotId = moon.snapshot();
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
 
         for (uint256 i; i < iterations; ) {
             // Snapshot cannot be taken until adequate time elapses
@@ -442,7 +445,9 @@ contract MoonTest is Test, Moonbase {
             // Snapshot can now be taken
             assertTrue(_canSnapshot());
 
-            uint256 _snapshotId = moon.snapshot();
+            moon.snapshot();
+
+            uint256 _snapshotId = moon.getSnapshotId();
 
             unchecked {
                 // Increment local snapshot ID tracker and compare
@@ -467,7 +472,10 @@ contract MoonTest is Test, Moonbase {
         uint256 ownerBalanceBeforeSnapshot = moon.balanceOf(moonOwner);
         uint256 totalSupplyBeforeSnapshot = moon.totalSupply();
         uint256 feesBeforeSnapshot = moon.feesSinceLastSnapshot();
-        uint256 snapshotId = moon.snapshot();
+
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
 
         // Should now be zero
         assertEq(0, moon.feesSinceLastSnapshot());

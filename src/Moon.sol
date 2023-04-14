@@ -82,6 +82,7 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
     error NotFactory();
     error NotMinter();
     error AlreadyClaimed();
+    error TooEarly();
 
     constructor(
         address _owner
@@ -89,31 +90,8 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         if (_owner == address(0)) revert InvalidAddress();
     }
 
-    /*//////////////////////////////////////////////////////////////
-                                INTERNAL
-    //////////////////////////////////////////////////////////////*/
-
-    function _snapshot() internal override returns (uint256) {
-        // Only allow snapshots to be taken at set intervals (i.e. 1 hour)
-        // Return the current snapshot ID either way
-        if (lastSnapshotAt + snapshotInterval > block.timestamp)
-            return _currentSnapshotId;
-
-        // Update the last snapshot timestamp
-        lastSnapshotAt = block.timestamp.safeCastTo64();
-
-        // Increment the current snapshot ID
-        uint256 currentId = ++_currentSnapshotId;
-
-        // Store the accrued fee amount to the current snapshot ID
-        feeSnapshots[currentId] = feesSinceLastSnapshot;
-
-        // Reset the fee accrual tracker variable to 0 for the next snapshot
-        feesSinceLastSnapshot = 0;
-
-        emit Snapshot(currentId);
-
-        return currentId;
+    function getSnapshotId() external view returns (uint256) {
+        return _currentSnapshotId;
     }
 
     function setUserShare(uint96 _userShare) external onlyOwner {
@@ -144,6 +122,25 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         factory = _factory;
 
         emit SetFactory(_factory);
+    }
+
+    /**
+     * @notice Take a snapshot
+     */
+    function snapshot() external {
+        // Only allow snapshots to be taken at set intervals (e.g. 1 hour)
+        // Return the current snapshot ID either way
+        if (lastSnapshotAt + snapshotInterval > block.timestamp)
+            revert TooEarly();
+
+        // Update the last snapshot timestamp
+        lastSnapshotAt = block.timestamp.safeCastTo64();
+
+        // Increment and store the accrued fee amount at the snapshot ID
+        feeSnapshots[_snapshot()] = feesSinceLastSnapshot;
+
+        // Reset the fee accrual tracker variable to 0 for the next snapshot
+        feesSinceLastSnapshot = 0;
     }
 
     /**
@@ -216,10 +213,6 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
         _mint(recipient, amount);
     }
 
-    function snapshot() external returns (uint256) {
-        return _snapshot();
-    }
-
     function claimFees(
         uint256 snapshotId,
         address payable recipient
@@ -256,9 +249,5 @@ contract Moon is ERC20Snapshot, Owned, ReentrancyGuard {
             snapshotBalance,
             snapshotTotalSupply
         );
-    }
-
-    function getSnapshotId() external view returns (uint256) {
-        return _currentSnapshotId;
     }
 }
