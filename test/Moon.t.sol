@@ -27,7 +27,18 @@ contract MoonTest is Test, Moonbase {
         address indexed seller,
         uint256 amount
     );
+    event ClaimFees(
+        address indexed caller,
+        uint256 indexed snapshotId,
+        address indexed recipient,
+        uint256 fees,
+        uint256 balance,
+        uint256 totalSupply
+    );
     event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    // For claiming fees
+    receive() external payable {}
 
     constructor() {
         userShareBase = moon.USER_SHARE_BASE();
@@ -223,6 +234,101 @@ contract MoonTest is Test, Moonbase {
     }
 
     /*//////////////////////////////////////////////////////////////
+                                snapshot
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSnapshotTooEarly() external {
+        uint256 lastSnapshotAt = moon.lastSnapshotAt();
+
+        assertTrue(_canSnapshot());
+
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
+
+        assertEq(1, snapshotId);
+
+        lastSnapshotAt = moon.lastSnapshotAt();
+
+        assertFalse(_canSnapshot());
+
+        vm.expectRevert(Moon.TooEarly.selector);
+
+        moon.snapshot();
+    }
+
+    function testSnapshot(uint8 iterations) external {
+        vm.assume(iterations != 0);
+
+        // Initialize with a snapshot
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
+
+        for (uint256 i; i < iterations; ) {
+            // Snapshot cannot be taken until adequate time elapses
+            assertFalse(_canSnapshot());
+
+            vm.warp(block.timestamp + defaultSnapshotInterval);
+
+            // Snapshot can now be taken
+            assertTrue(_canSnapshot());
+
+            moon.snapshot();
+
+            uint256 _snapshotId = moon.getSnapshotId();
+
+            unchecked {
+                // Increment local snapshot ID tracker and compare
+                assertEq(++snapshotId, _snapshotId);
+
+                ++i;
+            }
+        }
+    }
+
+    function testSnapshotWithFeesBalancesSupply() external {
+        address buyer = testAccounts[0];
+        address seller = testAccounts[1];
+
+        _depositFeesAndMint(buyer, seller, 1 ether);
+
+        assertEq(0, moon.getSnapshotId());
+        assertEq(0, moon.lastSnapshotAt());
+
+        uint256 buyerBalanceBeforeSnapshot = moon.balanceOf(buyer);
+        uint256 sellerBalanceBeforeSnapshot = moon.balanceOf(seller);
+        uint256 ownerBalanceBeforeSnapshot = moon.balanceOf(moonOwner);
+        uint256 totalSupplyBeforeSnapshot = moon.totalSupply();
+        uint256 feesBeforeSnapshot = moon.feesSinceLastSnapshot();
+
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
+
+        // Should now be zero
+        assertEq(0, moon.feesSinceLastSnapshot());
+
+        // Affect balances, supply, and fees, to verify snapshot unchanged
+        _depositFeesAndMint(buyer, seller, 1 ether);
+
+        assertEq(
+            buyerBalanceBeforeSnapshot,
+            moon.balanceOfAt(buyer, snapshotId)
+        );
+        assertEq(
+            sellerBalanceBeforeSnapshot,
+            moon.balanceOfAt(seller, snapshotId)
+        );
+        assertEq(
+            ownerBalanceBeforeSnapshot,
+            moon.balanceOfAt(moonOwner, snapshotId)
+        );
+        assertEq(totalSupplyBeforeSnapshot, moon.totalSupplyAt(snapshotId));
+        assertEq(feesBeforeSnapshot, moon.feeSnapshots(snapshotId));
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                 addMinter
     //////////////////////////////////////////////////////////////*/
 
@@ -405,97 +511,112 @@ contract MoonTest is Test, Moonbase {
     }
 
     /*//////////////////////////////////////////////////////////////
-                                snapshot
+                                claimFees
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotSnapshotTooEarly() external {
-        uint256 lastSnapshotAt = moon.lastSnapshotAt();
+    function testCannotClaimFeesSnapshotIdZero() external {
+        vm.expectRevert(Moon.InvalidSnapshot.selector);
 
-        assertTrue(_canSnapshot());
-
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        assertEq(1, snapshotId);
-
-        lastSnapshotAt = moon.lastSnapshotAt();
-
-        assertFalse(_canSnapshot());
-
-        vm.expectRevert(Moon.TooEarly.selector);
-
-        moon.snapshot();
+        moon.claimFees(0, payable(address(this)));
     }
 
-    function testSnapshot(uint8 iterations) external {
-        vm.assume(iterations != 0);
+    function testCannotClaimFeesSnapshotIdGreaterThanCurrent() external {
+        uint256 invalidSnapshotId = moon.getSnapshotId() + 1;
 
-        // Initialize with a snapshot
+        vm.expectRevert(Moon.InvalidSnapshot.selector);
+
+        moon.claimFees(invalidSnapshotId, payable(address(this)));
+    }
+
+    function testCannotClaimFeesInvalidAddress() external {
         moon.snapshot();
 
         uint256 snapshotId = moon.getSnapshotId();
 
-        for (uint256 i; i < iterations; ) {
-            // Snapshot cannot be taken until adequate time elapses
-            assertFalse(_canSnapshot());
+        assertGt(snapshotId, 0);
 
-            vm.warp(block.timestamp + defaultSnapshotInterval);
+        vm.expectRevert(Moon.InvalidAddress.selector);
 
-            // Snapshot can now be taken
-            assertTrue(_canSnapshot());
+        moon.claimFees(snapshotId, payable(address(0)));
+    }
 
-            moon.snapshot();
+    function testCannotClaimFeesAlreadyClaimed() external {
+        moon.setFactory(address(this));
+        moon.addMinter(address(this));
+        moon.depositFees{value: 1 ether}(testBuyers[0], testSellers[0]);
+        moon.snapshot();
 
-            uint256 _snapshotId = moon.getSnapshotId();
+        uint256 snapshotId = moon.getSnapshotId();
+
+        // An in-depth test will be performed in testClaimFees and variants
+        // This test is just to make sure an account cannot double claim -
+        // we know the claim is successful if the transaction doesn't revert
+        moon.claimFees(snapshotId, payable(address(this)));
+
+        vm.expectRevert(Moon.AlreadyClaimed.selector);
+
+        moon.claimFees(snapshotId, payable(address(this)));
+    }
+
+    function testClaimFees() external {
+        uint256 fees = 1 ether;
+
+        _depositFeesAndMint(testBuyers[0], testSellers[0], fees);
+
+        assertEq(fees, moon.feesSinceLastSnapshot());
+
+        moon.snapshot();
+
+        uint256 snapshotId = moon.getSnapshotId();
+
+        assertEq(0, moon.feesSinceLastSnapshot());
+        assertEq(fees, moon.feeSnapshots(snapshotId));
+
+        address[] memory claimants = new address[](3);
+        claimants[0] = testBuyers[0];
+        claimants[1] = testSellers[0];
+        claimants[2] = moonOwner;
+        uint256 snapshotTotalSupply = moon.totalSupplyAt(snapshotId);
+
+        for (uint256 i; i < claimants.length; ) {
+            address payable claimant = payable(claimants[i]);
+            uint256 ethBalanceBeforeClaim = claimant.balance;
+            uint256 expectedFeeClaim = fees.mulDivDown(
+                moon.balanceOfAt(claimant, snapshotId),
+                snapshotTotalSupply
+            );
+
+            vm.startPrank(claimant);
+            vm.expectEmit(true, true, true, true, address(moon));
+
+            emit ClaimFees(
+                claimant,
+                snapshotId,
+                claimant,
+                fees,
+                moon.balanceOfAt(claimant, snapshotId),
+                snapshotTotalSupply
+            );
+
+            moon.claimFees(snapshotId, payable(claimants[i]));
+
+            vm.stopPrank();
+
+            // Fees must be greater than zero
+            assertLt(0, expectedFeeClaim);
+
+            // Balance must increase after claim
+            assertLt(ethBalanceBeforeClaim, claimant.balance);
+
+            // Pre-claim balance + fees = current balance
+            assertEq(
+                ethBalanceBeforeClaim + expectedFeeClaim,
+                claimant.balance
+            );
 
             unchecked {
-                // Increment local snapshot ID tracker and compare
-                assertEq(++snapshotId, _snapshotId);
-
                 ++i;
             }
         }
-    }
-
-    function testSnapshotWithFeesBalancesSupply() external {
-        address buyer = testAccounts[0];
-        address seller = testAccounts[1];
-
-        _depositFeesAndMint(buyer, seller, 1 ether);
-
-        assertEq(0, moon.getSnapshotId());
-        assertEq(0, moon.lastSnapshotAt());
-
-        uint256 buyerBalanceBeforeSnapshot = moon.balanceOf(buyer);
-        uint256 sellerBalanceBeforeSnapshot = moon.balanceOf(seller);
-        uint256 ownerBalanceBeforeSnapshot = moon.balanceOf(moonOwner);
-        uint256 totalSupplyBeforeSnapshot = moon.totalSupply();
-        uint256 feesBeforeSnapshot = moon.feesSinceLastSnapshot();
-
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        // Should now be zero
-        assertEq(0, moon.feesSinceLastSnapshot());
-
-        // Affect balances, supply, and fees, to verify snapshot unchanged
-        _depositFeesAndMint(buyer, seller, 1 ether);
-
-        assertEq(
-            buyerBalanceBeforeSnapshot,
-            moon.balanceOfAt(buyer, snapshotId)
-        );
-        assertEq(
-            sellerBalanceBeforeSnapshot,
-            moon.balanceOfAt(seller, snapshotId)
-        );
-        assertEq(
-            ownerBalanceBeforeSnapshot,
-            moon.balanceOfAt(moonOwner, snapshotId)
-        );
-        assertEq(totalSupplyBeforeSnapshot, moon.totalSupplyAt(snapshotId));
-        assertEq(feesBeforeSnapshot, moon.feeSnapshots(snapshotId));
     }
 }
