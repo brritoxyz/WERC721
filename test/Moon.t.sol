@@ -10,192 +10,44 @@ import {Moonbase} from "test/Moonbase.sol";
 contract MoonTest is Test, Moonbase {
     using FixedPointMathLib for uint256;
 
-    uint256 private immutable userShareBase;
-    uint128 private immutable maxUserShare;
-    uint128 private immutable minUserShare;
-    uint256 private immutable maxSnapshotInterval;
-    uint128 private immutable defaultUserShare;
-    uint256 private immutable defaultSnapshotInterval;
+    uint128 private immutable userShareBase;
+    uint128 private immutable userShare;
     address private immutable moonOwner;
 
-    event SetUserShare(uint96 userShare);
-    event SetSnapshotInterval(uint64 snapshotInterval);
-    event SetFactory(address indexed factory);
+    event SeedLiquidity(address indexed caller, uint256 amount);
+    event SetFactory(address indexed caller, address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
     event DepositFees(
+        address indexed minter,
         address indexed buyer,
         address indexed seller,
         uint256 amount
     );
     event ClaimFees(
         address indexed caller,
-        uint256 indexed snapshotId,
-        address indexed recipient,
-        uint256 fees,
-        uint256 balance,
-        uint256 totalSupply
+        uint256 amount,
+        address indexed recipient
     );
-    event Transfer(address indexed from, address indexed to, uint256 amount);
 
     // For claiming fees
     receive() external payable {}
 
     constructor() {
         userShareBase = moon.USER_SHARE_BASE();
-        maxUserShare = moon.MAX_USER_SHARE();
-        minUserShare = moon.MIN_USER_SHARE();
-        maxSnapshotInterval = moon.MAX_SNAPSHOT_INTERVAL();
-        defaultUserShare = moon.userShare();
-        defaultSnapshotInterval = moon.snapshotInterval();
+        userShare = moon.USER_SHARE();
         moonOwner = moon.owner();
     }
 
-    function _canSnapshot() private view returns (bool) {
-        return
-            moon.lastSnapshotAt() + defaultSnapshotInterval <= block.timestamp;
+    function _getFactoryMinterHash(
+        address minter
+    ) private view returns (bytes32) {
+        return keccak256(abi.encodePacked(moon.factory(), minter));
     }
 
     function _calculateUserRewards(
         uint256 amount
     ) private view returns (uint256) {
-        return amount.mulDivDown(moon.userShare(), userShareBase) / 2;
-    }
-
-    function _depositFeesAndMint(
-        address buyer,
-        address seller,
-        uint256 amount
-    ) private {
-        if (address(this) != moon.factory()) {
-            moon.setFactory(address(this));
-            moon.addMinter(address(this));
-        }
-
-        uint256 ethBalanceBefore = address(moon).balance;
-        uint256 feesBefore = moon.feesSinceLastSnapshot();
-
-        moon.depositFees{value: amount}(buyer, seller);
-
-        assertEq(ethBalanceBefore + amount, address(moon).balance);
-        assertEq(feesBefore + amount, moon.feesSinceLastSnapshot());
-
-        uint256 buyerBalanceBefore = moon.balanceOf(buyer);
-        uint256 sellerBalanceBefore = moon.balanceOf(seller);
-        uint256 buyerMintable = moon.mintable(buyer);
-        uint256 sellerMintable = moon.mintable(seller);
-
-        if (buyerMintable != 0) {
-            vm.prank(buyer);
-
-            moon.mint(buyer);
-
-            assertEq(0, moon.mintable(buyer));
-            assertEq(buyerBalanceBefore + buyerMintable, moon.balanceOf(buyer));
-        }
-
-        if (sellerMintable != 0) {
-            vm.prank(seller);
-
-            moon.mint(seller);
-
-            assertEq(0, moon.mintable(seller));
-            assertEq(
-                sellerBalanceBefore + sellerMintable,
-                moon.balanceOf(seller)
-            );
-        }
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            setUserShare
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSetUserShareNotOwner() external {
-        vm.prank(address(0));
-        vm.expectRevert(NOT_OWNER_ERROR);
-
-        moon.setUserShare(uint96(minUserShare));
-    }
-
-    function testCannotSetUserShareAboveMax() external {
-        assertEq(address(this), moonOwner);
-
-        uint96 aboveMax = uint96(maxUserShare) + 1;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.setUserShare(aboveMax);
-    }
-
-    function testCannotSetUserShareBelowMin() external {
-        assertEq(address(this), moonOwner);
-
-        uint96 belowMin = uint96(minUserShare) - 1;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.setUserShare(belowMin);
-    }
-
-    function testSetUserShare(uint96 _userShare) external {
-        vm.assume(_userShare <= maxUserShare);
-        vm.assume(_userShare >= minUserShare);
-        vm.assume(_userShare != defaultUserShare);
-
-        assertEq(address(this), moonOwner);
-
-        vm.expectEmit(false, false, false, true, address(moon));
-
-        emit SetUserShare(_userShare);
-
-        moon.setUserShare(_userShare);
-
-        assertEq(_userShare, moon.userShare());
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            setSnapshotInterval
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSetSnapshotIntervalNotOwner() external {
-        vm.prank(address(0));
-        vm.expectRevert(NOT_OWNER_ERROR);
-
-        moon.setSnapshotInterval(1 hours);
-    }
-
-    function testCannotSetSnapshotIntervalZero() external {
-        assertEq(address(this), moonOwner);
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.setSnapshotInterval(0);
-    }
-
-    function testCannotSetSnapshotIntervalAboveMax() external {
-        assertEq(address(this), moonOwner);
-
-        uint64 aboveMax = uint64(maxSnapshotInterval) + 1;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.setSnapshotInterval(aboveMax);
-    }
-
-    function testSetSnapshotInterval(uint64 _snapshotInterval) external {
-        vm.assume(_snapshotInterval != 0);
-        vm.assume(_snapshotInterval <= maxSnapshotInterval);
-        vm.assume(_snapshotInterval != defaultSnapshotInterval);
-
-        assertEq(address(this), moonOwner);
-
-        vm.expectEmit(false, false, false, true, address(moon));
-
-        emit SetSnapshotInterval(_snapshotInterval);
-
-        moon.setSnapshotInterval(_snapshotInterval);
-
-        assertEq(_snapshotInterval, moon.snapshotInterval());
+        return amount.mulDivDown(userShare, userShareBase) / 2;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -226,106 +78,11 @@ contract MoonTest is Test, Moonbase {
 
         vm.expectEmit(true, false, false, true, address(moon));
 
-        emit SetFactory(_factory);
+        emit SetFactory(address(this), _factory);
 
         moon.setFactory(_factory);
 
         assertEq(_factory, moon.factory());
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                snapshot
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSnapshotTooEarly() external {
-        uint256 lastSnapshotAt = moon.lastSnapshotAt();
-
-        assertTrue(_canSnapshot());
-
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        assertEq(1, snapshotId);
-
-        lastSnapshotAt = moon.lastSnapshotAt();
-
-        assertFalse(_canSnapshot());
-
-        vm.expectRevert(Moon.TooEarly.selector);
-
-        moon.snapshot();
-    }
-
-    function testSnapshot(uint8 iterations) external {
-        vm.assume(iterations != 0);
-
-        // Initialize with a snapshot
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        for (uint256 i; i < iterations; ) {
-            // Snapshot cannot be taken until adequate time elapses
-            assertFalse(_canSnapshot());
-
-            vm.warp(block.timestamp + defaultSnapshotInterval);
-
-            // Snapshot can now be taken
-            assertTrue(_canSnapshot());
-
-            moon.snapshot();
-
-            uint256 _snapshotId = moon.getSnapshotId();
-
-            unchecked {
-                // Increment local snapshot ID tracker and compare
-                assertEq(++snapshotId, _snapshotId);
-
-                ++i;
-            }
-        }
-    }
-
-    function testSnapshotWithFeesBalancesSupply() external {
-        address buyer = testAccounts[0];
-        address seller = testAccounts[1];
-
-        _depositFeesAndMint(buyer, seller, 1 ether);
-
-        assertEq(0, moon.getSnapshotId());
-        assertEq(0, moon.lastSnapshotAt());
-
-        uint256 buyerBalanceBeforeSnapshot = moon.balanceOf(buyer);
-        uint256 sellerBalanceBeforeSnapshot = moon.balanceOf(seller);
-        uint256 ownerBalanceBeforeSnapshot = moon.balanceOf(moonOwner);
-        uint256 totalSupplyBeforeSnapshot = moon.totalSupply();
-        uint256 feesBeforeSnapshot = moon.feesSinceLastSnapshot();
-
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        // Should now be zero
-        assertEq(0, moon.feesSinceLastSnapshot());
-
-        // Affect balances, supply, and fees, to verify snapshot unchanged
-        _depositFeesAndMint(buyer, seller, 1 ether);
-
-        assertEq(
-            buyerBalanceBeforeSnapshot,
-            moon.balanceOfAt(buyer, snapshotId)
-        );
-        assertEq(
-            sellerBalanceBeforeSnapshot,
-            moon.balanceOfAt(seller, snapshotId)
-        );
-        assertEq(
-            ownerBalanceBeforeSnapshot,
-            moon.balanceOfAt(moonOwner, snapshotId)
-        );
-        assertEq(totalSupplyBeforeSnapshot, moon.totalSupplyAt(snapshotId));
-        assertEq(feesBeforeSnapshot, moon.feeSnapshots(snapshotId));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -354,8 +111,10 @@ contract MoonTest is Test, Moonbase {
 
         moon.setFactory(address(this));
 
+        bytes32 factoryMinterHash = _getFactoryMinterHash(_minter);
+
         assertEq(address(this), moon.factory());
-        assertFalse(moon.minters(address(this), _minter));
+        assertFalse(moon.minters(factoryMinterHash));
 
         vm.expectEmit(true, true, false, true, address(moon));
 
@@ -363,7 +122,7 @@ contract MoonTest is Test, Moonbase {
 
         moon.addMinter(_minter);
 
-        assertTrue(moon.minters(address(this), _minter));
+        assertTrue(moon.minters(factoryMinterHash));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -399,40 +158,37 @@ contract MoonTest is Test, Moonbase {
         moon.setFactory(address(this));
         moon.addMinter(address(this));
 
-        uint256 teamRewards;
-        uint256 totalSupply;
-        uint256 totalMintable;
+        uint256 ownerRewards;
         uint256 totalAmount;
 
         for (uint256 i; i < testBuyers.length; ) {
-            address buyer = testBuyers[i];
-            address seller = testSellers[i];
             uint256 amount = amounts[i];
-            uint256 userRewards = _calculateUserRewards(amount);
-            uint256 _teamRewards = amount - (userRewards * 2);
 
-            // Only the amount minted for the protocol team affects the supply
-            teamRewards += _teamRewards;
-            totalSupply += _teamRewards;
-            totalMintable += userRewards * 2;
-            totalAmount += amount;
+            if (amount != 0) {
+                address buyer = testBuyers[i];
+                address seller = testSellers[i];
+                uint256 expectedUserRewards = _calculateUserRewards(amount);
 
-            if (buyer != address(0) && seller != address(0) && amount != 0) {
-                assertEq(0, moon.mintable(buyer));
-                assertEq(0, moon.mintable(seller));
+                // Only the amount minted for the protocol team affects the supply
+                ownerRewards += amount - (expectedUserRewards * 2);
+                totalAmount += amount;
+
+                assertEq(0, moon.balanceOf(buyer));
+                assertEq(0, moon.balanceOf(seller));
 
                 vm.expectEmit(true, true, false, true, address(moon));
 
-                emit DepositFees(buyer, seller, amount);
+                emit DepositFees(address(this), buyer, seller, amount);
 
-                uint256 _userRewards = moon.depositFees{value: amount}(
+                uint256 userRewards = moon.depositFees{value: amount}(
                     buyer,
                     seller
                 );
 
-                assertEq(userRewards, _userRewards);
-                assertEq(userRewards, moon.mintable(buyer));
-                assertEq(userRewards, moon.mintable(seller));
+                assertEq(expectedUserRewards, userRewards);
+                assertEq(expectedUserRewards, moon.balanceOf(buyer));
+                assertEq(expectedUserRewards, moon.balanceOf(seller));
+                assertEq(ownerRewards, moon.balanceOf(moonOwner));
             }
 
             unchecked {
@@ -440,183 +196,8 @@ contract MoonTest is Test, Moonbase {
             }
         }
 
-        assertEq(teamRewards, moon.balanceOf(moonOwner));
-        assertEq(totalSupply, moon.totalSupply());
-
-        // 1 MOON (mintable and minted) = 1 ETH
-        assertEq(totalMintable + teamRewards, totalAmount);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                mint
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotMintInvalidAddress() external {
-        vm.expectRevert(Moon.InvalidAddress.selector);
-
-        moon.mint(address(0));
-    }
-
-    function testCannotMintInvalidAmount() external {
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.mint(address(this));
-    }
-
-    function testMint(
-        uint80 fees,
-        address buyer,
-        address seller,
-        address buyerMintRecipient,
-        address sellerMintRecipient
-    ) external {
-        vm.assume(fees != 0);
-        vm.assume(buyer != address(0));
-        vm.assume(seller != address(0));
-        vm.assume(buyerMintRecipient != address(0));
-        vm.assume(sellerMintRecipient != address(0));
-
-        moon.setFactory(address(this));
-        moon.addMinter(address(this));
-
-        uint256 userRewards = _calculateUserRewards(fees);
-
-        // When fees are LTE to 2e-18 (0.000000000000000002) rewards will be 0,
-        // due to Solidity rounding down decimal numbers, causing mint to revert
-        if (userRewards == 0) return;
-
-        moon.depositFees{value: fees}(buyer, seller);
-
-        assertEq(userRewards, moon.mintable(buyer));
-        assertEq(userRewards, moon.mintable(seller));
-
-        vm.prank(buyer);
-        vm.expectEmit(true, true, false, true, address(moon));
-
-        emit Transfer(address(0), buyerMintRecipient, userRewards);
-
-        moon.mint(buyerMintRecipient);
-
-        vm.prank(seller);
-        vm.expectEmit(true, true, false, true, address(moon));
-
-        emit Transfer(address(0), sellerMintRecipient, userRewards);
-
-        moon.mint(sellerMintRecipient);
-
-        assertEq(0, moon.mintable(buyer));
-        assertEq(0, moon.mintable(seller));
-        assertEq(userRewards, moon.balanceOf(buyerMintRecipient));
-        assertEq(userRewards, moon.balanceOf(sellerMintRecipient));
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                claimFees
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotClaimFeesSnapshotIdZero() external {
-        vm.expectRevert(Moon.InvalidSnapshot.selector);
-
-        moon.claimFees(0, payable(address(this)));
-    }
-
-    function testCannotClaimFeesSnapshotIdGreaterThanCurrent() external {
-        uint256 invalidSnapshotId = moon.getSnapshotId() + 1;
-
-        vm.expectRevert(Moon.InvalidSnapshot.selector);
-
-        moon.claimFees(invalidSnapshotId, payable(address(this)));
-    }
-
-    function testCannotClaimFeesInvalidAddress() external {
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        assertGt(snapshotId, 0);
-
-        vm.expectRevert(Moon.InvalidAddress.selector);
-
-        moon.claimFees(snapshotId, payable(address(0)));
-    }
-
-    function testCannotClaimFeesAlreadyClaimed() external {
-        moon.setFactory(address(this));
-        moon.addMinter(address(this));
-        moon.depositFees{value: 1 ether}(testBuyers[0], testSellers[0]);
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        // An in-depth test will be performed in testClaimFees and variants
-        // This test is just to make sure an account cannot double claim -
-        // we know the claim is successful if the transaction doesn't revert
-        moon.claimFees(snapshotId, payable(address(this)));
-
-        vm.expectRevert(Moon.AlreadyClaimed.selector);
-
-        moon.claimFees(snapshotId, payable(address(this)));
-    }
-
-    function testClaimFees() external {
-        uint256 fees = 1 ether;
-
-        _depositFeesAndMint(testBuyers[0], testSellers[0], fees);
-
-        assertEq(fees, moon.feesSinceLastSnapshot());
-
-        moon.snapshot();
-
-        uint256 snapshotId = moon.getSnapshotId();
-
-        assertEq(0, moon.feesSinceLastSnapshot());
-        assertEq(fees, moon.feeSnapshots(snapshotId));
-
-        address[] memory claimants = new address[](3);
-        claimants[0] = testBuyers[0];
-        claimants[1] = testSellers[0];
-        claimants[2] = moonOwner;
-        uint256 snapshotTotalSupply = moon.totalSupplyAt(snapshotId);
-
-        for (uint256 i; i < claimants.length; ) {
-            address payable claimant = payable(claimants[i]);
-            uint256 ethBalanceBeforeClaim = claimant.balance;
-            uint256 expectedFeeClaim = fees.mulDivDown(
-                moon.balanceOfAt(claimant, snapshotId),
-                snapshotTotalSupply
-            );
-
-            vm.startPrank(claimant);
-            vm.expectEmit(true, true, true, true, address(moon));
-
-            emit ClaimFees(
-                claimant,
-                snapshotId,
-                claimant,
-                fees,
-                moon.balanceOfAt(claimant, snapshotId),
-                snapshotTotalSupply
-            );
-
-            moon.claimFees(snapshotId, payable(claimants[i]));
-
-            vm.stopPrank();
-
-            // Fees must be greater than zero
-            assertLt(0, expectedFeeClaim);
-
-            // Balance must increase after claim
-            assertLt(ethBalanceBeforeClaim, claimant.balance);
-
-            // Pre-claim balance + fees = current balance
-            assertEq(
-                ethBalanceBeforeClaim + expectedFeeClaim,
-                claimant.balance
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
+        assertEq(ownerRewards, moon.balanceOf(moonOwner));
+        assertEq(totalAmount, moon.totalSupply());
+        assertEq(totalAmount, address(moon).balance);
     }
 }
