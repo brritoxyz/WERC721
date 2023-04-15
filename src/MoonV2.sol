@@ -17,10 +17,10 @@ contract Moon is
     using SafeTransferLib for address payable;
 
     // Fixed parameters for calculating user MOON reward amounts
-    uint256 public constant USER_SHARE_BASE = 100;
+    uint128 public constant USER_SHARE_BASE = 100;
 
     // Used for calculating the mintable MOON amounts for users (fixed at 90%)
-    uint96 public constant USER_SHARE = 90;
+    uint128 public constant USER_SHARE = 90;
 
     // Factories deploy MoonBook contracts and enable them to mint MOON rewards
     // When factories are upgraded, they are set as the new factory
@@ -40,6 +40,11 @@ contract Moon is
         address indexed buyer,
         address indexed seller,
         uint256 amount
+    );
+    event ClaimFees(
+        address indexed caller,
+        uint256 amount,
+        address indexed recipient
     );
 
     error InvalidAddress();
@@ -90,7 +95,7 @@ contract Moon is
     }
 
     /**
-     * @notice Deposit exchange fees, and distribute MOON rewards
+     * @notice Deposit ETH fees to distribute MOON rewards
      * @param  buyer        address  Buyer address
      * @param  seller       address  Seller address
      * @return userRewards  uint256  Reward amount for each user
@@ -118,5 +123,26 @@ contract Moon is
         _mint(owner, msg.value - (userRewards * 2));
 
         emit DepositFees(buyer, seller, msg.value);
+    }
+
+    /**
+     * @notice Claim ETH fees by redeeming MOON tokens
+     * @param  amount     uint256  Amount of MOON to redeem for ETH
+     * @param  recipient  address  Recipient address
+     */
+    function claimFees(
+        uint256 amount,
+        address payable recipient
+    ) external nonReentrant {
+        if (amount == 0) revert InvalidAmount();
+        if (recipient == address(0)) revert InvalidAddress();
+
+        // Reverts if msg.sender does not have enough MOON
+        _burn(msg.sender, amount);
+
+        // Send ETH to the recipient, equal to the amount of MOON burned
+        recipient.safeTransferETH(amount);
+
+        emit ClaimFees(msg.sender, amount, recipient);
     }
 }
