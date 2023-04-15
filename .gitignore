@@ -5,7 +5,7 @@ out/
 # Misc
 .DS_Store
 
-# Foundry
+# Forge
 .env
 scripts/loadEnv.sh
 broadcast/

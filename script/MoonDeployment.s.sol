@@ -8,12 +8,8 @@ contract MoonDeploymentScript is Script {
     function run() external {
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
-        MoonDeployment deployment = new MoonDeployment(vm.envAddress("OWNER"));
-
-        // Log key contract addresses
-        console.log("MoonDeployment:", address(deployment));
-        console.log("Moon:", address(deployment.moon()));
-        console.log("MoonBookFactory:", address(deployment.factory()));
+        // Contract address is logged in deployment tx receipt
+        new MoonDeployment(vm.envAddress("OWNER"));
 
         vm.stopBroadcast();
     }

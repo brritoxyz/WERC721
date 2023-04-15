@@ -25,7 +25,10 @@ contract MoonBookFactory {
         if (books[collection] != address(0)) revert AlreadyExists();
 
         // Deploy and associate collection with a MoonBook contract
+        // TODO: Consider minimal proxy usage for gas efficiency
         address book = address(new MoonBook(collection, moon));
+
+        // Add to list of factory-owned books
         books[collection] = book;
 
         // Enable the MoonBook contract to mint MOON rewards
