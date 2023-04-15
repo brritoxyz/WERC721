@@ -33,8 +33,8 @@ contract Moon is
     // from minting MOON rewards
     mapping(address factory => mapping(address minter => bool)) public minters;
 
-    event SetUserShare(uint96 userShare);
-    event SetFactory(address indexed factory);
+    event SeedLiquidity(address indexed caller, uint256 amount);
+    event SetFactory(address indexed caller, address indexed factory);
     event AddMinter(address indexed factory, address indexed minter);
     event DepositFees(
         address indexed buyer,
@@ -52,6 +52,17 @@ contract Moon is
     }
 
     /**
+     * @notice Deposit ETH and mint MOON tokens (1:1 ratio)
+     */
+    function seedLiquidity() external payable onlyOwner {
+        if (msg.value == 0) revert InvalidAmount();
+
+        _mint(address(this), msg.value);
+
+        emit SeedLiquidity(msg.sender, msg.value);
+    }
+
+    /**
      * @notice Set factory
      * @param  _factory  address  MoonBookFactory contract address
      */
@@ -60,7 +71,7 @@ contract Moon is
 
         factory = _factory;
 
-        emit SetFactory(_factory);
+        emit SetFactory(msg.sender, _factory);
     }
 
     /**
@@ -68,7 +79,9 @@ contract Moon is
      * @param  minter  address  Minter address
      */
     function addMinter(address minter) external {
+        // Only the factory can add new minters (i.e. MoonBook contracts)
         if (msg.sender != factory) revert NotFactory();
+
         if (minter == address(0)) revert InvalidAddress();
 
         minters[factory][minter] = true;
