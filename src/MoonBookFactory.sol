@@ -11,6 +11,12 @@ contract MoonBookFactory {
 
     Moon public immutable moon;
 
+    event CreateBook(
+        address indexed caller,
+        address indexed book,
+        ERC721 indexed collection
+    );
+
     error InvalidAddress();
     error AlreadyExists();
 
@@ -33,5 +39,7 @@ contract MoonBookFactory {
 
         // Enable the MoonBook contract to mint MOON rewards
         moon.addMinter(book);
+
+        emit CreateBook(msg.sender, book, collection);
     }
 }
