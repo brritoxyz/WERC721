@@ -19,20 +19,17 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint96 price;
     }
 
-    // 10,000 basis points = 100%
-    uint128 public constant FEE_BPS_BASE = 10_000;
+    // Fees are 1%
+    uint128 public constant MOON_FEE_PERCENT = 1;
 
-    // Fees are 0.50%
-    uint128 public constant FEE_BPS = 50;
-
-    // Book factory (receives fees)
-    address payable public immutable factory;
-
-    // NFT collection contract
-    ERC721 public immutable collection;
+    // Used for calculating fees
+    uint128 public constant MOON_FEE_PERCENT_BASE = 100;
 
     // MOON token contract
     Moon public immutable moon;
+
+    // NFT collection contract
+    ERC721 public immutable collection;
 
     // NFT collection listings
     mapping(uint256 id => Listing listing) public collectionListings;
@@ -41,9 +38,19 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     // There may be many offers made by many different buyers
     mapping(uint256 offer => address[] buyers) public collectionOffers;
 
-    event List(address indexed seller, uint256 indexed id, uint96 price);
-    event CancelListing(address indexed seller, uint256 indexed id);
-    event EditListing(address indexed seller, uint256 indexed id, uint96 price);
+    event List(
+        address indexed msgSender,
+        uint256 indexed id,
+        address indexed seller,
+        uint96 price
+    );
+    event EditListing(
+        address indexed msgSender,
+        uint256 indexed id,
+        address indexed newSeller,
+        uint96 newPrice
+    );
+    event CancelListing(address indexed msgSender, uint256 indexed id);
     event Buy(
         address indexed buyer,
         address indexed seller,
@@ -67,8 +74,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 offer
     );
 
-    error Unauthorized();
+    error InvalidAddress();
     error InvalidPrice();
+    error OnlySeller();
+    error Unauthorized();
     error InvalidOffer();
     error InvalidListing();
     error EmptyArray();
@@ -81,13 +90,15 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     error OfferTooLow();
 
     /**
+     * @param _moon        Moon    Moon protocol contract
      * @param _collection  ERC721  NFT collection contract
-     * @param _moon        Moon    MOON token contract
      */
-    constructor(ERC721 _collection, Moon _moon) {
-        factory = payable(msg.sender);
-        collection = _collection;
+    constructor(Moon _moon, ERC721 _collection) {
+        if (address(_moon) == address(0)) revert InvalidAddress();
+        if (address(_collection) == address(0)) revert InvalidAddress();
+
         moon = _moon;
+        collection = _collection;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -95,38 +106,51 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice List a single NFT for sale
-     * @param  id     uint256  NFT ID
-     * @param  price  uint96   NFT price in ETH
+     * @notice List a single NFT up for sale
+     * @param  id      uint256  NFT ID
+     * @param  seller  address  NFT seller
+     * @param  price   uint96   NFT price in ETH
      */
-    function list(uint256 id, uint96 price) external nonReentrant {
+    function list(
+        uint256 id,
+        address seller,
+        uint96 price
+    ) external nonReentrant {
+        if (seller == address(0)) revert InvalidAddress();
         if (price == 0) revert InvalidPrice();
 
         // Reverts if the NFT is not owned by msg.sender
         collection.safeTransferFrom(msg.sender, address(this), id);
 
         // Set listing details
-        collectionListings[id] = Listing(msg.sender, price);
+        collectionListings[id] = Listing(seller, price);
 
-        emit List(msg.sender, id, price);
+        emit List(msg.sender, id, seller, price);
     }
 
     /**
      * @notice Edit NFT listing price
-     * @param  id     uint256  NFT ID
-     * @param  price  uint96   NFT price
+     * @param  id         uint256  NFT ID
+     * @param  newSeller  address  New NFT seller
+     * @param  newPrice   uint96   New NFT price
      */
-    function editListing(uint256 id, uint96 price) external nonReentrant {
-        if (price == 0) revert InvalidPrice();
+    function editListing(
+        uint256 id,
+        address newSeller,
+        uint96 newPrice
+    ) external {
+        if (newSeller == address(0)) revert InvalidAddress();
+        if (newPrice == 0) revert InvalidPrice();
 
         Listing storage listing = collectionListings[id];
 
-        // Only the seller can edit the listing
-        if (listing.seller != msg.sender) revert Unauthorized();
+        // msg.sender must be the listing seller, otherwise they cannot edit
+        if (listing.seller != msg.sender) revert OnlySeller();
 
-        listing.price = price;
+        listing.seller = newSeller;
+        listing.price = newPrice;
 
-        emit EditListing(msg.sender, id, price);
+        emit EditListing(msg.sender, id, newSeller, newPrice);
     }
 
     /**
@@ -134,8 +158,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
      * @param  id  uint256  NFT ID
      */
     function cancelListing(uint256 id) external nonReentrant {
-        // Only the seller can cancel the listing
-        if (collectionListings[id].seller != msg.sender) revert Unauthorized();
+        // msg.sender must be the listing seller, otherwise they cannot cancel
+        if (collectionListings[id].seller != msg.sender) revert OnlySeller();
 
         delete collectionListings[id];
 
@@ -171,7 +195,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         collection.safeTransferFrom(address(this), msg.sender, id);
 
         // Calculate protocol fees
-        uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+        uint256 fees = listing.price.mulDivDown(
+            MOON_FEE_PERCENT,
+            MOON_FEE_PERCENT_BASE
+        );
 
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
@@ -221,7 +248,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer NFT to the buyer - reverts if msg.sender does not have the NFT
         collection.safeTransferFrom(msg.sender, buyer, id);
 
-        uint256 fees = offer.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+        uint256 fees = offer.mulDivDown(
+            MOON_FEE_PERCENT,
+            MOON_FEE_PERCENT_BASE
+        );
 
         // Transfer the post-fee sale proceeds to the seller
         payable(msg.sender).safeTransferETH(offer - fees);
@@ -262,7 +292,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer NFT to the buyer (account that made offer)
         collection.safeTransferFrom(address(this), buyer, id);
 
-        uint256 fees = listing.price.mulDivDown(FEE_BPS, FEE_BPS_BASE);
+        uint256 fees = listing.price.mulDivDown(
+            MOON_FEE_PERCENT,
+            MOON_FEE_PERCENT_BASE
+        );
 
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
