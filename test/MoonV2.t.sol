@@ -27,11 +27,8 @@ contract MoonTest is Test {
     ILido private immutable lido;
     IUserModule private immutable instadapp;
 
-    event DepositETH(
-        address indexed msgSender,
-        uint256 msgValue,
-        uint256 shares
-    );
+    event StakeETH(address indexed msgSender, uint256 assets, uint256 shares);
+    event DepositETH(address indexed msgSender, uint256 msgValue);
 
     constructor() {
         moon = new Moon(address(this));
@@ -71,22 +68,16 @@ contract MoonTest is Test {
         vm.assume(amount != 0);
 
         uint256 ethAmount = uint256(amount) * 1 ether;
-        uint256 expectedShares = _convertToShares(ethAmount);
 
         vm.deal(msgSender, ethAmount);
         vm.prank(msgSender);
         vm.expectEmit(true, false, false, true, moonAddr);
 
-        emit DepositETH(msgSender, ethAmount, expectedShares);
+        emit DepositETH(msgSender, ethAmount);
 
-        uint256 shares = moon.depositETH{value: ethAmount}();
-        uint256 assets = _convertToAssets(expectedShares);
+        moon.depositETH{value: ethAmount}();
 
-        assertEq(expectedShares, instadapp.balanceOf(moonAddr));
-        assertEq(expectedShares, moon.balanceOf(msgSender));
-        assertEq(expectedShares, shares);
-
-        // We deduct 1 from the stETH amount (Instadapp does this to account for rounding)
-        assertEq(_toStEth(ethAmount) - 1, assets);
+        assertEq(ethAmount, moonAddr.balance);
+        assertEq(ethAmount, moon.balanceOf(msgSender));
     }
 }
