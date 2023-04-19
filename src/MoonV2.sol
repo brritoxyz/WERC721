@@ -2,28 +2,23 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-
-interface ILido {
-    function submit(address _referral) external payable returns (uint256);
-}
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 contract Moon is ERC20("Redeemable Token", "MOON", 18) {
+    using SafeTransferLib for address payable;
+
     // Lido stETH proxy contract address
-    ILido public constant LIDO =
-        ILido(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+    address payable public constant LIDO =
+        payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
-    address payable public immutable protocolTeam;
+    address public immutable protocolTeam;
 
-    event DepositETH(
-        address indexed msgSender,
-        uint256 msgValue,
-        uint256 staked
-    );
+    event DepositETH(address indexed msgSender, uint256 msgValue);
 
     error InvalidAddress();
     error InvalidAmount();
 
-    constructor(address payable _protocolTeam) {
+    constructor(address _protocolTeam) {
         if (_protocolTeam == address(0)) revert InvalidAddress();
 
         protocolTeam = _protocolTeam;
@@ -36,11 +31,11 @@ contract Moon is ERC20("Redeemable Token", "MOON", 18) {
         if (msg.value == 0) revert InvalidAmount();
 
         // Stake ETH in Lido
-        uint256 staked = LIDO.submit{value: msg.value}(address(0));
+        LIDO.safeTransferETH(msg.value);
 
-        // Mint MOON for msg.sender, equal to the stETH received
-        _mint(msg.sender, staked);
+        // Mint MOON for msg.sender, equal to the ETH received
+        _mint(msg.sender, msg.value);
 
-        emit DepositETH(msg.sender, msg.value, staked);
+        emit DepositETH(msg.sender, msg.value);
     }
 }
