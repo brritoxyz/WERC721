@@ -6,10 +6,10 @@ import {MoonBook} from "src/MoonBook.sol";
 import {Moon} from "src/Moon.sol";
 
 contract MoonBookFactory {
+    Moon public immutable moon;
+
     // NFT collections mapped to their order books
     mapping(ERC721 collection => address book) public books;
-
-    Moon public immutable moon;
 
     event CreateBook(
         address indexed caller,

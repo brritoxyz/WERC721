@@ -101,12 +101,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         collection = _collection;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            Seller Functions
-    //////////////////////////////////////////////////////////////*/
-
     /**
-     * @notice List a single NFT up for sale
+     * @notice List a NFT for sale
      * @param  id      uint256  NFT ID
      * @param  seller  address  NFT seller
      * @param  price   uint96   NFT price in ETH
@@ -129,7 +125,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     }
 
     /**
-     * @notice Edit NFT listing price
+     * @notice Edit NFT listing seller and/or price
      * @param  id         uint256  NFT ID
      * @param  newSeller  address  New NFT seller
      * @param  newPrice   uint96   New NFT price
@@ -169,12 +165,8 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         emit CancelListing(msg.sender, id);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            Buyer Functions
-    //////////////////////////////////////////////////////////////*/
-
     /**
-     * @notice Buy a single NFT, earn MOON rewards
+     * @notice Buy a single NFT
      * @param  id           uint256  NFT ID
      * @return userRewards  uint256  Reward amount for each user
      */
@@ -209,10 +201,6 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         emit Buy(msg.sender, listing.seller, id, listing.price, fees);
     }
-
-    /*///////////////////////////////////////////////////////////////
-                            Offer Functions
-    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Make an offer at a single price point
