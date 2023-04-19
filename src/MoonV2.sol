@@ -4,16 +4,15 @@ pragma solidity 0.8.19;
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {MoonStaker} from "src/MoonStaker.sol";
+
+interface IMoonStaker {
+    function stakeETH() external payable returns (uint256, uint256);
+}
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
-    using SafeTransferLib for address payable;
-    using SafeTransferLib for ERC20;
+    IMoonStaker public moonStaker;
 
-    MoonStaker public moonStaker;
-
-    event SetMoonStaker(address indexed msgSender, MoonStaker moonStaker);
+    event SetMoonStaker(address indexed msgSender, IMoonStaker moonStaker);
     event StakeETH(
         address indexed msgSender,
         uint256 balance,
@@ -31,7 +30,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
      * @notice Set MoonStaker contract
      * @param  _moonStaker  MoonStaker  MoonStaker contract
      */
-    function setMoonStaker(MoonStaker _moonStaker) external onlyOwner {
+    function setMoonStaker(IMoonStaker _moonStaker) external onlyOwner {
         if (address(_moonStaker) == address(0)) revert InvalidAddress();
 
         moonStaker = _moonStaker;

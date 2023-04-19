@@ -24,7 +24,7 @@ contract MoonStaker is ReentrancyGuard {
     address public immutable moon;
 
     error InvalidAddress();
-    error Unauthorized();
+    error OnlyMoon();
 
     constructor(address _moon) {
         if (_moon == address(0)) revert InvalidAddress();
@@ -41,9 +41,9 @@ contract MoonStaker is ReentrancyGuard {
         nonReentrant
         returns (uint256 assets, uint256 shares)
     {
-        if (msg.sender != moon) revert Unauthorized();
+        if (msg.sender != moon) revert OnlyMoon();
 
-        // Stake ETH balance with Lido
+        // Stake ETH balance with Lido - reverts if msg.value is zero
         payable(address(LIDO)).safeTransferETH(msg.value);
 
         // Fetch stETH balance, the amount which will be deposited into the vault
