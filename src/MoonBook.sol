@@ -52,19 +52,22 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     );
     event CancelListing(address indexed msgSender, uint256 indexed id);
     event Buy(
-        address indexed buyer,
-        address indexed seller,
+        address indexed msgSender,
         uint256 indexed id,
-        uint96 price,
-        uint256 totalFees
+        address indexed recipient
     );
-    event MakeOffer(address indexed buyer, uint256 offer);
+    event MakeOffer(
+        address indexed msgSender,
+        address indexed recipient,
+        uint256 offer
+    );
     event CancelOffer(address indexed buyer, uint256 offer);
     event TakeOffer(
-        address indexed buyer,
-        address indexed seller,
-        uint256 id,
-        uint256 offer
+        address indexed msgSender,
+        uint256 indexed id,
+        address indexed recipient,
+        uint256 offer,
+        uint256 makerIndex
     );
     event MatchOffer(
         address indexed matcher,
@@ -76,17 +79,11 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
     error InvalidAddress();
     error InvalidPrice();
-    error OnlySeller();
-    error Unauthorized();
     error InvalidOffer();
     error InvalidListing();
-    error EmptyArray();
-    error MismatchedArrays();
+    error OnlySeller();
     error InsufficientFunds();
-    error NotSeller();
     error NotBuyer();
-    error ZeroOffer();
-    error ZeroMsgValue();
     error OfferTooLow();
 
     /**
@@ -167,24 +164,22 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
     /**
      * @notice Buy a single NFT
-     * @param  id           uint256  NFT ID
-     * @return userRewards  uint256  Reward amount for each user
+     * @param  id         uint256  NFT ID
+     * @param  recipient  address  NFT recipient
      */
-    function buy(
-        uint256 id
-    ) external payable nonReentrant returns (uint256 userRewards) {
-        if (msg.value == 0) revert ZeroMsgValue();
+    function buy(uint256 id, address recipient) external payable nonReentrant {
+        if (recipient == address(0)) revert InvalidAddress();
 
         Listing memory listing = collectionListings[id];
 
-        // Reverts if msg.value does not equal listing price and if listing is non-existent
+        // Reverts if msg.value does not equal listing price, or if listing is non-existent
         if (msg.value != listing.price) revert InsufficientFunds();
 
         // Delete listing before exchanging tokens
         delete collectionListings[id];
 
-        // Send NFT to buyer after confirming sufficient ETH was sent
-        collection.safeTransferFrom(address(this), msg.sender, id);
+        // Send NFT to the recipient after confirming sufficient ETH was sent by msg.sender
+        collection.safeTransferFrom(address(this), recipient, id);
 
         // Calculate protocol fees
         uint256 fees = listing.price.mulDivDown(
@@ -195,58 +190,66 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
-        // Deposit fees into the MOON token contract, enabling them to be claimed by token holders
-        // and distribute MOON rewards to both the buyer and seller, equal to the fees paid
-        userRewards = moon.depositFees{value: fees}(msg.sender, listing.seller);
+        // Deposit fees into the protocol contract, and distribute MOON rewards to both the
+        // buyer (i.e. recipient) and seller, equal to the ETH fees paid
+        moon.depositFees{value: fees}(recipient, listing.seller);
 
-        emit Buy(msg.sender, listing.seller, id, listing.price, fees);
+        emit Buy(msg.sender, id, recipient);
     }
 
     /**
      * @notice Make an offer at a single price point
+     * @param  maker  address  NFT offer maker
      */
-    function makeOffer() external payable nonReentrant {
-        if (msg.value == 0) revert ZeroMsgValue();
+    function makeOffer(address maker) external payable {
+        if (maker == address(0)) revert InvalidAddress();
+        if (msg.value == 0) revert InvalidOffer();
 
         // User offer is the amount of ETH sent with the transaction
-        collectionOffers[msg.value].push(msg.sender);
+        // The maker receives the NFT if the offer is taken
+        collectionOffers[msg.value].push(maker);
 
-        emit MakeOffer(msg.sender, msg.value);
+        emit MakeOffer(msg.sender, maker, msg.value);
     }
 
     /**
      * @notice Take offer
      * @param  id          uint256  NFT ID
+     * @param  recipient   address  ETH recipient
      * @param  offer       uint256  Offer amount
-     * @param  buyerIndex  uint256  Buyer index
+     * @param  makerIndex  uint256  Offer maker index
      */
     function takeOffer(
         uint256 id,
+        address recipient,
         uint256 offer,
-        uint256 buyerIndex
-    ) external nonReentrant returns (uint256 userRewards) {
-        address buyer = collectionOffers[offer][buyerIndex];
+        uint256 makerIndex
+    ) external nonReentrant {
+        if (recipient == address(0)) revert InvalidAddress();
 
-        // Revert if offer does not exist
-        if (buyer == address(0)) revert InvalidOffer();
+        address maker = collectionOffers[offer][makerIndex];
+
+        // Reverts if offer does not exist or maker index out of bounds
+        if (maker == address(0)) revert InvalidOffer();
 
         // Remove the offer prior to exchanging tokens between buyer and seller
-        delete collectionOffers[offer][buyerIndex];
+        delete collectionOffers[offer][makerIndex];
 
-        // Transfer NFT to the buyer - reverts if msg.sender does not have the NFT
-        collection.safeTransferFrom(msg.sender, buyer, id);
+        // Transfer NFT to the offer maker - reverts if msg.sender does not have the NFT
+        // or if they did not grant this contract approval to transfer on their behalf
+        collection.safeTransferFrom(msg.sender, maker, id);
 
         uint256 fees = offer.mulDivDown(
             MOON_FEE_PERCENT,
             MOON_FEE_PERCENT_BASE
         );
 
-        // Transfer the post-fee sale proceeds to the seller
-        payable(msg.sender).safeTransferETH(offer - fees);
+        // Transfer the post-fee sale proceeds to the recipient
+        payable(recipient).safeTransferETH(offer - fees);
 
-        userRewards = moon.depositFees{value: fees}(buyer, msg.sender);
+        moon.depositFees{value: fees}(maker, recipient);
 
-        emit TakeOffer(buyer, msg.sender, id, offer);
+        emit TakeOffer(msg.sender, id, recipient, offer, makerIndex);
     }
 
     /**
