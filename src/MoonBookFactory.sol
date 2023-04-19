@@ -32,7 +32,7 @@ contract MoonBookFactory {
 
         // Deploy and associate collection with a MoonBook contract
         // TODO: Consider minimal proxy usage for gas efficiency
-        address book = address(new MoonBook(collection, moon));
+        address book = address(new MoonBook(moon, collection));
 
         // Add to list of factory-owned books
         books[collection] = book;
