@@ -61,7 +61,12 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         address indexed recipient,
         uint256 offer
     );
-    event CancelOffer(address indexed buyer, uint256 offer);
+    event CancelOffer(
+        address indexed msgSender,
+        address indexed recipient,
+        uint256 offer,
+        uint256 makerIndex
+    );
     event TakeOffer(
         address indexed msgSender,
         uint256 indexed id,
@@ -70,21 +75,21 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 makerIndex
     );
     event MatchOffer(
-        address indexed matcher,
-        address indexed buyer,
-        address indexed seller,
-        uint256 id,
-        uint256 offer
+        address indexed msgSender,
+        uint256 indexed id,
+        address indexed recipient,
+        uint256 offer,
+        uint256 makerIndex
     );
 
     error InvalidAddress();
     error InvalidPrice();
     error InvalidOffer();
     error InvalidListing();
+    error InvalidMatch();
     error OnlySeller();
+    error OnlyMaker();
     error InsufficientFunds();
-    error NotBuyer();
-    error OfferTooLow();
 
     /**
      * @param _moon        Moon    Moon protocol contract
@@ -213,6 +218,32 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     }
 
     /**
+     * @notice Cancel offer and reclaim ETH
+     * @param  recipient   address  ETH recipient
+     * @param  offer       uint256  Offer amount
+     * @param  makerIndex  uint256  Buyer index
+     */
+    function cancelOffer(
+        address payable recipient,
+        uint256 offer,
+        uint256 makerIndex
+    ) external nonReentrant {
+        if (recipient == address(0)) revert InvalidAddress();
+
+        // Only the maker can cancel the offer
+        if (collectionOffers[offer][makerIndex] != msg.sender)
+            revert OnlyMaker();
+
+        // Delete offer prior to transferring ETH to the buyer
+        delete collectionOffers[offer][makerIndex];
+
+        // Return ETH to the recipient
+        recipient.safeTransferETH(offer);
+
+        emit CancelOffer(msg.sender, recipient, offer, makerIndex);
+    }
+
+    /**
      * @notice Take offer
      * @param  id          uint256  NFT ID
      * @param  recipient   address  ETH recipient
@@ -221,15 +252,16 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
      */
     function takeOffer(
         uint256 id,
-        address recipient,
+        address payable recipient,
         uint256 offer,
         uint256 makerIndex
     ) external nonReentrant {
         if (recipient == address(0)) revert InvalidAddress();
 
+        // Reverts if maker index is out of bounds
         address maker = collectionOffers[offer][makerIndex];
 
-        // Reverts if offer does not exist or maker index out of bounds
+        // Reverts if offer does not exist
         if (maker == address(0)) revert InvalidOffer();
 
         // Remove the offer prior to exchanging tokens between buyer and seller
@@ -245,7 +277,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         );
 
         // Transfer the post-fee sale proceeds to the recipient
-        payable(recipient).safeTransferETH(offer - fees);
+        recipient.safeTransferETH(offer - fees);
 
         moon.depositFees{value: fees}(maker, recipient);
 
@@ -255,33 +287,38 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     /**
      * @notice Match an offer with a listing
      * @param  id          uint256  NFT ID
+     * @param  recipient   address  ETH recipient (receives spread between offer and listing price)
      * @param  offer       uint256  Offer amount
-     * @param  buyerIndex  uint256  Buyer index
+     * @param  makerIndex  uint256  Buyer index
      */
     function matchOffer(
         uint256 id,
+        address payable recipient,
         uint256 offer,
-        uint256 buyerIndex
-    ) external nonReentrant returns (uint256 userRewards) {
-        address buyer = collectionOffers[offer][buyerIndex];
+        uint256 makerIndex
+    ) external nonReentrant {
+        if (recipient == address(0)) revert InvalidAddress();
 
-        // Revert if offer does not exist
-        if (buyer == address(0)) revert InvalidOffer();
+        // Reverts if maker index is out of bounds
+        address maker = collectionOffers[offer][makerIndex];
+
+        // Reverts if offer does not exist
+        if (maker == address(0)) revert InvalidOffer();
 
         Listing memory listing = collectionListings[id];
 
-        // Revert if listing does not exist
+        // Reverts if listing does not exist
         if (listing.seller == address(0)) revert InvalidListing();
 
-        // Revert if offer is less than listing price
-        if (offer < listing.price) revert OfferTooLow();
+        // Reverts if offer is less than listing price
+        if (offer < listing.price) revert InvalidMatch();
 
         // Delete offer and listing prior to exchanging tokens
-        delete collectionOffers[offer][buyerIndex];
+        delete collectionOffers[offer][makerIndex];
         delete collectionListings[id];
 
-        // Transfer NFT to the buyer (account that made offer)
-        collection.safeTransferFrom(address(this), buyer, id);
+        // Transfer NFT to the maker (account that made offer)
+        collection.safeTransferFrom(address(this), maker, id);
 
         uint256 fees = listing.price.mulDivDown(
             MOON_FEE_PERCENT,
@@ -293,33 +330,11 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         if (offer > listing.price) {
             // Send the spread (margin between ETH offer and listing price) to the matcher
-            payable(msg.sender).safeTransferETH(offer - listing.price);
+            recipient.safeTransferETH(offer - listing.price);
         }
 
-        userRewards = moon.depositFees{value: fees}(buyer, listing.seller);
+        moon.depositFees{value: fees}(maker, listing.seller);
 
-        emit MatchOffer(msg.sender, buyer, listing.seller, id, offer);
-    }
-
-    /**
-     * @notice Cancel offer and reclaim ETH
-     * @param  offer       uint256  Offer amount
-     * @param  buyerIndex  uint256  Buyer index
-     */
-    function cancelOffer(
-        uint256 offer,
-        uint256 buyerIndex
-    ) external nonReentrant {
-        // Only the buyer can cancel their own offer
-        if (collectionOffers[offer][buyerIndex] != msg.sender)
-            revert NotBuyer();
-
-        // Delete offer prior to transferring ETH to the buyer
-        delete collectionOffers[offer][buyerIndex];
-
-        // Return ETH to the offer maker
-        payable(msg.sender).safeTransferETH(offer);
-
-        emit CancelOffer(msg.sender, offer);
+        emit MatchOffer(msg.sender, id, recipient, offer, makerIndex);
     }
 }
