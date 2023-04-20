@@ -4,8 +4,10 @@ pragma solidity 0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-interface UserModule {
+interface IUserModule {
     function deposit(uint256, address) external returns (uint256);
+
+    function withdraw(uint256, address, address) external returns (uint256);
 }
 
 contract MoonStaker {
@@ -16,9 +18,9 @@ contract MoonStaker {
     ERC20 public constant LIDO =
         ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
-    // Instadapp proxy contract address
-    UserModule public constant INSTADAPP =
-        UserModule(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
+    // Vault proxy contract address
+    IUserModule public constant VAULT =
+        IUserModule(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
 
     address public immutable moon;
 
@@ -30,24 +32,47 @@ contract MoonStaker {
 
         moon = _moon;
 
-        // Enables Instadapp to transfer stETH on our behalf when depositing
-        LIDO.safeApprove(address(INSTADAPP), type(uint256).max);
+        // Enables the vault to transfer stETH on our behalf when depositing
+        LIDO.safeApprove(address(VAULT), type(uint256).max);
     }
 
+    modifier onlyMoon() {
+        if (msg.sender != moon) revert OnlyMoon();
+        _;
+    }
+
+    /**
+     * @notice Stake ETH
+     * @return assets  uint256  Vault assets deposited
+     * @return shares  uint256  Vault shares minted
+     */
     function stakeETH()
         external
         payable
+        onlyMoon
         returns (uint256 assets, uint256 shares)
     {
-        if (msg.sender != moon) revert OnlyMoon();
-
         // Stake ETH balance with Lido - reverts if msg.value is zero
         payable(address(LIDO)).safeTransferETH(msg.value);
 
         // Fetch stETH balance, the amount which will be deposited into the vault
         assets = LIDO.balanceOf(address(this));
 
-        // Maximize returns with the Instadapp vault - moon receives shares
-        shares = INSTADAPP.deposit(assets, moon);
+        // Maximize returns with the staking vault - the Moon contract receives shares
+        shares = VAULT.deposit(assets, moon);
+    }
+
+    /**
+     * @notice Stake ETH
+     * @param  assets     uint256  Vault assets withdrawn
+     * @param  recipient  address  MOON redeemer
+     * @return            uint256  Vault shares redeemed
+     */
+    function unstakeETH(
+        uint256 assets,
+        address recipient
+    ) external onlyMoon returns (uint256) {
+        // Withdraw assets for the Moon contract with the MOON redeemer as the recipient
+        return VAULT.withdraw(assets, recipient, moon);
     }
 }
