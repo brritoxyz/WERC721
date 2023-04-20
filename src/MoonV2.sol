@@ -22,6 +22,7 @@ interface IMoonStaker {
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
+    using SafeTransferLib for address payable;
 
     IMoonStaker public moonStaker;
 
@@ -159,14 +160,27 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // Cannot redeem before the redemption timestamp has past
         if (redemptionTimestamp < block.timestamp) revert InvalidTimestamp();
 
-        uint256 redemption = redemptions[msg.sender][redemptionTimestamp];
+        uint256 redemptionAmount = redemptions[msg.sender][redemptionTimestamp];
 
-        if (redemption == 0) revert InvalidAmount();
+        if (redemptionAmount == 0) revert InvalidAmount();
 
         // Zero out the redemption amount prior to transferring stETH
         redemptions[msg.sender][redemptionTimestamp] = 0;
 
+        // Attempt to return ETH to the user with the contract balance
+        if (address(this).balance >= redemptionAmount) {
+            payable(msg.sender).safeTransferETH(redemptionAmount);
+
+            return redemptionAmount;
+        }
+
+        // If the ETH balance is insufficient to cover the redemption, stake it
+        // Doing so prevents the unlikely "limbo" scenario where neither the
+        // ETH balance nor vault can cover the redemption amount
+        if (address(this).balance != 0)
+            moonStaker.stakeETH{value: address(this).balance}();
+
         // Withdraw assets from the vault for msg.sender
-        return moonStaker.unstakeETH(redemption, msg.sender);
+        return moonStaker.unstakeETH(redemptionAmount, msg.sender);
     }
 }
