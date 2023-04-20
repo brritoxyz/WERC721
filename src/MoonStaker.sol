@@ -8,6 +8,8 @@ interface IUserModule {
     function deposit(uint256, address) external returns (uint256);
 
     function withdraw(uint256, address, address) external returns (uint256);
+
+    function maxWithdraw(address) external view returns (uint256);
 }
 
 contract MoonStaker {
@@ -39,6 +41,14 @@ contract MoonStaker {
     modifier onlyMoon() {
         if (msg.sender != moon) revert OnlyMoon();
         _;
+    }
+
+    /**
+     * @notice Fetch the total assets deposited in the vault
+     * @return uint256  Vault assets
+     */
+    function totalAssets() external view returns (uint256) {
+        return VAULT.maxWithdraw(moon);
     }
 
     /**
