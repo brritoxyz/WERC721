@@ -5,13 +5,23 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {IUserModule} from "src/MoonStaker.sol";
 
 interface IMoonStaker {
+    function VAULT() external view returns (IUserModule);
+
     function stakeETH() external payable returns (uint256, uint256);
+
+    function unstakeETH(
+        uint256 assets,
+        address recipient
+    ) external returns (uint256);
 }
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
 
     IMoonStaker public moonStaker;
 
@@ -32,12 +42,12 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     event InitiateRedemption(
         address indexed msgSender,
         uint256 amount,
-        uint256 duration,
-        address indexed recipient
+        uint256 duration
     );
 
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidTimestamp();
 
     constructor() Owned(msg.sender) {}
 
@@ -48,7 +58,22 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     function setMoonStaker(IMoonStaker _moonStaker) external onlyOwner {
         if (address(_moonStaker) == address(0)) revert InvalidAddress();
 
+        if (address(moonStaker) != address(0)) {
+            // Set the previous MoonStaker contract allowance to zero
+            ERC20(address(moonStaker.VAULT())).safeApprove(
+                address(moonStaker),
+                0
+            );
+        }
+
         moonStaker = _moonStaker;
+
+        // Set the new MoonStaker contract allowance to max, enabling it
+        // to do vault deposits and withdrawals on our behalf
+        ERC20(address(_moonStaker.VAULT())).safeApprove(
+            address(_moonStaker),
+            type(uint256).max
+        );
 
         emit SetMoonStaker(msg.sender, _moonStaker);
     }
@@ -79,17 +104,14 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     /**
      * @notice Initiate a MOON redemption
-     * @param  amount     uint256  MOON amount
-     * @param  duration   uint256  Seconds to wait before redeeming the underlying ETH
-     * @param  recipient  address  Account that can redeem and receive the ETH
+     * @param  amount    uint256  MOON amount
+     * @param  duration  uint256  Seconds to wait before redeeming the underlying stETH
      */
     function initiateRedemptionMOON(
         uint256 amount,
-        uint256 duration,
-        address recipient
-    ) external nonReentrant {
+        uint256 duration
+    ) external nonReentrant returns (uint256 redemptionAmount) {
         if (amount == 0) revert InvalidAmount();
-        if (recipient == address(0)) revert InvalidAddress();
 
         // If the duration is higher than the maximum, set it to the maximum
         if (duration > MAX_REDEMPTION_DURATION)
@@ -101,9 +123,9 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // Calculate the fixed xMOON amount (i.e. half of the total)
         uint256 fixedAmount = amount / 2;
 
-        // Calculate the variable xMOON amount (based on the redemption duration)
-        // Update state and enable the recipient to redeem ETH after the duration
-        redemptions[recipient][block.timestamp + duration] +=
+        // Calculate the redemption amount by factoring in the variable xMOON amount
+        // which is based on the duration
+        redemptionAmount =
             fixedAmount +
             (
                 duration == MAX_REDEMPTION_DURATION
@@ -114,6 +136,31 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
                     )
             );
 
-        emit InitiateRedemption(msg.sender, amount, duration, recipient);
+        // Update state and enable the sender to redeem stETH after the duration
+        // Using add-assignment operator in case the user has multiple same-block redemptions
+        redemptions[msg.sender][block.timestamp + duration] += redemptionAmount;
+
+        emit InitiateRedemption(msg.sender, amount, duration);
+    }
+
+    /**
+     * @notice Redeem underlying MOON assets (e.g. stETH)
+     * @param  redemptionTimestamp  uint256  MOON amount
+     */
+    function redeemMOON(
+        uint256 redemptionTimestamp
+    ) external nonReentrant returns (uint256) {
+        // Cannot redeem before the redemption timestamp has past
+        if (redemptionTimestamp < block.timestamp) revert InvalidTimestamp();
+
+        uint256 redemption = redemptions[msg.sender][redemptionTimestamp];
+
+        if (redemption == 0) revert InvalidAmount();
+
+        // Zero out the redemption amount prior to transferring stETH
+        redemptions[msg.sender][redemptionTimestamp] = 0;
+
+        // Withdraw assets from the vault for msg.sender
+        return moonStaker.unstakeETH(redemption, msg.sender);
     }
 }

@@ -1,1 +1,6 @@
-MoonTest:testTest() (gas: 4150)
+MoonTest:testCannotDepositETHInvalidAmount() (gas: 11229)
+MoonTest:testCannotSetMoonStakerInvalidAddress() (gas: 8508)
+MoonTest:testCannotSetMoonStakerUnauthorized() (gas: 9169)
+MoonTest:testDepositETH(address,uint8,uint8) (runs: 10, μ: 107065, ~: 92725)
+MoonTest:testSetMoonStaker() (gas: 380864)
+MoonTest:testStakeETH(address,uint8,uint8) (runs: 10, μ: 599849, ~: 433315)

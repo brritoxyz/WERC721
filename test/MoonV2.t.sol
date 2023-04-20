@@ -49,7 +49,7 @@ contract MoonTest is Test {
 
         moonStaker = new MoonStaker(moonAddr);
         lido = ILido(address(moonStaker.LIDO()));
-        instadapp = IUserModule(address(moonStaker.INSTADAPP()));
+        instadapp = IUserModule(address(moonStaker.VAULT()));
 
         moon.setMoonStaker(IMoonStaker(address(new MoonStaker(moonAddr))));
     }
