@@ -2,14 +2,13 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 interface UserModule {
     function deposit(uint256, address) external returns (uint256);
 }
 
-contract MoonStaker is ReentrancyGuard {
+contract MoonStaker {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for address payable;
 
@@ -38,7 +37,6 @@ contract MoonStaker is ReentrancyGuard {
     function stakeETH()
         external
         payable
-        nonReentrant
         returns (uint256 assets, uint256 shares)
     {
         if (msg.sender != moon) revert OnlyMoon();
