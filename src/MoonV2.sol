@@ -92,10 +92,16 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     /**
      * @notice Stake ETH
-     * @return balance  uint256  Contract ETH balance that is staked
+     * @return balance  uint256  ETH balance staked
+     * @return assets   uint256  Vault assets deposited
+     * @return shares   uint256  Vault shares received
      */
-    function stakeETH() external nonReentrant returns (uint256 balance) {
-        (uint256 assets, uint256 shares) = moonStaker.stakeETH{
+    function stakeETH()
+        external
+        nonReentrant
+        returns (uint256 balance, uint256 assets, uint256 shares)
+    {
+        (assets, shares) = moonStaker.stakeETH{
             value: (balance = address(this).balance)
         }();
 

@@ -173,9 +173,11 @@ contract MoonTest is Test {
 
             emit StakeETH(msgSender, ethAmount, expectedAssets, expectedShares);
 
-            uint256 balance = moon.stakeETH();
+            (uint256 balance, uint256 assets, uint256 shares) = moon.stakeETH();
 
             assertEq(ethAmount, balance);
+            assertLe(expectedAssets, assets);
+            assertLe(expectedShares, shares);
             assertLe(minimumSharesBalance, instadapp.balanceOf(moonAddr));
 
             unchecked {
