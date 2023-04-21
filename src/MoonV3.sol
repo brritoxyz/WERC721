@@ -3,17 +3,16 @@ pragma solidity 0.8.19;
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {MoonStaker} from "src/MoonStaker.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
-    using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ERC4626;
     using SafeTransferLib for address payable;
+    using FixedPointMathLib for uint256;
 
     // Maximum duration users must wait to redeem the full ETH value of MOON
     uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
@@ -29,7 +28,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     // Instant redemptions enable users to redeem their ETH rebates immediately
     // by giving up a portion of MOON. The default instant redemption value is
-    // 75% of the redeemed MOON amount so it's better for users to wait
+    // 75% of the redeemed MOON amount
     uint256 public instantRedemptionValue = 75;
 
     mapping(address => mapping(uint256 => uint256)) public pendingRedemptions;
@@ -56,60 +55,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         staker.safeApprove(address(_vault), type(uint256).max);
     }
 
-    function setStaker(ERC20 _staker) external onlyOwner {
-        if (address(_staker) == address(0)) revert InvalidAddress();
-
-        address vaultAddr = address(vault);
-
-        // Set the vault's allowance to zero for the previous staker
-        staker.safeApprove(vaultAddr, 0);
-
-        // Set the new staker
-        staker = _staker;
-
-        // Set the vault's allowance to the maximum for the current staker
-        _staker.safeApprove(vaultAddr, type(uint256).max);
-
-        emit SetStaker(msg.sender, _staker);
-    }
-
-    function setVault(ERC4626 _vault) external onlyOwner {
-        if (address(_vault) == address(0)) revert InvalidAddress();
-
-        // Set the previous vault's allowance to zero
-        staker.safeApprove(address(vault), 0);
-
-        // Set the new vault
-        vault = _vault;
-
-        // Set the new vault's allowance to the maximum
-        staker.safeApprove(address(_vault), type(uint256).max);
-
-        emit SetVault(msg.sender, _vault);
-    }
-
-    function setInstantRedemptionValue(
-        uint256 _instantRedemptionValue
-    ) external onlyOwner {
-        if (_instantRedemptionValue > INSTANT_REDEMPTION_VALUE_BASE)
-            revert InvalidAmount();
-
-        // Set the new instantRedemptionValue
-        instantRedemptionValue = _instantRedemptionValue;
-
-        emit SetInstantRedemptionValue(msg.sender, _instantRedemptionValue);
-    }
-
-    /**
-     * @notice Deposit ETH, receive MOON
-     */
-    function depositETH() external payable nonReentrant {
-        if (msg.value == 0) revert InvalidAmount();
-
-        // Mint MOON for msg.sender, equal to the ETH deposited
-        _mint(msg.sender, msg.value);
-    }
-
     /**
      * @notice Stake ETH
      * @return balance  uint256  ETH balance staked
@@ -133,20 +78,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
             // Maximize returns with the staking vault - the Moon contract receives shares
             shares = vault.deposit(assets, address(this));
         }
-    }
-
-    /**
-     * @notice Stake ETH
-     * @return uint256  ETH balance staked
-     * @return uint256  Vault assets deposited
-     * @return uint256  Vault shares received
-     */
-    function stakeETH()
-        external
-        nonReentrant
-        returns (uint256, uint256, uint256)
-    {
-        return _stakeETH();
     }
 
     /**
@@ -184,6 +115,86 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
         // Transfer the redeemed amount to msg.sender (vault shares, as good as ETH)
         vault.safeTransfer(msg.sender, shares);
+    }
+
+    /**
+     * @notice Set staker
+     * @param  _staker  ERC20  Staker contract
+     */
+    function setStaker(ERC20 _staker) external onlyOwner {
+        if (address(_staker) == address(0)) revert InvalidAddress();
+
+        address vaultAddr = address(vault);
+
+        // Set the vault's allowance to zero for the previous staker
+        staker.safeApprove(vaultAddr, 0);
+
+        // Set the new staker
+        staker = _staker;
+
+        // Set the vault's allowance to the maximum for the current staker
+        _staker.safeApprove(vaultAddr, type(uint256).max);
+
+        emit SetStaker(msg.sender, _staker);
+    }
+
+    /**
+     * @notice Set the instant redemption value
+     * @param  _vault  ERC4626  Vault contract
+     */
+    function setVault(ERC4626 _vault) external onlyOwner {
+        if (address(_vault) == address(0)) revert InvalidAddress();
+
+        // Set the previous vault's allowance to zero
+        staker.safeApprove(address(vault), 0);
+
+        // Set the new vault
+        vault = _vault;
+
+        // Set the new vault's allowance to the maximum
+        staker.safeApprove(address(_vault), type(uint256).max);
+
+        emit SetVault(msg.sender, _vault);
+    }
+
+    /**
+     * @notice Set the instant redemption value
+     * @param  _instantRedemptionValue  uint256  Instant redemption value
+     */
+    function setInstantRedemptionValue(
+        uint256 _instantRedemptionValue
+    ) external onlyOwner {
+        if (_instantRedemptionValue > INSTANT_REDEMPTION_VALUE_BASE)
+            revert InvalidAmount();
+
+        // Set the new instantRedemptionValue
+        instantRedemptionValue = _instantRedemptionValue;
+
+        emit SetInstantRedemptionValue(msg.sender, _instantRedemptionValue);
+    }
+
+    /**
+     * @notice Deposit ETH, receive MOON
+     */
+    function depositETH() external payable nonReentrant {
+        if (msg.value == 0) revert InvalidAmount();
+
+        // Mint MOON for msg.sender, equal to the ETH deposited
+        _mint(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Stake ETH
+     * @return uint256  ETH balance staked
+     * @return uint256  Vault assets deposited
+     * @return uint256  Vault shares received
+     */
+    function stakeETH()
+        external
+        nonReentrant
+        returns (uint256, uint256, uint256)
+    {
+        return _stakeETH();
     }
 
     /**
@@ -230,5 +241,30 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
         // Set the amount of shares that the user can claim after the duration has elapsed
         pendingRedemptions[msg.sender][block.timestamp + duration] += shares;
+    }
+
+    /**
+     * @notice Fulfill a MOON redemption
+     * @param  redemptionTimestamp  uint256  MOON amount
+     * @return shares               uint256  Redeemed vault shares
+     */
+    function fulfillRedemption(
+        uint256 redemptionTimestamp
+    ) external nonReentrant returns (uint256 shares) {
+        // If the redemption timestamp is before the current time, then it's too early - revert
+        if (redemptionTimestamp < block.timestamp) revert InvalidRedemption();
+
+        shares = pendingRedemptions[msg.sender][redemptionTimestamp];
+
+        // If the redeemable amount is zero then the redemption was already claimed or non-existent
+        if (shares == 0) revert InvalidRedemption();
+
+        // Zero out the pending redemption amount prior to transferring shares
+        pendingRedemptions[msg.sender][redemptionTimestamp] = 0;
+
+        // Stake ETH to ensure there are sufficient shares to fulfill the redemption
+        _stakeETH();
+
+        vault.safeTransfer(msg.sender, shares);
     }
 }

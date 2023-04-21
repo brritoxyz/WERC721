@@ -394,4 +394,70 @@ contract MoonTest is Test {
 
         vm.stopPrank();
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            fulfillRedemption
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotFulfillRedemptionInvalidRedemption() external {
+        vm.expectRevert(Moon.InvalidRedemption.selector);
+
+        moon.fulfillRedemption(block.timestamp + 1);
+    }
+
+    function testFulfillRedemption(
+        address msgSender,
+        uint16 amount,
+        uint24 duration,
+        uint8 iterations,
+        bool shouldStake
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(amount != 0);
+        vm.assume(duration != 0);
+        vm.assume(duration <= maxRedemptionDuration);
+        vm.assume(iterations != 0);
+        vm.assume(iterations < 5);
+
+        uint256 totalSenderShares;
+
+        vm.startPrank(msgSender);
+
+        uint256 depositAmount = uint256(amount) * FUZZ_ETH_AMOUNT;
+
+        vm.deal(msgSender, depositAmount);
+
+        moon.depositETH{value: depositAmount}();
+
+        if (shouldStake) {
+            moon.stakeETH();
+        }
+
+        uint256 balance = moon.balanceOf(msgSender);
+
+        for (uint256 i; i < iterations; ) {
+            // Randomize amount to redeem, a portion of the balance
+            uint256 partialBalance = balance / (i + 2);
+
+            balance -= partialBalance;
+
+            uint256 redemptionTimestamp = block.timestamp + duration;
+
+            moon.initiateRedemption(partialBalance, duration);
+
+            vm.warp(redemptionTimestamp);
+
+            uint256 shares = moon.fulfillRedemption(redemptionTimestamp);
+
+            totalSenderShares += shares;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        assertEq(totalSenderShares, VAULT.balanceOf(msgSender));
+
+        vm.stopPrank();
+    }
 }
