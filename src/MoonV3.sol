@@ -18,14 +18,26 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     // Maximum duration users must wait to redeem the full ETH value of MOON
     uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
 
+    // For calculating the instant redemption amount
+    uint256 public constant INSTANT_REDEMPTION_VALUE_BASE = 100;
+
     // ETH staker contract
     ERC20 public staker;
 
     // Vault contract
     ERC4626 public vault;
 
+    // Instant redemptions enable users to redeem their ETH rebates immediately
+    // by giving up a portion of MOON. The default instant redemption value is
+    // 75% of the redeemed MOON amount so it's better for users to wait
+    uint256 public instantRedemptionValue = 75;
+
     event SetStaker(address indexed msgSender, ERC20 staker);
     event SetVault(address indexed msgSender, ERC4626 vault);
+    event SetInstantRedemptionValue(
+        address indexed msgSender,
+        uint256 instantRedemptionValue
+    );
 
     error InvalidAddress();
     error InvalidAmount();
@@ -73,6 +85,18 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         emit SetVault(msg.sender, _vault);
     }
 
+    function setInstantRedemptionValue(
+        uint256 _instantRedemptionValue
+    ) external onlyOwner {
+        if (_instantRedemptionValue > INSTANT_REDEMPTION_VALUE_BASE)
+            revert InvalidAmount();
+
+        // Set the new instantRedemptionValue
+        instantRedemptionValue = _instantRedemptionValue;
+
+        emit SetInstantRedemptionValue(msg.sender, _instantRedemptionValue);
+    }
+
     /**
      * @notice Deposit ETH, receive MOON
      */
@@ -95,14 +119,17 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     {
         balance = address(this).balance;
 
-        // Stake ETH balance - reverts if msg.value is zero
-        payable(address(staker)).safeTransferETH(balance);
+        // Only execute ETH-staking functions if the ETH balance is non-zero
+        if (balance != 0) {
+            // Stake ETH balance - reverts if msg.value is zero
+            payable(address(staker)).safeTransferETH(balance);
 
-        // Fetch staked ETH balance, the amount which will be deposited into the vault
-        assets = staker.balanceOf(address(this));
+            // Fetch staked ETH balance, the amount which will be deposited into the vault
+            assets = staker.balanceOf(address(this));
 
-        // Maximize returns with the staking vault - the Moon contract receives shares
-        shares = vault.deposit(assets, address(this));
+            // Maximize returns with the staking vault - the Moon contract receives shares
+            shares = vault.deposit(assets, address(this));
+        }
     }
 
     /**
@@ -125,21 +152,24 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
      */
     function instantlyRedeemMOON(
         uint256 amount
-    ) external nonReentrant returns (uint256 redeemedAmount) {
+    ) external nonReentrant returns (uint256 redeemed, uint256 shares) {
         if (amount == 0) revert InvalidAmount();
 
         // NOTE: Due to rounding, the redeemed amount will be zero if `amount` < 2!
         // The remainder of the function logic assumes that the caller is a logical actor
         // since redeeming extremely small amounts of MOON is uneconomical due to gas fees
-        redeemedAmount = amount / 2;
+        redeemed = amount.mulDivDown(
+            instantRedemptionValue,
+            INSTANT_REDEMPTION_VALUE_BASE
+        );
 
-        // Stake ETH first to ensure that this contract's vault share balance is current
+        // Stake ETH first to ensure that the contract's vault share balance is current
         _stakeETH();
 
         // Calculate the amount of vault shares redeemed - based on the proportion of
         // the redeemed MOON amount to the total MOON supply
-        uint256 shares = vault.balanceOf(address(this)).mulDivDown(
-            redeemedAmount,
+        shares = vault.balanceOf(address(this)).mulDivDown(
+            redeemed,
             totalSupply
         );
 
@@ -147,7 +177,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         _burn(msg.sender, amount);
 
         // Mint MOON for the owner, equal to the unredeemed amount (i.e. ~50% of amount)
-        _mint(owner, amount - redeemedAmount);
+        _mint(owner, amount - redeemed);
 
         // Transfer the redeemed amount to msg.sender (vault shares, as good as ETH)
         vault.safeTransfer(msg.sender, shares);

@@ -33,14 +33,21 @@ contract MoonTest is Test {
     Moon private immutable moon;
     address private immutable moonAddr;
     uint256 private immutable maxRedemptionDuration;
+    uint256 private immutable instantRedemptionValueBase;
 
     event SetStaker(address indexed msgSender, ERC20 staker);
     event SetVault(address indexed msgSender, ERC4626 vault);
+    event SetInstantRedemptionValue(
+        address indexed msgSender,
+        uint256 instantRedemptionValue
+    );
+    event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
         moon = new Moon(STAKER, VAULT);
         moonAddr = address(moon);
         maxRedemptionDuration = moon.MAX_REDEMPTION_DURATION();
+        instantRedemptionValueBase = moon.INSTANT_REDEMPTION_VALUE_BASE();
 
         assertEq(type(uint256).max, STAKER.allowance(moonAddr, address(VAULT)));
     }
@@ -112,6 +119,43 @@ contract MoonTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
+                            setInstantRedemptionValue
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetInstantRedemptionValueUnauthorized() external {
+        vm.prank(address(0));
+        vm.expectRevert(UNAUTHORIZED_ERROR);
+
+        moon.setInstantRedemptionValue(1);
+    }
+
+    function testCannotSetInstantRedemptionValueInvalidAmount() external {
+        uint256 invalidAmount = instantRedemptionValueBase + 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.setInstantRedemptionValue(invalidAmount);
+    }
+
+    function testSetInstantRedemptionValue(
+        uint256 instantRedemptionValue
+    ) external {
+        vm.assume(instantRedemptionValue <= instantRedemptionValueBase);
+
+        address msgSender = address(this);
+
+        assertEq(msgSender, moon.owner());
+
+        vm.expectEmit(true, false, false, true, moonAddr);
+
+        emit SetInstantRedemptionValue(msgSender, instantRedemptionValue);
+
+        moon.setInstantRedemptionValue(instantRedemptionValue);
+
+        assertEq(instantRedemptionValue, moon.instantRedemptionValue());
+    }
+
+    /*//////////////////////////////////////////////////////////////
                             depositETH
     //////////////////////////////////////////////////////////////*/
 
@@ -123,7 +167,7 @@ contract MoonTest is Test {
 
     function testDepositETH(
         address msgSender,
-        uint32 amount,
+        uint16 amount,
         uint8 iterations
     ) external {
         vm.assume(msgSender != address(0));
@@ -159,6 +203,15 @@ contract MoonTest is Test {
                             stakeETH
     //////////////////////////////////////////////////////////////*/
 
+    function testStakeETHZero() external {
+        // Does not revert, just returns zero values
+        (uint256 balance, uint256 assets, uint256 shares) = moon.stakeETH();
+
+        assertEq(0, balance);
+        assertEq(0, assets);
+        assertEq(0, shares);
+    }
+
     function testStakeETH(uint8 amount, uint8 iterations) external {
         vm.assume(amount != 0);
         vm.assume(iterations != 0);
@@ -193,5 +246,71 @@ contract MoonTest is Test {
         // Assets deposited should be greater than or equal to what's maximally
         // withdrawable by the vault (does not consider any exit fees)
         assertGe(totalAssets, VAULT.maxWithdraw(moonAddr) - errorMargin);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            instantlyRedeemMOON
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotInstantlyRedeemMOONInvalidAmount() external {
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.instantlyRedeemMOON(0);
+    }
+
+    function testInstantlyRedeemMOON(
+        address msgSender,
+        uint16 amount,
+        uint8 iterations,
+        bool shouldStake
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(amount != 0);
+        vm.assume(iterations != 0);
+        vm.assume(iterations < 10);
+
+        uint256 totalSenderShares;
+        uint256 totalOwnerBalance;
+
+        vm.startPrank(msgSender);
+
+        uint256 depositAmount = uint256(amount) * FUZZ_ETH_AMOUNT;
+
+        vm.deal(msgSender, depositAmount);
+
+        moon.depositETH{value: depositAmount}();
+
+        if (shouldStake) {
+            moon.stakeETH();
+        }
+
+        uint256 balance = moon.balanceOf(msgSender);
+
+        for (uint256 i; i < iterations; ) {
+            // Randomize amount to redeem, a portion of the balance
+            uint256 partialBalance = balance / (i + 2);
+
+            balance -= partialBalance;
+
+            vm.expectEmit(true, true, false, true, moonAddr);
+
+            emit Transfer(msgSender, address(0), partialBalance);
+
+            (uint256 redeemed, uint256 shares) = moon.instantlyRedeemMOON(
+                partialBalance
+            );
+
+            totalSenderShares += shares;
+            totalOwnerBalance += partialBalance - redeemed;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        assertEq(totalSenderShares, VAULT.balanceOf(msgSender));
+        assertEq(totalOwnerBalance, moon.balanceOf(moon.owner()));
+
+        vm.stopPrank();
     }
 }

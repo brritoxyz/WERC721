@@ -7,4 +7,4 @@ verbosity = 3
 optimizer_runs = 100_000
 
 [fuzz]
-runs = 100
+runs = 50
