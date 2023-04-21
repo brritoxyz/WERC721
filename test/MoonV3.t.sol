@@ -249,16 +249,28 @@ contract MoonTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            instantlyRedeemMOON
+                            initiateRedemption
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotInstantlyRedeemMOONInvalidAmount() external {
+    function testCannotInitiateRedemptionInvalidAmountAmount() external {
+        uint256 invalidAmount = 0;
+        uint256 duration = 0;
+
         vm.expectRevert(Moon.InvalidAmount.selector);
 
-        moon.instantlyRedeemMOON(0);
+        moon.initiateRedemption(invalidAmount, duration);
     }
 
-    function testInstantlyRedeemMOON(
+    function testCannotInitiateRedemptionInvalidAmountDurationMax() external {
+        uint256 amount = 1;
+        uint256 invalidDuration = maxRedemptionDuration + 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.initiateRedemption(amount, invalidDuration);
+    }
+
+    function testInitiateRedemptionInstant(
         address msgSender,
         uint16 amount,
         uint8 iterations,
@@ -296,8 +308,9 @@ contract MoonTest is Test {
 
             emit Transfer(msgSender, address(0), partialBalance);
 
-            (uint256 redeemed, uint256 shares) = moon.instantlyRedeemMOON(
-                partialBalance
+            (uint256 redeemed, uint256 shares) = moon.initiateRedemption(
+                partialBalance,
+                0
             );
 
             totalSenderShares += shares;
@@ -316,38 +329,7 @@ contract MoonTest is Test {
         vm.stopPrank();
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            startRedeemMOON
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotStartRedeemMOONInvalidAmountAmount() external {
-        uint256 invalidAmount = 0;
-        uint256 duration = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.startRedeemMOON(invalidAmount, duration);
-    }
-
-    function testCannotStartRedeemMOONInvalidAmountDuration() external {
-        uint256 amount = 1;
-        uint256 invalidDuration = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.startRedeemMOON(amount, invalidDuration);
-    }
-
-    function testCannotStartRedeemMOONInvalidAmountDurationMax() external {
-        uint256 amount = 1;
-        uint256 invalidDuration = maxRedemptionDuration + 1;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        moon.startRedeemMOON(amount, invalidDuration);
-    }
-
-    function testStartRedeemMOON(
+    function testInitiateRedemption(
         address msgSender,
         uint16 amount,
         uint24 duration,
@@ -389,7 +371,7 @@ contract MoonTest is Test {
 
             emit Transfer(msgSender, address(0), partialBalance);
 
-            (uint256 redeemed, uint256 shares) = moon.startRedeemMOON(
+            (uint256 redeemed, uint256 shares) = moon.initiateRedemption(
                 partialBalance,
                 duration
             );

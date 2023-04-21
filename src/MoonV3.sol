@@ -43,6 +43,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidRedemption();
 
     constructor(ERC20 _staker, ERC4626 _vault) Owned(msg.sender) {
         if (address(_staker) == address(0)) revert InvalidAddress();
@@ -149,14 +150,14 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     }
 
     /**
-     * @notice Instantly redeem MOON for the underlying assets at 50% of the value
+     * @notice Instantly redeem MOON for the underlying assets at partial value
      * @param  amount    uint256  MOON amount
+     * @return redeemed  uint256  Redeemed MOON
+     * @return shares    uint256  Redeemed vault shares
      */
-    function instantlyRedeemMOON(
+    function _instantRedemption(
         uint256 amount
-    ) external nonReentrant returns (uint256 redeemed, uint256 shares) {
-        if (amount == 0) revert InvalidAmount();
-
+    ) private returns (uint256 redeemed, uint256 shares) {
         // NOTE: Due to rounding, the redeemed amount will be zero if `amount` < 2!
         // The remainder of the function logic assumes that the caller is a logical actor
         // since redeeming extremely small amounts of MOON is uneconomical due to gas fees
@@ -189,14 +190,20 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
      * @notice Begin a MOON redemption
      * @param  amount    uint256  MOON amount
      * @param  duration  uint256  Queue duration in seconds
+     * @return redeemed  uint256  Redeemed MOON
+     * @return shares    uint256  Redeemed vault shares
      */
-    function startRedeemMOON(
+    function initiateRedemption(
         uint256 amount,
         uint256 duration
     ) external nonReentrant returns (uint256 redeemed, uint256 shares) {
         if (amount == 0) revert InvalidAmount();
-        if (duration == 0) revert InvalidAmount();
         if (duration > MAX_REDEMPTION_DURATION) revert InvalidAmount();
+
+        // Perform an instant redemption if the duration is zero
+        if (duration == 0) {
+            return _instantRedemption(amount);
+        }
 
         // The redeemed amount is based on the total duration the user is willing
         // to wait for their redemption to complete (waiting the max duration
