@@ -32,6 +32,8 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     // 75% of the redeemed MOON amount so it's better for users to wait
     uint256 public instantRedemptionValue = 75;
 
+    mapping(address => mapping(uint256 => uint256)) public pendingRedemptions;
+
     event SetStaker(address indexed msgSender, ERC20 staker);
     event SetVault(address indexed msgSender, ERC4626 vault);
     event SetInstantRedemptionValue(
@@ -176,10 +178,50 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // Burn MOON from msg.sender - reverts if their balance is insufficient
         _burn(msg.sender, amount);
 
-        // Mint MOON for the owner, equal to the unredeemed amount (i.e. ~50% of amount)
+        // Mint MOON for the owner, equal to the unredeemed amount
         _mint(owner, amount - redeemed);
 
         // Transfer the redeemed amount to msg.sender (vault shares, as good as ETH)
         vault.safeTransfer(msg.sender, shares);
+    }
+
+    /**
+     * @notice Begin a MOON redemption
+     * @param  amount    uint256  MOON amount
+     * @param  duration  uint256  Queue duration in seconds
+     */
+    function startRedeemMOON(
+        uint256 amount,
+        uint256 duration
+    ) external nonReentrant returns (uint256 redeemed, uint256 shares) {
+        if (amount == 0) revert InvalidAmount();
+        if (duration == 0) revert InvalidAmount();
+        if (duration > MAX_REDEMPTION_DURATION) revert InvalidAmount();
+
+        // The redeemed amount is based on the total duration the user is willing
+        // to wait for their redemption to complete (waiting the max duration
+        // results in 100% of the underlying ETH-based assets being redeemed)
+        redeemed = amount.mulDivDown(duration, MAX_REDEMPTION_DURATION);
+
+        // Stake ETH first to ensure that the contract's vault share balance is current
+        _stakeETH();
+
+        // Calculate the amount of vault shares redeemed - based on the proportion of
+        // the redeemed MOON amount to the total MOON supply
+        shares = vault.balanceOf(address(this)).mulDivDown(
+            redeemed,
+            totalSupply
+        );
+
+        // Burn MOON from msg.sender - reverts if their balance is insufficient
+        _burn(msg.sender, amount);
+
+        // If amount does not equal redeemed, then `duration` is less than the maximum
+        if (amount != redeemed) {
+            _mint(owner, amount - redeemed);
+        }
+
+        // Set the amount of shares that the user can claim after the duration has elapsed
+        pendingRedemptions[msg.sender][block.timestamp + duration] += shares;
     }
 }

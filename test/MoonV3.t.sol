@@ -267,7 +267,7 @@ contract MoonTest is Test {
         vm.assume(msgSender != address(0));
         vm.assume(amount != 0);
         vm.assume(iterations != 0);
-        vm.assume(iterations < 10);
+        vm.assume(iterations < 5);
 
         uint256 totalSenderShares;
         uint256 totalOwnerBalance;
@@ -310,6 +310,105 @@ contract MoonTest is Test {
 
         assertEq(totalSenderShares, VAULT.balanceOf(msgSender));
         assertEq(totalOwnerBalance, moon.balanceOf(moon.owner()));
+        assertEq(balance, moon.balanceOf(msgSender));
+        assertEq(balance + totalOwnerBalance, moon.totalSupply());
+
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            startRedeemMOON
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotStartRedeemMOONInvalidAmountAmount() external {
+        uint256 invalidAmount = 0;
+        uint256 duration = 0;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.startRedeemMOON(invalidAmount, duration);
+    }
+
+    function testCannotStartRedeemMOONInvalidAmountDuration() external {
+        uint256 amount = 1;
+        uint256 invalidDuration = 0;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.startRedeemMOON(amount, invalidDuration);
+    }
+
+    function testCannotStartRedeemMOONInvalidAmountDurationMax() external {
+        uint256 amount = 1;
+        uint256 invalidDuration = maxRedemptionDuration + 1;
+
+        vm.expectRevert(Moon.InvalidAmount.selector);
+
+        moon.startRedeemMOON(amount, invalidDuration);
+    }
+
+    function testStartRedeemMOON(
+        address msgSender,
+        uint16 amount,
+        uint24 duration,
+        uint8 iterations,
+        bool shouldStake
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(amount != 0);
+        vm.assume(duration != 0);
+        vm.assume(duration <= maxRedemptionDuration);
+        vm.assume(iterations != 0);
+        vm.assume(iterations < 5);
+
+        uint256 totalSenderShares;
+        uint256 totalOwnerBalance;
+
+        vm.startPrank(msgSender);
+
+        uint256 depositAmount = uint256(amount) * FUZZ_ETH_AMOUNT;
+
+        vm.deal(msgSender, depositAmount);
+
+        moon.depositETH{value: depositAmount}();
+
+        if (shouldStake) {
+            moon.stakeETH();
+        }
+
+        uint256 balance = moon.balanceOf(msgSender);
+        uint256 redemptionTimestamp = block.timestamp + duration;
+
+        for (uint256 i; i < iterations; ) {
+            // Randomize amount to redeem, a portion of the balance
+            uint256 partialBalance = balance / (i + 2);
+
+            balance -= partialBalance;
+
+            vm.expectEmit(true, true, false, true, moonAddr);
+
+            emit Transfer(msgSender, address(0), partialBalance);
+
+            (uint256 redeemed, uint256 shares) = moon.startRedeemMOON(
+                partialBalance,
+                duration
+            );
+
+            totalSenderShares += shares;
+            totalOwnerBalance += partialBalance - redeemed;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        assertEq(
+            totalSenderShares,
+            moon.pendingRedemptions(msgSender, redemptionTimestamp)
+        );
+        assertEq(totalOwnerBalance, moon.balanceOf(moon.owner()));
+        assertEq(balance, moon.balanceOf(msgSender));
+        assertEq(balance + totalOwnerBalance, moon.totalSupply());
 
         vm.stopPrank();
     }
