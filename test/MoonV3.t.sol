@@ -36,13 +36,6 @@ contract MoonTest is Test {
 
     event SetStaker(address indexed msgSender, ERC20 staker);
     event SetVault(address indexed msgSender, ERC4626 vault);
-    event DepositETH(address indexed msgSender, uint256 msgValue);
-    event StakeETH(
-        address indexed msgSender,
-        uint256 balance,
-        uint256 assets,
-        uint256 shares
-    );
 
     constructor() {
         moon = new Moon(STAKER, VAULT);
@@ -149,9 +142,6 @@ contract MoonTest is Test {
 
             vm.deal(msgSender, ethAmount);
             vm.prank(msgSender);
-            vm.expectEmit(true, false, false, true, moonAddr);
-
-            emit DepositETH(msgSender, ethAmount);
 
             moon.depositETH{value: ethAmount}();
 

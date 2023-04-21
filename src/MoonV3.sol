@@ -12,6 +12,7 @@ import {MoonStaker} from "src/MoonStaker.sol";
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
+    using SafeTransferLib for ERC4626;
     using SafeTransferLib for address payable;
 
     // Maximum duration users must wait to redeem the full ETH value of MOON
@@ -25,13 +26,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     event SetStaker(address indexed msgSender, ERC20 staker);
     event SetVault(address indexed msgSender, ERC4626 vault);
-    event DepositETH(address indexed msgSender, uint256 msgValue);
-    event StakeETH(
-        address indexed msgSender,
-        uint256 balance,
-        uint256 assets,
-        uint256 shares
-    );
 
     error InvalidAddress();
     error InvalidAmount();
@@ -87,8 +81,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
         // Mint MOON for msg.sender, equal to the ETH deposited
         _mint(msg.sender, msg.value);
-
-        emit DepositETH(msg.sender, msg.value);
     }
 
     /**
@@ -111,8 +103,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
         // Maximize returns with the staking vault - the Moon contract receives shares
         shares = vault.deposit(assets, address(this));
-
-        emit StakeETH(msg.sender, balance, assets, shares);
     }
 
     /**
@@ -127,5 +117,39 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         returns (uint256, uint256, uint256)
     {
         return _stakeETH();
+    }
+
+    /**
+     * @notice Instantly redeem MOON for the underlying assets at 50% of the value
+     * @param  amount    uint256  MOON amount
+     */
+    function instantlyRedeemMOON(
+        uint256 amount
+    ) external nonReentrant returns (uint256 redeemedAmount) {
+        if (amount == 0) revert InvalidAmount();
+
+        // NOTE: Due to rounding, the redeemed amount will be zero if `amount` < 2!
+        // The remainder of the function logic assumes that the caller is a logical actor
+        // since redeeming extremely small amounts of MOON is uneconomical due to gas fees
+        redeemedAmount = amount / 2;
+
+        // Stake ETH first to ensure that this contract's vault share balance is current
+        _stakeETH();
+
+        // Calculate the amount of vault shares redeemed - based on the proportion of
+        // the redeemed MOON amount to the total MOON supply
+        uint256 shares = vault.balanceOf(address(this)).mulDivDown(
+            redeemedAmount,
+            totalSupply
+        );
+
+        // Burn MOON from msg.sender - reverts if their balance is insufficient
+        _burn(msg.sender, amount);
+
+        // Mint MOON for the owner, equal to the unredeemed amount (i.e. ~50% of amount)
+        _mint(owner, amount - redeemedAmount);
+
+        // Transfer the redeemed amount to msg.sender (vault shares, as good as ETH)
+        vault.safeTransfer(msg.sender, shares);
     }
 }
