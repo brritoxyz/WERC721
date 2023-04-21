@@ -4,26 +4,10 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {Moon, IMoonStaker} from "src/MoonV2.sol";
+import {Moon} from "src/MoonV2.sol";
 import {MoonStaker} from "src/MoonStaker.sol";
-
-interface ILido {
-    function getSharesByPooledEth(uint256) external view returns (uint256);
-
-    function getPooledEthByShares(uint256) external view returns (uint256);
-
-    function balanceOf(address) external view returns (uint256);
-}
-
-interface IUserModule {
-    function balanceOf(address) external view returns (uint256);
-
-    function previewDeposit(uint256) external view returns (uint256);
-
-    function convertToAssets(uint256) external view returns (uint256);
-
-    function getWithdrawFee(uint256) external view returns (uint256);
-}
+import {ILido} from "src/interfaces/ILido.sol";
+import {IUserModule} from "src/interfaces/IUserModule.sol";
 
 contract MoonTest is Test {
     using FixedPointMathLib for uint256;
@@ -42,7 +26,7 @@ contract MoonTest is Test {
     IUserModule private immutable vault;
     uint256 private immutable maxRedemptionDuration;
 
-    event SetMoonStaker(address indexed msgSender, IMoonStaker moonStaker);
+    event SetMoonStaker(address indexed msgSender, MoonStaker moonStaker);
     event DepositETH(address indexed msgSender, uint256 msgValue);
     event StakeETH(
         address indexed msgSender,
@@ -67,7 +51,7 @@ contract MoonTest is Test {
         lido = ILido(address(moonStaker.LIDO()));
         vault = IUserModule(address(moonStaker.VAULT()));
 
-        moon.setMoonStaker(IMoonStaker(address(new MoonStaker(moonAddr))));
+        moon.setMoonStaker(moonStaker);
 
         maxRedemptionDuration = moon.MAX_REDEMPTION_DURATION();
     }
@@ -102,20 +86,18 @@ contract MoonTest is Test {
         vm.prank(address(0));
         vm.expectRevert(UNAUTHORIZED_ERROR);
 
-        moon.setMoonStaker(IMoonStaker(address(moonStaker)));
+        moon.setMoonStaker(moonStaker);
     }
 
     function testCannotSetMoonStakerInvalidAddress() external {
         vm.expectRevert(Moon.InvalidAddress.selector);
 
-        moon.setMoonStaker(IMoonStaker(address(0)));
+        moon.setMoonStaker(MoonStaker(address(0)));
     }
 
     function testSetMoonStaker() external {
         address msgSender = address(this);
-        IMoonStaker newMoonStaker = IMoonStaker(
-            address(new MoonStaker(moonAddr))
-        );
+        MoonStaker newMoonStaker = new MoonStaker(moonAddr);
 
         assertEq(msgSender, moon.owner());
         assertFalse(address(newMoonStaker) == address(moon.moonStaker()));

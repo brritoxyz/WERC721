@@ -6,27 +6,15 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {MoonStaker} from "src/MoonStaker.sol";
 import {IUserModule} from "src/MoonStaker.sol";
-
-interface IMoonStaker {
-    function VAULT() external view returns (IUserModule);
-
-    function totalAssets() external view returns (uint256);
-
-    function stakeETH() external payable returns (uint256, uint256);
-
-    function unstakeETH(
-        uint256 assets,
-        address recipient
-    ) external returns (uint256);
-}
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
     using SafeTransferLib for address payable;
 
-    IMoonStaker public moonStaker;
+    MoonStaker public moonStaker;
 
     // Maximum duration users must wait to redeem the full ETH value of MOON
     uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
@@ -37,7 +25,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     mapping(address user => mapping(uint256 redemptionTimestamp => uint256 amount))
         public redemptions;
 
-    event SetMoonStaker(address indexed msgSender, IMoonStaker moonStaker);
+    event SetMoonStaker(address indexed msgSender, MoonStaker moonStaker);
     event DepositETH(address indexed msgSender, uint256 msgValue);
     event StakeETH(
         address indexed msgSender,
@@ -86,7 +74,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
      * @notice Set MoonStaker contract
      * @param  _moonStaker  MoonStaker  MoonStaker contract
      */
-    function setMoonStaker(IMoonStaker _moonStaker) external onlyOwner {
+    function setMoonStaker(MoonStaker _moonStaker) external onlyOwner {
         if (address(_moonStaker) == address(0)) revert InvalidAddress();
 
         if (address(moonStaker) != address(0)) {

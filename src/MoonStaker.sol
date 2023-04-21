@@ -3,14 +3,7 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-
-interface IUserModule {
-    function deposit(uint256, address) external returns (uint256);
-
-    function withdraw(uint256, address, address) external returns (uint256);
-
-    function maxWithdraw(address) external view returns (uint256);
-}
+import {IUserModule} from "src/interfaces/IUserModule.sol";
 
 contract MoonStaker {
     using SafeTransferLib for ERC20;
