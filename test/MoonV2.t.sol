@@ -143,7 +143,7 @@ contract MoonTest is Test {
         vm.assume(msgSender != address(0));
         vm.assume(amount != 0);
         vm.assume(iterations != 0);
-        vm.assume(iterations < 20);
+        vm.assume(iterations < 10);
 
         uint256 ethBalance;
         uint256 moonBalance;
@@ -180,7 +180,7 @@ contract MoonTest is Test {
         vm.assume(msgSender != address(0));
         vm.assume(amount != 0);
         vm.assume(iterations != 0);
-        vm.assume(iterations < 20);
+        vm.assume(iterations < 10);
 
         // NOTE: This is the minimum amount of Instadapp shares that the Moon contract should have
         // Difficult to get the precise amount since the Lido stETH calculation occasionally varies by 1

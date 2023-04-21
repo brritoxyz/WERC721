@@ -29,7 +29,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     IMoonStaker public moonStaker;
 
     // Maximum duration users must wait to redeem the full ETH value of MOON
-    uint256 public constant MAX_REDEMPTION_DURATION = 10 days;
+    uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
 
     // Amount of MOON marked for redemption - enables us to calculate redemptions
     uint256 public outstandingRedemptions;
@@ -57,6 +57,30 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     error InvalidTimestamp();
 
     constructor() Owned(msg.sender) {}
+
+    function _redeemMOON(
+        uint256 redemptionAmount,
+        uint256 redemptionTimestamp
+    ) private returns (uint256 assets, uint256 shares) {
+        // Calculate the actual amount of assets to transfer the user
+        assets = moonStaker.totalAssets().mulDivDown(
+            redemptionAmount,
+            totalSupply + outstandingRedemptions
+        );
+
+        // Decrease outstandingRedemptions to reflect the settled redemption
+        outstandingRedemptions -= redemptionAmount;
+
+        // Stake any ETH balance in the contract to prevent the unlikely "limbo"
+        // case where the contract has ETH, but the vault cannot cover the redemption
+        if (address(this).balance != 0)
+            moonStaker.stakeETH{value: address(this).balance}();
+
+        // Withdraw assets from the vault for msg.sender
+        shares = moonStaker.unstakeETH(assets, msg.sender);
+
+        emit RedeemMOON(msg.sender, redemptionTimestamp);
+    }
 
     /**
      * @notice Set MoonStaker contract
@@ -165,7 +189,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
      */
     function redeemMOON(
         uint256 redemptionTimestamp
-    ) external nonReentrant returns (uint256 assets, uint256 shares) {
+    ) external nonReentrant returns (uint256, uint256) {
         // Cannot redeem before the redemption timestamp has past
         if (redemptionTimestamp < block.timestamp) revert InvalidTimestamp();
 
@@ -176,31 +200,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // Zero out the redemption amount prior to transferring stETH
         redemptions[msg.sender][redemptionTimestamp] = 0;
 
-        // Calculate the actual amount of assets to transfer the user
-        assets = moonStaker.totalAssets().mulDivDown(
-            redemptionAmount,
-            totalSupply + outstandingRedemptions
-        );
-
-        // Decrease outstandingRedemptions to reflect the settled redemption
-        outstandingRedemptions -= redemptionAmount;
-
-        // Attempt to return ETH to the user with the contract balance
-        if (address(this).balance >= assets) {
-            payable(msg.sender).safeTransferETH(assets);
-
-            return (assets, 0);
-        }
-
-        // If the ETH balance is insufficient to cover the redemption, stake it
-        // Doing so prevents the unlikely "limbo" scenario where neither the
-        // ETH balance nor vault can cover the redemption amount
-        if (address(this).balance != 0)
-            moonStaker.stakeETH{value: address(this).balance}();
-
-        // Withdraw assets from the vault for msg.sender
-        shares = moonStaker.unstakeETH(assets, msg.sender);
-
-        emit RedeemMOON(msg.sender, redemptionTimestamp);
+        return _redeemMOON(redemptionAmount, redemptionTimestamp);
     }
 }
