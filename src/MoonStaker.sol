@@ -2,8 +2,8 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {IUserModule} from "src/interfaces/IUserModule.sol";
 
 contract MoonStaker {
     using SafeTransferLib for ERC20;
@@ -14,8 +14,8 @@ contract MoonStaker {
         ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
     // Vault proxy contract address
-    IUserModule public constant VAULT =
-        IUserModule(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
+    ERC4626 public constant VAULT =
+        ERC4626(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
 
     address public immutable moon;
 

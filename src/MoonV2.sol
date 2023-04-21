@@ -3,15 +3,15 @@ pragma solidity 0.8.19;
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {MoonStaker} from "src/MoonStaker.sol";
-import {IUserModule} from "src/MoonStaker.sol";
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using FixedPointMathLib for uint256;
-    using SafeTransferLib for ERC20;
+    using SafeTransferLib for ERC4626;
     using SafeTransferLib for address payable;
 
     MoonStaker public moonStaker;
@@ -72,29 +72,28 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     /**
      * @notice Set MoonStaker contract
-     * @param  _moonStaker  MoonStaker  MoonStaker contract
+     * @param  newMoonStaker  MoonStaker  New MoonStaker contract
      */
-    function setMoonStaker(MoonStaker _moonStaker) external onlyOwner {
-        if (address(_moonStaker) == address(0)) revert InvalidAddress();
+    function setMoonStaker(MoonStaker newMoonStaker) external onlyOwner {
+        address newMoonStakerAddr = address(newMoonStaker);
 
-        if (address(moonStaker) != address(0)) {
+        if (newMoonStakerAddr == address(0)) revert InvalidAddress();
+
+        address moonStakerAddr = address(moonStaker);
+
+        // If a previous MoonStaker contract was set, reset its allowance to zero
+        if (moonStakerAddr != address(0)) {
             // Set the previous MoonStaker contract allowance to zero
-            ERC20(address(moonStaker.VAULT())).safeApprove(
-                address(moonStaker),
-                0
-            );
+            moonStaker.VAULT().safeApprove(moonStakerAddr, 0);
         }
 
-        moonStaker = _moonStaker;
+        moonStaker = newMoonStaker;
 
         // Set the new MoonStaker contract allowance to max, enabling it
         // to do vault deposits and withdrawals on our behalf
-        ERC20(address(_moonStaker.VAULT())).safeApprove(
-            address(_moonStaker),
-            type(uint256).max
-        );
+        newMoonStaker.VAULT().safeApprove(newMoonStakerAddr, type(uint256).max);
 
-        emit SetMoonStaker(msg.sender, _moonStaker);
+        emit SetMoonStaker(msg.sender, newMoonStaker);
     }
 
     /**

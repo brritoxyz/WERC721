@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Moon} from "src/MoonV2.sol";
 import {MoonStaker} from "src/MoonStaker.sol";
@@ -23,7 +24,7 @@ contract MoonTest is Test {
     MoonStaker private immutable moonStaker;
     address private immutable moonAddr;
     ILido private immutable lido;
-    IUserModule private immutable vault;
+    ERC4626 private immutable vault;
     uint256 private immutable maxRedemptionDuration;
 
     event SetMoonStaker(address indexed msgSender, MoonStaker moonStaker);
@@ -49,11 +50,10 @@ contract MoonTest is Test {
 
         moonStaker = new MoonStaker(moonAddr);
         lido = ILido(address(moonStaker.LIDO()));
-        vault = IUserModule(address(moonStaker.VAULT()));
+        vault = moonStaker.VAULT();
+        maxRedemptionDuration = moon.MAX_REDEMPTION_DURATION();
 
         moon.setMoonStaker(moonStaker);
-
-        maxRedemptionDuration = moon.MAX_REDEMPTION_DURATION();
     }
 
     function _toStEth(uint256 ethAmount) private view returns (uint256) {
@@ -79,7 +79,7 @@ contract MoonTest is Test {
         );
 
         // Factor in the 0.05% vault fee
-        return assets - vault.getWithdrawFee(assets);
+        return assets - IUserModule(address(vault)).getWithdrawFee(assets);
     }
 
     function testCannotSetMoonStakerUnauthorized() external {
@@ -306,7 +306,10 @@ contract MoonTest is Test {
             expectedAssets - LIDO_ERROR_MARGIN,
             lido.balanceOf(address(this))
         );
-        assertEq(expectedAssets, assets - vault.getWithdrawFee(assets));
+        assertEq(
+            expectedAssets,
+            assets - IUserModule(address(vault)).getWithdrawFee(assets)
+        );
         assertEq(sharesBefore - shares, vault.balanceOf(moonAddr));
     }
 }
