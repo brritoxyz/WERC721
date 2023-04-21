@@ -45,11 +45,12 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         uint256 assets,
         uint256 shares
     );
-    event InitiateRedemption(
+    event InitiateRedemptionMOON(
         address indexed msgSender,
         uint256 amount,
         uint256 duration
     );
+    event RedeemMOON(address indexed msgSender, uint256 redemptionTimestamp);
 
     error InvalidAddress();
     error InvalidAmount();
@@ -155,7 +156,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // Increase outstandingRedemptions to properly perform redemption calculations
         outstandingRedemptions += redemptionAmount;
 
-        emit InitiateRedemption(msg.sender, amount, duration);
+        emit InitiateRedemptionMOON(msg.sender, amount, duration);
     }
 
     /**
@@ -199,5 +200,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
         // Withdraw assets from the vault for msg.sender
         shares = moonStaker.unstakeETH(assets, msg.sender);
+
+        emit RedeemMOON(msg.sender, redemptionTimestamp);
     }
 }

@@ -50,11 +50,12 @@ contract MoonTest is Test {
         uint256 assets,
         uint256 shares
     );
-    event InitiateRedemption(
+    event InitiateRedemptionMOON(
         address indexed msgSender,
         uint256 amount,
         uint256 duration
     );
+    event RedeemMOON(address indexed msgSender, uint256 redemptionTimestamp);
 
     constructor() {
         moon = new Moon();
@@ -249,7 +250,7 @@ contract MoonTest is Test {
 
         vm.expectEmit(true, false, false, true, moonAddr);
 
-        emit InitiateRedemption(address(this), amount, duration);
+        emit InitiateRedemptionMOON(address(this), amount, duration);
 
         uint256 redemptionAmount = moon.initiateRedemptionMOON(
             amount,
@@ -309,6 +310,9 @@ contract MoonTest is Test {
         );
 
         vm.warp(redemptionTimestamp);
+        vm.expectEmit(true, false, false, true, address(moon));
+
+        emit RedeemMOON(address(this), redemptionTimestamp);
 
         (uint256 assets, uint256 shares) = moon.redeemMOON(redemptionTimestamp);
 
