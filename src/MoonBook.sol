@@ -34,6 +34,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     mapping(uint256 id => Listing listing) public collectionListings;
 
     event List(address indexed msgSender, uint256 indexed id, uint96 price);
+    event ListMany(address indexed msgSender, uint256[] ids, uint96[] prices);
     event EditListing(
         address indexed msgSender,
         uint256 indexed id,
@@ -44,6 +45,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidArray();
     error OnlySeller();
 
     /**
@@ -73,6 +75,37 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         collectionListings[id] = Listing(msg.sender, price);
 
         emit List(msg.sender, id, price);
+    }
+
+    /**
+     * @notice List many NFTs for sale
+     * @param  ids     uint256[]  NFT IDs
+     * @param  prices  uint96[]   NFT prices in ETH
+     */
+    function listMany(
+        uint256[] calldata ids,
+        uint96[] calldata prices
+    ) external nonReentrant {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert InvalidArray();
+        if (iLen != prices.length) revert InvalidArray();
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+
+            // Reverts if the NFT is not owned by msg.sender
+            collection.safeTransferFrom(msg.sender, address(this), id);
+
+            // Set listing details
+            collectionListings[id] = Listing(msg.sender, prices[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit ListMany(msg.sender, ids, prices);
     }
 
     /**
