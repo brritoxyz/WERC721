@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {Moon} from "src/MoonV3.sol";
+import {Moon} from "src/Moon.sol";
 
 contract DummyERC20 is ERC20("", "", 18) {}
 
@@ -162,7 +162,7 @@ contract MoonTest is Test {
     function testCannotDepositETHInvalidAmount() external {
         vm.expectRevert(Moon.InvalidAmount.selector);
 
-        moon.depositETH{value: 0}();
+        moon.depositETH{value: 0}(address(this));
     }
 
     function testDepositETH(
@@ -187,7 +187,7 @@ contract MoonTest is Test {
             vm.deal(msgSender, ethAmount);
             vm.prank(msgSender);
 
-            moon.depositETH{value: ethAmount}();
+            moon.depositETH{value: ethAmount}(msgSender);
 
             assertEq(moonBalance, ethBalance);
             assertEq(moonBalance, moon.balanceOf(msgSender));
@@ -223,7 +223,7 @@ contract MoonTest is Test {
         for (uint256 i; i < iterations; ) {
             uint256 ethAmount = uint256(amount) * FUZZ_ETH_AMOUNT;
 
-            moon.depositETH{value: ethAmount}();
+            moon.depositETH{value: ethAmount}(address(this));
 
             (uint256 balance, uint256 assets, uint256 shares) = moon.stakeETH();
 
@@ -290,7 +290,7 @@ contract MoonTest is Test {
 
         vm.deal(msgSender, depositAmount);
 
-        moon.depositETH{value: depositAmount}();
+        moon.depositETH{value: depositAmount}(msgSender);
 
         if (shouldStake) {
             moon.stakeETH();
@@ -352,7 +352,7 @@ contract MoonTest is Test {
 
         vm.deal(msgSender, depositAmount);
 
-        moon.depositETH{value: depositAmount}();
+        moon.depositETH{value: depositAmount}(msgSender);
 
         if (shouldStake) {
             moon.stakeETH();
@@ -427,7 +427,7 @@ contract MoonTest is Test {
 
         vm.deal(msgSender, depositAmount);
 
-        moon.depositETH{value: depositAmount}();
+        moon.depositETH{value: depositAmount}(msgSender);
 
         if (shouldStake) {
             moon.stakeETH();

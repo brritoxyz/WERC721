@@ -1,162 +1,271 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-contract Moon is
-    ERC20("Moonbase Reward Token", "MOON", 18),
-    Owned,
-    ReentrancyGuard
-{
-    using FixedPointMathLib for uint256;
+contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
+    using SafeTransferLib for ERC20;
+    using SafeTransferLib for ERC4626;
     using SafeTransferLib for address payable;
+    using FixedPointMathLib for uint256;
 
-    // Fixed parameters for calculating user MOON reward amounts
-    uint128 public constant USER_SHARE_BASE = 100;
+    // Maximum duration users must wait to redeem the full ETH value of MOON
+    uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
 
-    // Used for calculating the mintable MOON amounts for users (fixed at 90%)
-    uint128 public constant USER_SHARE = 90;
+    // For calculating the instant redemption amount
+    uint256 public constant INSTANT_REDEMPTION_VALUE_BASE = 100;
 
-    // Factories deploy MoonBook contracts and enable them to mint MOON rewards
-    // When factories are upgraded, they are set as the new factory
-    // Old factories will no longer be able to call `addMinter`, effectively
-    // decomissioning them (since they can no longer deploy books that mint MOON)
-    address public factory;
+    // ETH staker contract
+    ERC20 public staker;
 
-    // Mapping of factory MoonBook minters - by having factory as a key, we can
-    // prevent deprecated MoonBooks (e.g. MoonBooks deployed by deprecated factories)
-    // from minting MOON rewards
-    mapping(bytes32 factoryMinterHash => bool isMinter) public minters;
+    // Vault contract
+    ERC4626 public vault;
 
-    event SeedLiquidity(address indexed caller, uint256 amount);
-    event SetFactory(address indexed caller, address indexed factory);
-    event AddMinter(address indexed factory, address indexed minter);
-    event DepositFees(
-        address indexed minter,
-        address indexed buyer,
-        address indexed seller,
-        uint256 amount
-    );
-    event ClaimFees(
-        address indexed caller,
-        uint256 amount,
-        address indexed recipient
+    // Instant redemptions enable users to redeem their ETH rebates immediately
+    // by giving up a portion of MOON. The default instant redemption value is
+    // 75% of the redeemed MOON amount, but may be tweaked in production
+    uint256 public instantRedemptionValue = 75;
+
+    mapping(address => mapping(uint256 => uint256)) public pendingRedemptions;
+
+    event SetStaker(address indexed msgSender, ERC20 staker);
+    event SetVault(address indexed msgSender, ERC4626 vault);
+    event SetInstantRedemptionValue(
+        address indexed msgSender,
+        uint256 instantRedemptionValue
     );
 
     error InvalidAddress();
     error InvalidAmount();
-    error NotFactory();
-    error NotMinter();
+    error InvalidRedemption();
 
-    constructor(address _owner) Owned(_owner) {
-        if (_owner == address(0)) revert InvalidAddress();
-    }
+    constructor(ERC20 _staker, ERC4626 _vault) Owned(msg.sender) {
+        if (address(_staker) == address(0)) revert InvalidAddress();
+        if (address(_vault) == address(0)) revert InvalidAddress();
 
-    function _hashFactoryMinter(
-        address _factory,
-        address minter
-    ) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_factory, minter));
-    }
+        staker = _staker;
+        vault = _vault;
 
-    /**
-     * @notice Deposit ETH and mint MOON tokens (1:1 ratio)
-     */
-    function seedLiquidity() external payable onlyOwner {
-        if (msg.value == 0) revert InvalidAmount();
-
-        _mint(address(this), msg.value);
-
-        emit SeedLiquidity(msg.sender, msg.value);
+        // Allow the vault to transfer stETH on this contract's behalf
+        staker.safeApprove(address(_vault), type(uint256).max);
     }
 
     /**
-     * @notice Set factory
-     * @param  _factory  address  MoonBookFactory contract address
+     * @notice Stake ETH
+     * @return balance  uint256  ETH balance staked
+     * @return assets   uint256  Vault assets deposited
+     * @return shares   uint256  Vault shares received
      */
-    function setFactory(address _factory) external onlyOwner {
-        if (_factory == address(0)) revert InvalidAddress();
+    function _stakeETH()
+        private
+        returns (uint256 balance, uint256 assets, uint256 shares)
+    {
+        balance = address(this).balance;
 
-        factory = _factory;
+        // Only execute ETH-staking functions if the ETH balance is non-zero
+        if (balance != 0) {
+            // Stake ETH balance - reverts if msg.value is zero
+            payable(address(staker)).safeTransferETH(balance);
 
-        emit SetFactory(msg.sender, _factory);
-    }
+            // Fetch staked ETH balance, the amount which will be deposited into the vault
+            assets = staker.balanceOf(address(this));
 
-    /**
-     * @notice Add new minter
-     * @param  minter  address  Minter address
-     */
-    function addMinter(address minter) external {
-        // Cache factory address to save gas
-        address _factory = factory;
-
-        // Only the factory can add new minters (i.e. MoonBook contracts)
-        if (msg.sender != _factory) revert NotFactory();
-
-        if (minter == address(0)) revert InvalidAddress();
-
-        minters[_hashFactoryMinter(factory, minter)] = true;
-
-        emit AddMinter(_factory, minter);
-    }
-
-    /**
-     * @notice Deposit ETH fees to distribute MOON rewards
-     * @param  buyer        address  Buyer address
-     * @param  seller       address  Seller address
-     * @return userRewards  uint256  Reward amount for each user
-     */
-    function depositFees(
-        address buyer,
-        address seller
-    ) external payable returns (uint256 userRewards) {
-        if (!minters[_hashFactoryMinter(factory, msg.sender)])
-            revert NotMinter();
-        if (buyer == address(0)) revert InvalidAddress();
-        if (seller == address(0)) revert InvalidAddress();
-
-        // No fees, no MOON - return function early
-        if (msg.value == 0) return 0;
-
-        // Calculate the total mintable MOON for each user. If the user share is 90%
-        // then mint both the buyer and seller 45% of the amount. Remainder goes to the team
-        userRewards = msg.value.mulDivDown(USER_SHARE, USER_SHARE_BASE) / 2;
-
-        // User rewards are 0 in the event where msg.value <= 0.000000000000000002 ETH
-        if (userRewards != 0) {
-            _mint(buyer, userRewards);
-            _mint(seller, userRewards);
+            // Maximize returns with the staking vault - the Moon contract receives shares
+            shares = vault.deposit(assets, address(this));
         }
-
-        // Mint the remaining amount to the protocol team multisig - due to rounding, the value
-        // may be less by 1 than amount * (USER_SHARE_BASE - USER_SHARE) / USER_SHARE_BASE
-        _mint(owner, msg.value - (userRewards * 2));
-
-        emit DepositFees(msg.sender, buyer, seller, msg.value);
     }
 
     /**
-     * @notice Claim ETH fees by redeeming MOON tokens
-     * @param  amount     uint256  Amount of MOON to redeem for ETH
-     * @param  recipient  address  Recipient address
+     * @notice Instantly redeem MOON for the underlying assets at partial value
+     * @param  amount    uint256  MOON amount
+     * @return redeemed  uint256  Redeemed MOON
+     * @return shares    uint256  Redeemed vault shares
      */
-    function claimFees(
-        uint256 amount,
-        address payable recipient
-    ) external nonReentrant {
-        if (amount == 0) revert InvalidAmount();
-        if (recipient == address(0)) revert InvalidAddress();
+    function _instantRedemption(
+        uint256 amount
+    ) private returns (uint256 redeemed, uint256 shares) {
+        // NOTE: Due to rounding, the redeemed amount will be zero if `amount` is too small
+        // The remainder of the function logic assumes that the caller is a logical actor
+        // since redeeming extremely small amounts of MOON is uneconomical due to gas fees
+        redeemed = amount.mulDivDown(
+            instantRedemptionValue,
+            INSTANT_REDEMPTION_VALUE_BASE
+        );
 
-        // Reverts if msg.sender does not have enough MOON
+        // Stake ETH first to ensure that the contract's vault share balance is current
+        _stakeETH();
+
+        // Calculate the amount of vault shares redeemed - based on the proportion of
+        // the redeemed MOON amount to the total MOON supply
+        shares = vault.balanceOf(address(this)).mulDivDown(
+            redeemed,
+            totalSupply
+        );
+
+        // Burn MOON from msg.sender - reverts if their balance is insufficient
         _burn(msg.sender, amount);
 
-        // Send ETH to the recipient, equal to the amount of MOON burned
-        recipient.safeTransferETH(amount);
+        // Mint MOON for the owner, equal to the unredeemed amount
+        _mint(owner, amount - redeemed);
 
-        emit ClaimFees(msg.sender, amount, recipient);
+        // Transfer the redeemed amount to msg.sender (vault shares, as good as ETH)
+        vault.safeTransfer(msg.sender, shares);
+    }
+
+    /**
+     * @notice Set staker
+     * @param  _staker  ERC20  Staker contract
+     */
+    function setStaker(ERC20 _staker) external onlyOwner {
+        if (address(_staker) == address(0)) revert InvalidAddress();
+
+        address vaultAddr = address(vault);
+
+        // Set the vault's allowance to zero for the previous staker
+        staker.safeApprove(vaultAddr, 0);
+
+        // Set the new staker
+        staker = _staker;
+
+        // Set the vault's allowance to the maximum for the current staker
+        _staker.safeApprove(vaultAddr, type(uint256).max);
+
+        emit SetStaker(msg.sender, _staker);
+    }
+
+    /**
+     * @notice Set the instant redemption value
+     * @param  _vault  ERC4626  Vault contract
+     */
+    function setVault(ERC4626 _vault) external onlyOwner {
+        if (address(_vault) == address(0)) revert InvalidAddress();
+
+        // Set the previous vault's allowance to zero
+        staker.safeApprove(address(vault), 0);
+
+        // Set the new vault
+        vault = _vault;
+
+        // Set the new vault's allowance to the maximum
+        staker.safeApprove(address(_vault), type(uint256).max);
+
+        emit SetVault(msg.sender, _vault);
+    }
+
+    /**
+     * @notice Set the instant redemption value
+     * @param  _instantRedemptionValue  uint256  Instant redemption value
+     */
+    function setInstantRedemptionValue(
+        uint256 _instantRedemptionValue
+    ) external onlyOwner {
+        if (_instantRedemptionValue > INSTANT_REDEMPTION_VALUE_BASE)
+            revert InvalidAmount();
+
+        // Set the new instantRedemptionValue
+        instantRedemptionValue = _instantRedemptionValue;
+
+        emit SetInstantRedemptionValue(msg.sender, _instantRedemptionValue);
+    }
+
+    /**
+     * @notice Deposit ETH, receive MOON
+     * @param  recipient  address  MOON recipient address
+     */
+    function depositETH(address recipient) external payable {
+        if (msg.value == 0) revert InvalidAmount();
+
+        // Mint MOON for msg.sender, equal to the ETH deposited
+        _mint(recipient, msg.value);
+    }
+
+    /**
+     * @notice Stake ETH
+     * @return uint256  ETH balance staked
+     * @return uint256  Vault assets deposited
+     * @return uint256  Vault shares received
+     */
+    function stakeETH()
+        external
+        nonReentrant
+        returns (uint256, uint256, uint256)
+    {
+        return _stakeETH();
+    }
+
+    /**
+     * @notice Begin a MOON redemption
+     * @param  amount    uint256  MOON amount
+     * @param  duration  uint256  Queue duration in seconds
+     * @return redeemed  uint256  Redeemed MOON
+     * @return shares    uint256  Redeemed vault shares
+     */
+    function initiateRedemption(
+        uint256 amount,
+        uint256 duration
+    ) external nonReentrant returns (uint256 redeemed, uint256 shares) {
+        if (amount == 0) revert InvalidAmount();
+        if (duration > MAX_REDEMPTION_DURATION) revert InvalidAmount();
+
+        // Perform an instant redemption if the duration is zero
+        if (duration == 0) {
+            return _instantRedemption(amount);
+        }
+
+        // The redeemed amount is based on the total duration the user is willing
+        // to wait for their redemption to complete (waiting the max duration
+        // results in 100% of the underlying ETH-based assets being redeemed)
+        redeemed = amount.mulDivDown(duration, MAX_REDEMPTION_DURATION);
+
+        // Stake ETH first to ensure that the contract's vault share balance is current
+        _stakeETH();
+
+        // Calculate the amount of vault shares redeemed - based on the proportion of
+        // the redeemed MOON amount to the total MOON supply
+        shares = vault.balanceOf(address(this)).mulDivDown(
+            redeemed,
+            totalSupply
+        );
+
+        // Burn MOON from msg.sender - reverts if their balance is insufficient
+        _burn(msg.sender, amount);
+
+        // If amount does not equal redeemed, then `duration` is less than the maximum
+        if (duration != MAX_REDEMPTION_DURATION) {
+            _mint(owner, amount - redeemed);
+        }
+
+        // Set the amount of shares that the user can claim after the duration has elapsed
+        pendingRedemptions[msg.sender][block.timestamp + duration] += shares;
+    }
+
+    /**
+     * @notice Fulfill a MOON redemption
+     * @param  redemptionTimestamp  uint256  MOON amount
+     * @return shares               uint256  Redeemed vault shares
+     */
+    function fulfillRedemption(
+        uint256 redemptionTimestamp
+    ) external nonReentrant returns (uint256 shares) {
+        // If the redemption timestamp is before the current time, then it's too early - revert
+        if (redemptionTimestamp < block.timestamp) revert InvalidRedemption();
+
+        shares = pendingRedemptions[msg.sender][redemptionTimestamp];
+
+        // If the redeemable amount is zero then the redemption was already claimed or non-existent
+        if (shares == 0) revert InvalidRedemption();
+
+        // Zero out the pending redemption amount prior to transferring shares
+        pendingRedemptions[msg.sender][redemptionTimestamp] = 0;
+
+        // Stake ETH to ensure there are sufficient shares to fulfill the redemption
+        _stakeETH();
+
+        vault.safeTransfer(msg.sender, shares);
     }
 }

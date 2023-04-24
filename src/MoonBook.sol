@@ -161,9 +161,9 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer the post-fee sale proceeds to the seller
         payable(listing.seller).safeTransferETH(listing.price - fees);
 
-        // Deposit fees into the protocol contract, and distribute MOON rewards to both the
-        // buyer (i.e. recipient) and seller, equal to the ETH fees paid
-        moon.depositFees{value: fees}(recipient, listing.seller);
+        // Deposit fees into the protocol contract, and distribute MOON rewards to the
+        // seller (equal to the ETH fees they've paid)
+        moon.depositETH{value: fees}(listing.seller);
 
         emit Buy(msg.sender, id, recipient);
     }

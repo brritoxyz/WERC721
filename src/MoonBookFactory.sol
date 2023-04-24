@@ -12,7 +12,7 @@ contract MoonBookFactory {
     mapping(ERC721 collection => address book) public books;
 
     event CreateBook(
-        address indexed caller,
+        address indexed msgSender,
         address indexed book,
         ERC721 indexed collection
     );
@@ -36,9 +36,6 @@ contract MoonBookFactory {
 
         // Add to list of factory-owned books
         books[collection] = book;
-
-        // Enable the MoonBook contract to mint MOON rewards
-        moon.addMinter(book);
 
         emit CreateBook(msg.sender, book, collection);
     }
