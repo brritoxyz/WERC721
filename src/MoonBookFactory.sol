@@ -8,14 +8,10 @@ import {Moon} from "src/Moon.sol";
 contract MoonBookFactory {
     Moon public immutable moon;
 
-    // NFT collections mapped to their order books
-    mapping(ERC721 collection => address book) public books;
+    // NFT collections mapped to their MoonBook contracts
+    mapping(ERC721 collection => MoonBook book) public moonBooks;
 
-    event CreateBook(
-        address indexed msgSender,
-        address indexed book,
-        ERC721 indexed collection
-    );
+    event CreateMoonBook(address indexed msgSender, ERC721 indexed collection);
 
     error InvalidAddress();
     error AlreadyExists();
@@ -26,17 +22,25 @@ contract MoonBookFactory {
         moon = _moon;
     }
 
-    function createBook(ERC721 collection) external {
+    /**
+     * @notice Deploy a MoonBook contract for a collection
+     * @param  collection  ERC721    NFT collection contract
+     * @return moonBook    MoonBook  MoonBook contract
+     */
+    function createMoonBook(
+        ERC721 collection
+    ) external returns (MoonBook moonBook) {
         // Check if the collection already has a MoonBook deployed for it
-        if (books[collection] != address(0)) revert AlreadyExists();
+        if (address(moonBooks[collection]) != address(0))
+            revert AlreadyExists();
 
         // Deploy and associate collection with a MoonBook contract
         // TODO: Consider minimal proxy usage for gas efficiency
-        address book = address(new MoonBook(moon, collection));
+        moonBook = new MoonBook(moon, collection);
 
         // Add to list of factory-owned books
-        books[collection] = book;
+        moonBooks[collection] = moonBook;
 
-        emit CreateBook(msg.sender, book, collection);
+        emit CreateMoonBook(msg.sender, collection);
     }
 }
