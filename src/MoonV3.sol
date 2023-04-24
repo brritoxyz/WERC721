@@ -28,7 +28,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
 
     // Instant redemptions enable users to redeem their ETH rebates immediately
     // by giving up a portion of MOON. The default instant redemption value is
-    // 75% of the redeemed MOON amount
+    // 75% of the redeemed MOON amount, but may be tweaked in production
     uint256 public instantRedemptionValue = 75;
 
     mapping(address => mapping(uint256 => uint256)) public pendingRedemptions;
@@ -89,7 +89,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     function _instantRedemption(
         uint256 amount
     ) private returns (uint256 redeemed, uint256 shares) {
-        // NOTE: Due to rounding, the redeemed amount will be zero if `amount` < 2!
+        // NOTE: Due to rounding, the redeemed amount will be zero if `amount` is too small
         // The remainder of the function logic assumes that the caller is a logical actor
         // since redeeming extremely small amounts of MOON is uneconomical due to gas fees
         redeemed = amount.mulDivDown(
@@ -176,7 +176,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     /**
      * @notice Deposit ETH, receive MOON
      */
-    function depositETH() external payable nonReentrant {
+    function depositETH() external payable {
         if (msg.value == 0) revert InvalidAmount();
 
         // Mint MOON for msg.sender, equal to the ETH deposited
@@ -235,7 +235,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         _burn(msg.sender, amount);
 
         // If amount does not equal redeemed, then `duration` is less than the maximum
-        if (amount != redeemed) {
+        if (duration != MAX_REDEMPTION_DURATION) {
             _mint(owner, amount - redeemed);
         }
 
