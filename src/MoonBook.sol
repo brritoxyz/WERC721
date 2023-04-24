@@ -8,7 +8,6 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Moon} from "src/Moon.sol";
 
 contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
-    using FixedPointMathLib for uint256;
     using FixedPointMathLib for uint96;
     using SafeTransferLib for address payable;
 
@@ -34,10 +33,6 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     // NFT collection listings
     mapping(uint256 id => Listing listing) public collectionListings;
 
-    // NFT collection offers (ID agnostic)
-    // There may be many offers made by many different buyers
-    mapping(uint256 offer => address[] buyers) public collectionOffers;
-
     event List(
         address indexed msgSender,
         uint256 indexed id,
@@ -56,39 +51,10 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 indexed id,
         address indexed recipient
     );
-    event MakeOffer(
-        address indexed msgSender,
-        address indexed recipient,
-        uint256 offer
-    );
-    event CancelOffer(
-        address indexed msgSender,
-        address indexed recipient,
-        uint256 offer,
-        uint256 makerIndex
-    );
-    event TakeOffer(
-        address indexed msgSender,
-        uint256 indexed id,
-        address indexed recipient,
-        uint256 offer,
-        uint256 makerIndex
-    );
-    event MatchOffer(
-        address indexed msgSender,
-        uint256 indexed id,
-        address indexed recipient,
-        uint256 offer,
-        uint256 makerIndex
-    );
 
     error InvalidAddress();
     error InvalidPrice();
-    error InvalidOffer();
-    error InvalidListing();
-    error InvalidMatch();
     error OnlySeller();
-    error OnlyMaker();
     error InsufficientFunds();
 
     /**
@@ -200,141 +166,5 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         moon.depositFees{value: fees}(recipient, listing.seller);
 
         emit Buy(msg.sender, id, recipient);
-    }
-
-    /**
-     * @notice Make an offer at a single price point
-     * @param  maker  address  NFT offer maker
-     */
-    function makeOffer(address maker) external payable {
-        if (maker == address(0)) revert InvalidAddress();
-        if (msg.value == 0) revert InvalidOffer();
-
-        // User offer is the amount of ETH sent with the transaction
-        // The maker receives the NFT if the offer is taken
-        collectionOffers[msg.value].push(maker);
-
-        emit MakeOffer(msg.sender, maker, msg.value);
-    }
-
-    /**
-     * @notice Cancel offer and reclaim ETH
-     * @param  recipient   address  ETH recipient
-     * @param  offer       uint256  Offer amount
-     * @param  makerIndex  uint256  Buyer index
-     */
-    function cancelOffer(
-        address payable recipient,
-        uint256 offer,
-        uint256 makerIndex
-    ) external nonReentrant {
-        if (recipient == address(0)) revert InvalidAddress();
-
-        // Only the maker can cancel the offer
-        if (collectionOffers[offer][makerIndex] != msg.sender)
-            revert OnlyMaker();
-
-        // Delete offer prior to transferring ETH to the buyer
-        delete collectionOffers[offer][makerIndex];
-
-        // Return ETH to the recipient
-        recipient.safeTransferETH(offer);
-
-        emit CancelOffer(msg.sender, recipient, offer, makerIndex);
-    }
-
-    /**
-     * @notice Take offer
-     * @param  id          uint256  NFT ID
-     * @param  recipient   address  ETH recipient
-     * @param  offer       uint256  Offer amount
-     * @param  makerIndex  uint256  Offer maker index
-     */
-    function takeOffer(
-        uint256 id,
-        address payable recipient,
-        uint256 offer,
-        uint256 makerIndex
-    ) external nonReentrant {
-        if (recipient == address(0)) revert InvalidAddress();
-
-        // Reverts if maker index is out of bounds
-        address maker = collectionOffers[offer][makerIndex];
-
-        // Reverts if offer does not exist
-        if (maker == address(0)) revert InvalidOffer();
-
-        // Remove the offer prior to exchanging tokens between buyer and seller
-        delete collectionOffers[offer][makerIndex];
-
-        // Transfer NFT to the offer maker - reverts if msg.sender does not have the NFT
-        // or if they did not grant this contract approval to transfer on their behalf
-        collection.safeTransferFrom(msg.sender, maker, id);
-
-        uint256 fees = offer.mulDivDown(
-            MOON_FEE_PERCENT,
-            MOON_FEE_PERCENT_BASE
-        );
-
-        // Transfer the post-fee sale proceeds to the recipient
-        recipient.safeTransferETH(offer - fees);
-
-        moon.depositFees{value: fees}(maker, recipient);
-
-        emit TakeOffer(msg.sender, id, recipient, offer, makerIndex);
-    }
-
-    /**
-     * @notice Match an offer with a listing
-     * @param  id          uint256  NFT ID
-     * @param  recipient   address  ETH recipient (receives spread between offer and listing price)
-     * @param  offer       uint256  Offer amount
-     * @param  makerIndex  uint256  Buyer index
-     */
-    function matchOffer(
-        uint256 id,
-        address payable recipient,
-        uint256 offer,
-        uint256 makerIndex
-    ) external nonReentrant {
-        if (recipient == address(0)) revert InvalidAddress();
-
-        // Reverts if maker index is out of bounds
-        address maker = collectionOffers[offer][makerIndex];
-
-        // Reverts if offer does not exist
-        if (maker == address(0)) revert InvalidOffer();
-
-        Listing memory listing = collectionListings[id];
-
-        // Reverts if listing does not exist
-        if (listing.seller == address(0)) revert InvalidListing();
-
-        // Reverts if offer is less than listing price
-        if (offer < listing.price) revert InvalidMatch();
-
-        // Delete offer and listing prior to exchanging tokens
-        delete collectionOffers[offer][makerIndex];
-        delete collectionListings[id];
-
-        // Transfer NFT to the maker (account that made offer)
-        collection.safeTransferFrom(address(this), maker, id);
-
-        uint256 fees = listing.price.mulDivDown(
-            MOON_FEE_PERCENT,
-            MOON_FEE_PERCENT_BASE
-        );
-
-        // Transfer the post-fee sale proceeds to the seller
-        payable(listing.seller).safeTransferETH(listing.price - fees);
-
-        if (offer > listing.price) {
-            // Send the spread (margin between ETH offer and listing price) to the matcher
-            recipient.safeTransferETH(offer - listing.price);
-        }
-
-        moon.depositFees{value: fees}(maker, listing.seller);
-
-        emit MatchOffer(msg.sender, id, recipient, offer, makerIndex);
     }
 }
