@@ -29,12 +29,18 @@ contract MoonBookTest is Test {
 
     address[3] private testSellers = [address(1), address(2), address(3)];
     address[3] private testBuyers = [address(4), address(5), address(6)];
+    address[3] private testMakers = [address(7), address(8), address(9)];
 
     event CreateMoonBook(address indexed msgSender, ERC721 indexed collection);
     event Transfer(
         address indexed from,
         address indexed to,
         uint256 indexed id
+    );
+    event MakeOffer(
+        address indexed msgSender,
+        uint256 indexed offer,
+        uint256 quantity
     );
 
     constructor() {
@@ -345,5 +351,72 @@ contract MoonBookTest is Test {
         assertEq(buyerBalanceBefore - price, buyer.balance);
         assertEq(sellerBalanceBefore + price - fees, seller.balance);
         assertEq(fees, address(moon).balance);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            makeOffer
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotMakeOfferOfferInvalidAmount(
+        uint8 msgValue,
+        uint256 quantity
+    ) external {
+        vm.assume(msgValue != 0);
+        vm.assume(quantity != 0);
+
+        uint256 value = uint256(msgValue) * 1 ether;
+        uint256 offer = 0;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.makeOffer{value: value}(offer, quantity);
+    }
+
+    function testCannotMakeOfferQuantityInvalidAmount(
+        uint8 msgValue,
+        uint256 offer
+    ) external {
+        vm.assume(msgValue != 0);
+        vm.assume(offer != 0);
+
+        uint256 value = uint256(msgValue) * 1 ether;
+        uint256 quantity = 0;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.makeOffer{value: value}(offer, quantity);
+    }
+
+    function testCannotMakeOfferValueInvalidAmount(
+        uint8 offer,
+        uint8 quantity
+    ) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
+
+        // If value is mismatched with offer * quantity, will revert
+        uint256 value = uint256(offer) * uint256(quantity) + 1;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.makeOffer{value: value}(offer, quantity);
+    }
+
+    function testMakeOffer(uint8 offer, uint8 quantity) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
+
+        address maker = testMakers[0];
+        uint256 value = uint256(offer) * uint256(quantity);
+
+        vm.deal(maker, value);
+        vm.prank(maker);
+        vm.expectEmit(true, false, false, true, address(book));
+
+        emit MakeOffer(maker, offer, quantity);
+
+        book.makeOffer{value: value}(offer, quantity);
+
+        assertEq(quantity, book.collectionOffers(offer, maker));
     }
 }

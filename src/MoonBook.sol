@@ -33,14 +33,14 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     // NFT collection listings
     mapping(uint256 id => Listing listing) public collectionListings;
 
-    // NFT collection offers (ID agnostic)
-    mapping(uint256 offer => address[] buyers) public collectionOffers;
+    // NFT collection-wide offers
+    mapping(uint256 offer => mapping(address maker => uint256 quantity))
+        public collectionOffers;
 
-    event MakeOffer(address indexed msgSender, uint256 offer);
-    event CancelOffer(
+    event MakeOffer(
         address indexed msgSender,
-        uint256 offer,
-        uint256 makerIndex
+        uint256 indexed offer,
+        uint256 quantity
     );
 
     error InvalidAddress();
@@ -162,36 +162,19 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
     /**
      * @notice Make an offer for a NFT
+     * @param  offer     uint256  Offer amount in ETH
+     * @param  quantity  uint256  Offer quantity (i.e. number of NFTs)
      */
-    function makeOffer() external payable {
-        if (msg.value == 0) revert InvalidAmount();
+    function makeOffer(uint256 offer, uint256 quantity) external payable {
+        if (offer == 0) revert InvalidAmount();
+        if (quantity == 0) revert InvalidAmount();
+
+        // Revert if the maker did not send enough ETH to cover their offer
+        if (msg.value != offer * quantity) revert InvalidAmount();
 
         // User offer is the amount of ETH sent with the transaction
-        // The maker receives the NFT if the offer is taken
-        collectionOffers[msg.value].push(msg.sender);
+        collectionOffers[offer][msg.sender] += quantity;
 
-        emit MakeOffer(msg.sender, msg.value);
-    }
-
-    /**
-     * @notice Cancel offer and reclaim ETH
-     * @param  offer       uint256  Offer amount
-     * @param  makerIndex  uint256  Buyer index
-     */
-    function cancelOffer(
-        uint256 offer,
-        uint256 makerIndex
-    ) external nonReentrant {
-        // Only the maker can cancel the offer
-        if (collectionOffers[offer][makerIndex] != msg.sender)
-            revert OnlyMaker();
-
-        // Delete offer prior to transferring ETH to the buyer
-        delete collectionOffers[offer][makerIndex];
-
-        // Return ETH to the offer maker
-        payable(msg.sender).safeTransferETH(offer);
-
-        emit CancelOffer(msg.sender, offer, makerIndex);
+        emit MakeOffer(msg.sender, offer, quantity);
     }
 }
