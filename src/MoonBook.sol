@@ -52,8 +52,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         address indexed msgSender,
         uint256 indexed offer,
         address indexed maker,
-        uint256 quantity,
-        uint256[] ids
+        uint256 id
     );
 
     error InvalidAddress();
@@ -214,56 +213,40 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
     }
 
     /**
-     * @notice Take offers
-     * @param  offer     uint256    Offer amount in ETH
-     * @param  maker     address    Offer maker
-     * @param  quantity  uint256    Offer quantity (i.e. number of NFTs)
-     * @param  ids       uint256[]  NFT IDs exchanged for ETH
+     * @notice Take offer
+     * @param  offer  uint256  Offer amount in ETH
+     * @param  maker  address  Offer maker
+     * @param  id     uint256  NFT ID
      */
     function takeOffer(
         uint256 offer,
         address maker,
-        uint256 quantity,
-        uint256[] calldata ids
+        uint256 id
     ) external nonReentrant {
         if (offer == 0) revert InvalidAmount();
         if (maker == address(0)) revert InvalidAddress();
-        if (quantity == 0) revert InvalidAmount();
 
-        uint256 iLen = ids.length;
-
-        // Offer quantity must match amount of NFT IDs being sold for ETH
-        if (quantity != iLen) revert InvalidIDs();
-
+        // Decrement the maker's offer quantity to reflect taken offer
         // Reverts if the offer maker does not have enough deposited
-        collectionOffers[offer][maker] -= quantity;
+        --collectionOffers[offer][maker];
 
-        for (uint256 i; i < iLen; ) {
-            // Transfer the NFTs from the offer taker (msg.sender) to the maker
-            // Reverts if msg.sender does not have the NFT at the specified ID
-            collection.safeTransferFrom(msg.sender, maker, ids[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        // Total ETH taken from the offer maker
-        uint256 totalTaken = offer * quantity;
+        // Transfer the NFT from the offer taker (msg.sender) to the maker
+        // Reverts if msg.sender does not have the NFT at the specified ID
+        collection.safeTransferFrom(msg.sender, maker, id);
 
         // Calculate protocol fees
-        uint256 fees = totalTaken.mulDivDown(
+        uint256 fees = offer.mulDivDown(
             MOON_FEE_PERCENT,
             MOON_FEE_PERCENT_BASE
         );
 
         // Transfer the post-fee sale proceeds to the seller
-        payable(msg.sender).safeTransferETH(totalTaken - fees);
+        payable(msg.sender).safeTransferETH(offer - fees);
 
         // If there are fees, deposit them into the protocol contract, and distribute
         // MOON rewards to the seller (equal to the ETH fees they've paid)
         if (fees != 0) moon.depositETH{value: fees}(msg.sender);
 
-        emit TakeOffer(msg.sender, offer, maker, quantity, ids);
+        emit TakeOffer(msg.sender, offer, maker, id);
     }
 }
