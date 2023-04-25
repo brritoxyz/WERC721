@@ -42,6 +42,18 @@ contract MoonBookTest is Test {
         uint256 indexed offer,
         uint256 quantity
     );
+    event CancelOffer(
+        address indexed msgSender,
+        uint256 indexed offer,
+        uint256 quantity
+    );
+    event TakeOffer(
+        address indexed msgSender,
+        uint256 indexed offer,
+        address indexed maker,
+        uint256 quantity,
+        uint256[] ids
+    );
 
     constructor() {
         moon = new Moon(STAKER, VAULT);
@@ -418,5 +430,84 @@ contract MoonBookTest is Test {
         book.makeOffer{value: value}(offer, quantity);
 
         assertEq(quantity, book.collectionOffers(offer, maker));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            cancelOffer
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotCancelOfferOfferInvalidAmount(
+        uint256 quantity
+    ) external {
+        vm.assume(quantity != 0);
+
+        uint256 offer = 0;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.cancelOffer(offer, quantity);
+    }
+
+    function testCannotCancelOfferQuantityInvalidAmount(
+        uint256 offer
+    ) external {
+        vm.assume(offer != 0);
+
+        uint256 quantity = 0;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.cancelOffer(offer, quantity);
+    }
+
+    function testCannotCancelOfferDoesNotExist(
+        uint256 offer,
+        uint256 quantity
+    ) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
+        vm.expectRevert(stdError.arithmeticError);
+
+        book.cancelOffer(offer, quantity);
+    }
+
+    function testCancelOffer(
+        uint128 offer,
+        uint128 quantity,
+        bool partialCancel
+    ) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
+
+        address maker = testMakers[0];
+        uint256 value = uint256(offer) * uint256(quantity);
+
+        vm.deal(maker, value);
+        vm.prank(maker);
+
+        book.makeOffer{value: value}(offer, quantity);
+
+        assertEq(quantity, book.collectionOffers(offer, maker));
+
+        // Quantity must be greater than 1, otherwise rounding down causes issues
+        bool isPartialCancel = partialCancel && quantity > 1;
+
+        uint256 cancelQuantity = quantity;
+
+        if (isPartialCancel) {
+            cancelQuantity = quantity / 2;
+        }
+
+        vm.prank(maker);
+        vm.expectEmit(true, true, false, true, bookAddr);
+
+        emit CancelOffer(maker, offer, cancelQuantity);
+
+        book.cancelOffer(offer, cancelQuantity);
+
+        assertEq(
+            quantity - cancelQuantity,
+            book.collectionOffers(offer, maker)
+        );
     }
 }
