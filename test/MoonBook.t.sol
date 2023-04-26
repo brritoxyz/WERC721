@@ -5,9 +5,7 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
-import {Moon} from "src/Moon.sol";
-import {MoonBookFactory} from "src/MoonBookFactory.sol";
-import {MoonBook} from "src/MoonBook.sol";
+import {MoonBook} from "src/MoonBookV2.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract MoonBookTest is Test {
@@ -20,8 +18,6 @@ contract MoonBookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
 
-    Moon private immutable moon;
-    MoonBookFactory private immutable factory;
     MoonBook private immutable book;
     address private immutable bookAddr;
     uint128 private immutable moonFeePercent;
@@ -56,15 +52,11 @@ contract MoonBookTest is Test {
     );
 
     constructor() {
-        moon = new Moon(STAKER, VAULT);
-        factory = new MoonBookFactory(moon);
-        book = factory.createMoonBook(LLAMA);
+        book = new MoonBook(STAKER, VAULT, LLAMA);
         bookAddr = address(book);
         moonFeePercent = book.MOON_FEE_PERCENT();
         moonFeePercentBase = book.MOON_FEE_PERCENT_BASE();
 
-        assertEq(address(moon), address(factory.moon()));
-        assertEq(address(moon), address(book.moon()));
         assertEq(address(LLAMA), address(book.collection()));
     }
 
@@ -74,29 +66,6 @@ contract MoonBookTest is Test {
         vm.prank(originalOwner);
 
         LLAMA.safeTransferFrom(originalOwner, recipient, id);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            createMoonBook
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotCreateMoonBookAlreadyExists() external {
-        vm.expectRevert(MoonBookFactory.AlreadyExists.selector);
-
-        factory.createMoonBook(LLAMA);
-    }
-
-    function testCreateMoonBook(ERC721 collection) external {
-        vm.assume(address(collection) != address(0));
-        vm.assume(address(collection) != address(LLAMA));
-
-        vm.expectEmit(true, true, true, true, address(factory));
-
-        emit CreateMoonBook(address(this), collection);
-
-        MoonBook moonBook = factory.createMoonBook(collection);
-
-        assertEq(address(moonBook), address(factory.moonBooks(collection)));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -347,9 +316,6 @@ contract MoonBookTest is Test {
         uint256 fees = price.mulDivDown(moonFeePercent, moonFeePercentBase);
 
         vm.prank(buyer);
-        vm.expectEmit(true, true, true, true, address(LLAMA));
-
-        emit Transfer(bookAddr, buyer, id);
 
         book.buy{value: price}(id);
 
@@ -362,7 +328,7 @@ contract MoonBookTest is Test {
         assertEq(0, listingPrice);
         assertEq(buyerBalanceBefore - price, buyer.balance);
         assertEq(sellerBalanceBefore + price - fees, seller.balance);
-        assertEq(fees, address(moon).balance);
+        assertEq(fees, bookAddr.balance);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -423,7 +389,7 @@ contract MoonBookTest is Test {
 
         vm.deal(maker, value);
         vm.prank(maker);
-        vm.expectEmit(true, false, false, true, address(book));
+        vm.expectEmit(true, false, false, true, bookAddr);
 
         emit MakeOffer(maker, offer, quantity);
 
