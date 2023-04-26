@@ -80,12 +80,6 @@ contract MoonBook is
         uint256 indexed offer,
         uint256 quantity
     );
-    event TakeOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        address indexed maker,
-        uint256 id
-    );
 
     error InvalidAddress();
     error InvalidAmount();
@@ -504,7 +498,5 @@ contract MoonBook is
         // If there are fees, deposit them into the protocol contract, and distribute
         // MOON rewards to the seller (equal to the ETH fees they've paid)
         if (fees != 0) _mint(msg.sender, fees);
-
-        emit TakeOffer(msg.sender, offer, maker, id);
     }
 }

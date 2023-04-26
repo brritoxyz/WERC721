@@ -9,6 +9,7 @@ import {MoonBook} from "src/MoonBookV2.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract MoonBookTest is Test {
+    using FixedPointMathLib for uint256;
     using FixedPointMathLib for uint96;
 
     ERC20 private constant STAKER =
@@ -475,5 +476,79 @@ contract MoonBookTest is Test {
             quantity - cancelQuantity,
             book.collectionOffers(offer, maker)
         );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            takeOffer
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotTakeOfferOfferInvalidAmount(
+        address maker,
+        uint256 id
+    ) external {
+        vm.assume(maker != address(0));
+        vm.assume(id != 0);
+
+        uint256 offer = 0;
+
+        vm.expectRevert(MoonBook.InvalidAmount.selector);
+
+        book.takeOffer(offer, maker, id);
+    }
+
+    function testCannotTakeOfferMakerInvalidAddress(
+        uint256 offer,
+        uint256 id
+    ) external {
+        vm.assume(offer != 0);
+        vm.assume(id != 0);
+
+        address maker = address(0);
+
+        vm.expectRevert(MoonBook.InvalidAddress.selector);
+
+        book.takeOffer(offer, maker, id);
+    }
+
+    function testTakeOffer(uint128 offer, uint128 quantity, uint8 id) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
+        vm.assume(id != 0);
+
+        address maker = testMakers[0];
+        address taker = testBuyers[0];
+        uint256 value = uint256(offer) * uint256(quantity);
+
+        vm.deal(maker, value);
+        vm.prank(maker);
+
+        book.makeOffer{value: value}(offer, quantity);
+
+        _acquireNFT(id, taker);
+
+        uint256 takerBalanceBefore = taker.balance;
+        uint256 moonBalanceBefore = bookAddr.balance;
+        uint256 expectedFees = uint256(offer).mulDivDown(
+            moonFeePercent,
+            moonFeePercentBase
+        );
+
+        vm.startPrank(taker);
+
+        LLAMA.setApprovalForAll(bookAddr, true);
+
+        vm.expectEmit(true, true, true, true, address(LLAMA));
+
+        emit Transfer(taker, maker, id);
+
+        book.takeOffer(offer, maker, id);
+
+        vm.stopPrank();
+
+        assertEq(takerBalanceBefore + offer - expectedFees, taker.balance);
+        assertEq(moonBalanceBefore + expectedFees - offer, bookAddr.balance);
+        assertEq(quantity - 1, book.collectionOffers(offer, maker));
+        assertEq(maker, LLAMA.ownerOf(id));
+        assertEq(expectedFees, book.balanceOf(taker));
     }
 }
