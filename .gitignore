@@ -1,6 +1,7 @@
 # Compiler files
 cache/
 out/
+optimized-out/
 
 # Misc
 .DS_Store
