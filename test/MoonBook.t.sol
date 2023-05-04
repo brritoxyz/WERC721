@@ -19,6 +19,7 @@ contract MoonBookTest is Test {
         ERC4626(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
+    uint256 private constant LLAMA_MAX_SUPPLY = 1_111;
 
     MoonBook private immutable book;
     address private immutable bookAddr;
@@ -80,6 +81,35 @@ contract MoonBookTest is Test {
 
         assertEq(seller, listingSeller);
         assertEq(price, listingPrice);
+    }
+
+    function testListBeta(uint8 id, uint96 price) external {
+        address seller = testSellers[0];
+
+        vm.assume(seller != address(0));
+
+        _acquireNFT(id, seller);
+
+        vm.startPrank(seller);
+
+        LLAMA.setApprovalForAll(bookAddr, true);
+
+        vm.expectEmit(true, true, true, true, address(LLAMA));
+
+        emit Transfer(seller, bookAddr, id);
+
+        book.listBeta(LLAMA, id, price);
+
+        vm.stopPrank();
+
+        assertEq(bookAddr, LLAMA.ownerOf(id));
+        assertEq(
+            1,
+            book.balanceOf(
+                seller,
+                uint256(keccak256(abi.encodePacked(LLAMA, uint256(id), price)))
+            )
+        );
     }
 
     /*//////////////////////////////////////////////////////////////

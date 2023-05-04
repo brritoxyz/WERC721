@@ -2,11 +2,12 @@
 pragma solidity 0.8.19;
 
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC1155, ERC1155TokenReceiver} from "src/MoonERC1155.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Moon} from "src/Moon.sol";
 
-contract MoonBook is ERC721TokenReceiver, Moon {
+contract MoonBook is ERC721TokenReceiver, ERC1155, Moon {
     using SafeTransferLib for address payable;
     using FixedPointMathLib for uint256;
     using FixedPointMathLib for uint96;
@@ -17,6 +18,9 @@ contract MoonBook is ERC721TokenReceiver, Moon {
         // Denominated in ETH
         uint96 price;
     }
+
+    uint8 private constant AMOUNT = 1;
+    bytes private constant DATA = "";
 
     // 1% of proceeds are withheld and can be redeemed later
     uint128 public constant WITHHELD_PERCENT = 1;
@@ -31,6 +35,28 @@ contract MoonBook is ERC721TokenReceiver, Moon {
     error OnlySeller();
 
     constructor(address _staker, address _vault) Moon(_staker, _vault) {}
+
+    function _mintSingle(address to, uint256 id) private {
+        balanceOf[to][id] = AMOUNT;
+
+        require(
+            to.code.length == 0
+                ? true
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    msg.sender,
+                    address(0),
+                    id,
+                    AMOUNT,
+                    DATA
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    // Considering updating logic to provide insight into asset
+    function uri(uint256) public pure override returns (string memory) {
+        return "";
+    }
 
     /**
      * @notice List a NFT for sale
@@ -48,6 +74,27 @@ contract MoonBook is ERC721TokenReceiver, Moon {
 
         // Set listing details
         listings[collection][id] = Listing(msg.sender, price);
+    }
+
+    /**
+     * @notice List a NFT for sale
+     * @param  collection  ERC721   NFT collection
+     * @param  id          uint256  NFT ID
+     * @param  price       uint96   NFT price in ETH
+     */
+    function listBeta(
+        ERC721 collection,
+        uint256 id,
+        uint96 price
+    ) external nonReentrant {
+        // Reverts if the NFT is not owned by msg.sender
+        collection.safeTransferFrom(msg.sender, address(this), id);
+
+        // Store listing as a transferrable user token
+        _mintSingle(
+            msg.sender,
+            uint256(keccak256(abi.encodePacked(collection, id, price)))
+        );
     }
 
     /**
