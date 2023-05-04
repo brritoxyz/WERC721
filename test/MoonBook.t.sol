@@ -22,8 +22,8 @@ contract MoonBookTest is Test {
 
     MoonBook private immutable book;
     address private immutable bookAddr;
-    uint128 private immutable moonFeePercent;
-    uint128 private immutable moonFeePercentBase;
+    uint128 private immutable withheldPercent;
+    uint128 private immutable withheldPercentBase;
 
     address[3] private testSellers = [address(1), address(2), address(3)];
     address[3] private testBuyers = [address(4), address(5), address(6)];
@@ -35,31 +35,12 @@ contract MoonBookTest is Test {
         address indexed to,
         uint256 indexed id
     );
-    event MakeOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        uint256 quantity
-    );
-    event CancelOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        uint256 quantity
-    );
-    event TakeOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        address indexed maker,
-        uint256 quantity,
-        uint256[] ids
-    );
 
     constructor() {
-        book = new MoonBook(address(STAKER), address(VAULT), LLAMA);
+        book = new MoonBook(address(STAKER), address(VAULT));
         bookAddr = address(book);
-        moonFeePercent = book.MOON_FEE_PERCENT();
-        moonFeePercentBase = book.MOON_FEE_PERCENT_BASE();
-
-        assertEq(address(LLAMA), address(book.collection()));
+        withheldPercent = book.WITHHELD_PERCENT();
+        withheldPercentBase = book.WITHHELD_PERCENT_BASE();
     }
 
     function _acquireNFT(uint256 id, address recipient) private {
@@ -89,15 +70,13 @@ contract MoonBookTest is Test {
 
         emit Transfer(seller, bookAddr, id);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
 
         assertEq(bookAddr, LLAMA.ownerOf(id));
 
-        (address listingSeller, uint96 listingPrice) = book.collectionListings(
-            id
-        );
+        (address listingSeller, uint96 listingPrice) = book.listings(LLAMA, id);
 
         assertEq(seller, listingSeller);
         assertEq(price, listingPrice);
@@ -112,6 +91,7 @@ contract MoonBookTest is Test {
         vm.assume(iterations < 10);
 
         address seller = testSellers[0];
+        ERC721[] memory collections = new ERC721[](iterations);
         uint256[] memory ids = new uint256[](iterations);
         uint96[] memory prices = new uint96[](iterations);
 
@@ -119,6 +99,7 @@ contract MoonBookTest is Test {
         for (uint256 i; i < iterations; ) {
             _acquireNFT(i, seller);
 
+            collections[i] = LLAMA;
             ids[i] = i;
             prices[i] = uint96(i) * 1 ether;
 
@@ -131,7 +112,7 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.listMany(ids, prices);
+        book.listMany(collections, ids, prices);
 
         vm.stopPrank();
 
@@ -140,8 +121,10 @@ contract MoonBookTest is Test {
 
             assertEq(bookAddr, LLAMA.ownerOf(id));
 
-            (address listingSeller, uint96 listingPrice) = book
-                .collectionListings(id);
+            (address listingSeller, uint96 listingPrice) = book.listings(
+                LLAMA,
+                id
+            );
 
             assertEq(seller, listingSeller);
             assertEq(prices[i], listingPrice);
@@ -167,13 +150,13 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
         vm.prank(address(0));
         vm.expectRevert(MoonBook.OnlySeller.selector);
 
-        book.editListing(id, price);
+        book.editListing(LLAMA, id, price);
     }
 
     function testEditListing(uint8 id, uint96 price, uint96 newPrice) external {
@@ -187,20 +170,18 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
-        (address listingSeller, uint96 listingPrice) = book.collectionListings(
-            id
-        );
+        (address listingSeller, uint96 listingPrice) = book.listings(LLAMA, id);
 
         assertEq(seller, listingSeller);
         assertEq(price, listingPrice);
 
-        book.editListing(id, newPrice);
+        book.editListing(LLAMA, id, newPrice);
 
         vm.stopPrank();
 
-        (listingSeller, listingPrice) = book.collectionListings(id);
+        (listingSeller, listingPrice) = book.listings(LLAMA, id);
 
         assertEq(seller, listingSeller);
         assertEq(newPrice, listingPrice);
@@ -221,13 +202,13 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
         vm.prank(address(0));
         vm.expectRevert(MoonBook.OnlySeller.selector);
 
-        book.cancelListing(id);
+        book.cancelListing(LLAMA, id);
     }
 
     function testCancelListing() external {
@@ -241,13 +222,11 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
 
-        (address listingSeller, uint96 listingPrice) = book.collectionListings(
-            id
-        );
+        (address listingSeller, uint96 listingPrice) = book.listings(LLAMA, id);
 
         assertEq(bookAddr, LLAMA.ownerOf(id));
         assertEq(seller, listingSeller);
@@ -258,9 +237,9 @@ contract MoonBookTest is Test {
 
         emit Transfer(bookAddr, seller, id);
 
-        book.cancelListing(id);
+        book.cancelListing(LLAMA, id);
 
-        (listingSeller, listingPrice) = book.collectionListings(id);
+        (listingSeller, listingPrice) = book.listings(LLAMA, id);
 
         assertEq(seller, LLAMA.ownerOf(id));
         assertEq(address(0), listingSeller);
@@ -282,18 +261,18 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
         vm.expectRevert(Moon.InvalidAmount.selector);
 
-        book.buy{value: price - 1}(id);
+        book.buy{value: price - 1}(LLAMA, id);
     }
 
     function testCannotBuyDoesNotExist(uint8 id) external {
         vm.expectRevert();
 
-        book.buy{value: 0}(id);
+        book.buy{value: 0}(LLAMA, id);
     }
 
     function testBuy(uint8 id, uint96 price) external {
@@ -308,22 +287,20 @@ contract MoonBookTest is Test {
 
         LLAMA.setApprovalForAll(bookAddr, true);
 
-        book.list(id, price);
+        book.list(LLAMA, id, price);
 
         vm.stopPrank();
         vm.deal(buyer, price);
 
         uint256 sellerBalanceBefore = seller.balance;
         uint256 buyerBalanceBefore = buyer.balance;
-        uint256 fees = price.mulDivDown(moonFeePercent, moonFeePercentBase);
+        uint256 fees = price.mulDivDown(withheldPercent, withheldPercentBase);
 
         vm.prank(buyer);
 
-        book.buy{value: price}(id);
+        book.buy{value: price}(LLAMA, id);
 
-        (address listingSeller, uint96 listingPrice) = book.collectionListings(
-            id
-        );
+        (address listingSeller, uint96 listingPrice) = book.listings(LLAMA, id);
 
         assertEq(buyer, LLAMA.ownerOf(id));
         assertEq(address(0), listingSeller);
@@ -331,225 +308,5 @@ contract MoonBookTest is Test {
         assertEq(buyerBalanceBefore - price, buyer.balance);
         assertEq(sellerBalanceBefore + price - fees, seller.balance);
         assertEq(fees, bookAddr.balance);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            makeOffer
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotMakeOfferOfferInvalidAmount(
-        uint8 msgValue,
-        uint256 quantity
-    ) external {
-        vm.assume(msgValue != 0);
-        vm.assume(quantity != 0);
-
-        uint256 value = uint256(msgValue) * 1 ether;
-        uint256 offer = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.makeOffer{value: value}(offer, quantity);
-    }
-
-    function testCannotMakeOfferQuantityInvalidAmount(
-        uint8 msgValue,
-        uint256 offer
-    ) external {
-        vm.assume(msgValue != 0);
-        vm.assume(offer != 0);
-
-        uint256 value = uint256(msgValue) * 1 ether;
-        uint256 quantity = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.makeOffer{value: value}(offer, quantity);
-    }
-
-    function testCannotMakeOfferValueInvalidAmount(
-        uint8 offer,
-        uint8 quantity
-    ) external {
-        vm.assume(offer != 0);
-        vm.assume(quantity != 0);
-
-        // If value is mismatched with offer * quantity, will revert
-        uint256 value = uint256(offer) * uint256(quantity) + 1;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.makeOffer{value: value}(offer, quantity);
-    }
-
-    function testMakeOffer(uint8 offer, uint8 quantity) external {
-        vm.assume(offer != 0);
-        vm.assume(quantity != 0);
-
-        address maker = testMakers[0];
-        uint256 value = uint256(offer) * uint256(quantity);
-
-        vm.deal(maker, value);
-        vm.prank(maker);
-        vm.expectEmit(true, false, false, true, bookAddr);
-
-        emit MakeOffer(maker, offer, quantity);
-
-        book.makeOffer{value: value}(offer, quantity);
-
-        assertEq(quantity, book.collectionOffers(offer, maker));
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            cancelOffer
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotCancelOfferOfferInvalidAmount(
-        uint256 quantity
-    ) external {
-        vm.assume(quantity != 0);
-
-        uint256 offer = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.cancelOffer(offer, quantity);
-    }
-
-    function testCannotCancelOfferQuantityInvalidAmount(
-        uint256 offer
-    ) external {
-        vm.assume(offer != 0);
-
-        uint256 quantity = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.cancelOffer(offer, quantity);
-    }
-
-    function testCannotCancelOfferDoesNotExist(
-        uint256 offer,
-        uint256 quantity
-    ) external {
-        vm.assume(offer != 0);
-        vm.assume(quantity != 0);
-        vm.expectRevert(stdError.arithmeticError);
-
-        book.cancelOffer(offer, quantity);
-    }
-
-    function testCancelOffer(
-        uint128 offer,
-        uint128 quantity,
-        bool partialCancel
-    ) external {
-        vm.assume(offer != 0);
-        vm.assume(quantity != 0);
-
-        address maker = testMakers[0];
-        uint256 value = uint256(offer) * uint256(quantity);
-
-        vm.deal(maker, value);
-        vm.prank(maker);
-
-        book.makeOffer{value: value}(offer, quantity);
-
-        assertEq(quantity, book.collectionOffers(offer, maker));
-
-        // Quantity must be greater than 1, otherwise rounding down causes issues
-        bool isPartialCancel = partialCancel && quantity > 1;
-
-        uint256 cancelQuantity = quantity;
-
-        if (isPartialCancel) {
-            cancelQuantity = quantity / 2;
-        }
-
-        vm.prank(maker);
-        vm.expectEmit(true, true, false, true, bookAddr);
-
-        emit CancelOffer(maker, offer, cancelQuantity);
-
-        book.cancelOffer(offer, cancelQuantity);
-
-        assertEq(
-            quantity - cancelQuantity,
-            book.collectionOffers(offer, maker)
-        );
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            takeOffer
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotTakeOfferOfferInvalidAmount(
-        address maker,
-        uint256 id
-    ) external {
-        vm.assume(maker != address(0));
-        vm.assume(id != 0);
-
-        uint256 offer = 0;
-
-        vm.expectRevert(Moon.InvalidAmount.selector);
-
-        book.takeOffer(offer, maker, id);
-    }
-
-    function testCannotTakeOfferMakerInvalidAddress(
-        uint256 offer,
-        uint256 id
-    ) external {
-        vm.assume(offer != 0);
-        vm.assume(id != 0);
-
-        address maker = address(0);
-
-        vm.expectRevert(Moon.InvalidAddress.selector);
-
-        book.takeOffer(offer, maker, id);
-    }
-
-    function testTakeOffer(uint128 offer, uint128 quantity, uint8 id) external {
-        vm.assume(offer != 0);
-        vm.assume(quantity != 0);
-        vm.assume(id != 0);
-
-        address maker = testMakers[0];
-        address taker = testBuyers[0];
-        uint256 value = uint256(offer) * uint256(quantity);
-
-        vm.deal(maker, value);
-        vm.prank(maker);
-
-        book.makeOffer{value: value}(offer, quantity);
-
-        _acquireNFT(id, taker);
-
-        uint256 takerBalanceBefore = taker.balance;
-        uint256 moonBalanceBefore = bookAddr.balance;
-        uint256 expectedFees = uint256(offer).mulDivDown(
-            moonFeePercent,
-            moonFeePercentBase
-        );
-
-        vm.startPrank(taker);
-
-        LLAMA.setApprovalForAll(bookAddr, true);
-
-        vm.expectEmit(true, true, true, true, address(LLAMA));
-
-        emit Transfer(taker, maker, id);
-
-        book.takeOffer(offer, maker, id);
-
-        vm.stopPrank();
-
-        assertEq(takerBalanceBefore + offer - expectedFees, taker.balance);
-        assertEq(moonBalanceBefore + expectedFees - offer, bookAddr.balance);
-        assertEq(quantity - 1, book.collectionOffers(offer, maker));
-        assertEq(maker, LLAMA.ownerOf(id));
-        assertEq(expectedFees, book.balanceOf(taker));
     }
 }

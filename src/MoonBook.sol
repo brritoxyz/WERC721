@@ -18,81 +18,62 @@ contract MoonBook is ERC721TokenReceiver, Moon {
         uint96 price;
     }
 
-    // Fees are 1%
-    uint128 public constant MOON_FEE_PERCENT = 1;
+    // 1% of proceeds are withheld and can be redeemed later
+    uint128 public constant WITHHELD_PERCENT = 1;
 
     // Used for calculating fees
-    uint128 public constant MOON_FEE_PERCENT_BASE = 100;
+    uint128 public constant WITHHELD_PERCENT_BASE = 100;
 
-    // NFT collection contract
-    ERC721 public immutable collection;
+    // NFT listings
+    mapping(ERC721 collection => mapping(uint256 id => Listing listing))
+        public listings;
 
-    // NFT collection listings
-    mapping(uint256 id => Listing listing) public collectionListings;
-
-    // NFT collection-wide offers
-    mapping(uint256 offer => mapping(address maker => uint256 quantity))
-        public collectionOffers;
-
-    event MakeOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        uint256 quantity
-    );
-    event CancelOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        uint256 quantity
-    );
-
-    error InvalidIDs();
     error OnlySeller();
-    error OnlyMaker();
 
-    constructor(
-        address _staker,
-        address _vault,
-        ERC721 _collection
-    ) Moon(_staker, _vault) {
-        if (address(_collection) == address(0)) revert InvalidAddress();
-
-        collection = _collection;
-    }
+    constructor(address _staker, address _vault) Moon(_staker, _vault) {}
 
     /**
      * @notice List a NFT for sale
-     * @param  id     uint256  NFT ID
-     * @param  price  uint96   NFT price in ETH
+     * @param  collection  ERC721   NFT collection
+     * @param  id          uint256  NFT ID
+     * @param  price       uint96   NFT price in ETH
      */
-    function list(uint256 id, uint96 price) external nonReentrant {
+    function list(
+        ERC721 collection,
+        uint256 id,
+        uint96 price
+    ) external nonReentrant {
         // Reverts if the NFT is not owned by msg.sender
         collection.safeTransferFrom(msg.sender, address(this), id);
 
         // Set listing details
-        collectionListings[id] = Listing(msg.sender, price);
+        listings[collection][id] = Listing(msg.sender, price);
     }
 
     /**
      * @notice List many NFTs for sale
-     * @param  ids     uint256[]  NFT IDs
-     * @param  prices  uint96[]   NFT prices in ETH
+     * @param  collections  ERC721[]   NFT collections
+     * @param  ids          uint256[]  NFT IDs
+     * @param  prices       uint96[]   NFT prices in ETH
      */
     function listMany(
+        ERC721[] calldata collections,
         uint256[] calldata ids,
         uint96[] calldata prices
     ) external nonReentrant {
-        uint256 iLen = ids.length;
+        uint256 cLen = collections.length;
 
-        // Loop body does not execute if iLen is zero, and tx reverts if the
-        // `ids` and `prices` arrays are mismatched in terms of length
-        for (uint256 i; i < iLen; ) {
+        // Loop body does not execute if cLen is zero, and tx reverts if the
+        // array lengths are mismatched
+        for (uint256 i; i < cLen; ) {
+            ERC721 collection = collections[i];
             uint256 id = ids[i];
 
             // Reverts if the NFT is not owned by msg.sender
             collection.safeTransferFrom(msg.sender, address(this), id);
 
             // Set listing details
-            collectionListings[id] = Listing(msg.sender, prices[i]);
+            listings[collection][id] = Listing(msg.sender, prices[i]);
 
             unchecked {
                 ++i;
@@ -102,11 +83,16 @@ contract MoonBook is ERC721TokenReceiver, Moon {
 
     /**
      * @notice Edit NFT listing price
-     * @param  id        uint256  NFT ID
-     * @param  newPrice  uint96   New NFT price
+     * @param  collection  ERC721   NFT collection
+     * @param  id          uint256  NFT ID
+     * @param  newPrice    uint96   New NFT price
      */
-    function editListing(uint256 id, uint96 newPrice) external {
-        Listing storage listing = collectionListings[id];
+    function editListing(
+        ERC721 collection,
+        uint256 id,
+        uint96 newPrice
+    ) external {
+        Listing storage listing = listings[collection][id];
 
         // msg.sender must be the listing seller, otherwise they cannot edit
         if (listing.seller != msg.sender) revert OnlySeller();
@@ -116,13 +102,17 @@ contract MoonBook is ERC721TokenReceiver, Moon {
 
     /**
      * @notice Cancel NFT listing and reclaim NFT
-     * @param  id  uint256  NFT ID
+     * @param  collection  ERC721   NFT collection
+     * @param  id          uint256  NFT ID
      */
-    function cancelListing(uint256 id) external nonReentrant {
+    function cancelListing(
+        ERC721 collection,
+        uint256 id
+    ) external nonReentrant {
         // msg.sender must be the listing seller, otherwise they cannot cancel
-        if (collectionListings[id].seller != msg.sender) revert OnlySeller();
+        if (listings[collection][id].seller != msg.sender) revert OnlySeller();
 
-        delete collectionListings[id];
+        delete listings[collection][id];
 
         // Return the NFT to the seller
         collection.safeTransferFrom(address(this), msg.sender, id);
@@ -130,16 +120,17 @@ contract MoonBook is ERC721TokenReceiver, Moon {
 
     /**
      * @notice Buy a NFT
-     * @param  id  uint256  NFT ID
+     * @param  collection  ERC721   NFT collection
+     * @param  id          uint256  NFT ID
      */
-    function buy(uint256 id) external payable nonReentrant {
-        Listing memory listing = collectionListings[id];
+    function buy(ERC721 collection, uint256 id) external payable nonReentrant {
+        Listing memory listing = listings[collection][id];
 
         // Reverts if msg.value does not equal listing price
         if (msg.value != listing.price) revert InvalidAmount();
 
         // Delete listing before exchanging tokens
-        delete collectionListings[id];
+        delete listings[collection][id];
 
         // Send NFT to the buyer after confirming sufficient ETH was sent
         // Reverts if invalid listing (i.e. contract no longer has the NFT)
@@ -147,8 +138,8 @@ contract MoonBook is ERC721TokenReceiver, Moon {
 
         // Calculate protocol fees
         uint256 fees = listing.price.mulDivDown(
-            MOON_FEE_PERCENT,
-            MOON_FEE_PERCENT_BASE
+            WITHHELD_PERCENT,
+            WITHHELD_PERCENT_BASE
         );
 
         // Transfer the post-fee sale proceeds to the seller
@@ -157,80 +148,5 @@ contract MoonBook is ERC721TokenReceiver, Moon {
         // If there are fees, deposit them into the protocol contract, and distribute
         // MOON rewards to the seller (equal to the ETH fees they've paid)
         if (fees != 0) _mint(listing.seller, fees);
-    }
-
-    /**
-     * @notice Make offers
-     * @param  offer     uint256  Offer amount in ETH
-     * @param  quantity  uint256  Offer quantity (i.e. number of NFTs)
-     */
-    function makeOffer(uint256 offer, uint256 quantity) external payable {
-        if (offer == 0) revert InvalidAmount();
-        if (quantity == 0) revert InvalidAmount();
-
-        // Revert if the maker did not send enough ETH to cover their offer
-        if (msg.value != offer * quantity) revert InvalidAmount();
-
-        // User offer is the amount of ETH sent with the transaction
-        collectionOffers[offer][msg.sender] += quantity;
-
-        emit MakeOffer(msg.sender, offer, quantity);
-    }
-
-    /**
-     * @notice Cancel offers
-     * @param  offer     uint256  Offer amount in ETH
-     * @param  quantity  uint256  Offer quantity (i.e. number of NFTs)
-     */
-    function cancelOffer(
-        uint256 offer,
-        uint256 quantity
-    ) external nonReentrant {
-        if (offer == 0) revert InvalidAmount();
-        if (quantity == 0) revert InvalidAmount();
-
-        // User offer is the amount of ETH sent with the transaction
-        // Reverts if the quantity is greater than what's deposited
-        collectionOffers[offer][msg.sender] -= quantity;
-
-        payable(msg.sender).safeTransferETH(offer * quantity);
-
-        emit CancelOffer(msg.sender, offer, quantity);
-    }
-
-    /**
-     * @notice Take offer
-     * @param  offer  uint256  Offer amount in ETH
-     * @param  maker  address  Offer maker
-     * @param  id     uint256  NFT ID
-     */
-    function takeOffer(
-        uint256 offer,
-        address maker,
-        uint256 id
-    ) external nonReentrant {
-        if (offer == 0) revert InvalidAmount();
-        if (maker == address(0)) revert InvalidAddress();
-
-        // Decrement the maker's offer quantity to reflect taken offer
-        // Reverts if the offer maker does not have enough deposited
-        --collectionOffers[offer][maker];
-
-        // Transfer the NFT from the offer taker (msg.sender) to the maker
-        // Reverts if msg.sender does not have the NFT at the specified ID
-        collection.safeTransferFrom(msg.sender, maker, id);
-
-        // Calculate protocol fees
-        uint256 fees = offer.mulDivDown(
-            MOON_FEE_PERCENT,
-            MOON_FEE_PERCENT_BASE
-        );
-
-        // Transfer the post-fee sale proceeds to the seller
-        payable(msg.sender).safeTransferETH(offer - fees);
-
-        // If there are fees, deposit them into the protocol contract, and distribute
-        // MOON rewards to the seller (equal to the ETH fees they've paid)
-        if (fees != 0) _mint(msg.sender, fees);
     }
 }
