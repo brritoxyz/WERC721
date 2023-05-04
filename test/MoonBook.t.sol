@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
-import {MoonBook} from "src/MoonBookV2.sol";
+import {MoonBook} from "src/MoonBook.sol";
+import {Moon} from "src/Moon.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract MoonBookTest is Test {
@@ -53,7 +54,7 @@ contract MoonBookTest is Test {
     );
 
     constructor() {
-        book = new MoonBook(STAKER, VAULT, LLAMA);
+        book = new MoonBook(address(STAKER), address(VAULT), LLAMA);
         bookAddr = address(book);
         moonFeePercent = book.MOON_FEE_PERCENT();
         moonFeePercentBase = book.MOON_FEE_PERCENT_BASE();
@@ -284,7 +285,7 @@ contract MoonBookTest is Test {
         book.list(id, price);
 
         vm.stopPrank();
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.buy{value: price - 1}(id);
     }
@@ -346,7 +347,7 @@ contract MoonBookTest is Test {
         uint256 value = uint256(msgValue) * 1 ether;
         uint256 offer = 0;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.makeOffer{value: value}(offer, quantity);
     }
@@ -361,7 +362,7 @@ contract MoonBookTest is Test {
         uint256 value = uint256(msgValue) * 1 ether;
         uint256 quantity = 0;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.makeOffer{value: value}(offer, quantity);
     }
@@ -376,7 +377,7 @@ contract MoonBookTest is Test {
         // If value is mismatched with offer * quantity, will revert
         uint256 value = uint256(offer) * uint256(quantity) + 1;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.makeOffer{value: value}(offer, quantity);
     }
@@ -410,7 +411,7 @@ contract MoonBookTest is Test {
 
         uint256 offer = 0;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.cancelOffer(offer, quantity);
     }
@@ -422,7 +423,7 @@ contract MoonBookTest is Test {
 
         uint256 quantity = 0;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.cancelOffer(offer, quantity);
     }
@@ -491,7 +492,7 @@ contract MoonBookTest is Test {
 
         uint256 offer = 0;
 
-        vm.expectRevert(MoonBook.InvalidAmount.selector);
+        vm.expectRevert(Moon.InvalidAmount.selector);
 
         book.takeOffer(offer, maker, id);
     }
@@ -505,7 +506,7 @@ contract MoonBookTest is Test {
 
         address maker = address(0);
 
-        vm.expectRevert(MoonBook.InvalidAddress.selector);
+        vm.expectRevert(Moon.InvalidAddress.selector);
 
         book.takeOffer(offer, maker, id);
     }

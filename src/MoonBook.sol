@@ -2,15 +2,14 @@
 pragma solidity 0.8.19;
 
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Moon} from "src/Moon.sol";
 
-contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
-    using FixedPointMathLib for uint96;
-    using FixedPointMathLib for uint256;
+contract MoonBook is ERC721TokenReceiver, Moon {
     using SafeTransferLib for address payable;
+    using FixedPointMathLib for uint256;
+    using FixedPointMathLib for uint96;
 
     struct Listing {
         // NFT seller, receives ETH upon sale
@@ -24,9 +23,6 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
     // Used for calculating fees
     uint128 public constant MOON_FEE_PERCENT_BASE = 100;
-
-    // MOON token contract
-    Moon public immutable moon;
 
     // NFT collection contract
     ERC721 public immutable collection;
@@ -48,28 +44,18 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
         uint256 indexed offer,
         uint256 quantity
     );
-    event TakeOffer(
-        address indexed msgSender,
-        uint256 indexed offer,
-        address indexed maker,
-        uint256 id
-    );
 
-    error InvalidAddress();
-    error InvalidAmount();
     error InvalidIDs();
     error OnlySeller();
     error OnlyMaker();
 
-    /**
-     * @param _moon        Moon    Moon protocol contract
-     * @param _collection  ERC721  NFT collection contract
-     */
-    constructor(Moon _moon, ERC721 _collection) {
-        if (address(_moon) == address(0)) revert InvalidAddress();
+    constructor(
+        address _staker,
+        address _vault,
+        ERC721 _collection
+    ) Moon(_staker, _vault) {
         if (address(_collection) == address(0)) revert InvalidAddress();
 
-        moon = _moon;
         collection = _collection;
     }
 
@@ -170,7 +156,7 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         // If there are fees, deposit them into the protocol contract, and distribute
         // MOON rewards to the seller (equal to the ETH fees they've paid)
-        if (fees != 0) moon.depositETH{value: fees}(listing.seller);
+        if (fees != 0) _mint(listing.seller, fees);
     }
 
     /**
@@ -245,8 +231,6 @@ contract MoonBook is ERC721TokenReceiver, ReentrancyGuard {
 
         // If there are fees, deposit them into the protocol contract, and distribute
         // MOON rewards to the seller (equal to the ETH fees they've paid)
-        if (fees != 0) moon.depositETH{value: fees}(msg.sender);
-
-        emit TakeOffer(msg.sender, offer, maker, id);
+        if (fees != 0) _mint(msg.sender, fees);
     }
 }

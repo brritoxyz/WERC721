@@ -3,10 +3,10 @@ pragma solidity 0.8.19;
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     using SafeTransferLib for ERC20;
@@ -44,15 +44,32 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
     error InvalidAmount();
     error InvalidRedemption();
 
-    constructor(ERC20 _staker, ERC4626 _vault) Owned(msg.sender) {
+    constructor(address _staker, address _vault) Owned(msg.sender) {
         if (address(_staker) == address(0)) revert InvalidAddress();
         if (address(_vault) == address(0)) revert InvalidAddress();
 
-        staker = _staker;
-        vault = _vault;
+        staker = ERC20(_staker);
+        vault = ERC4626(_vault);
+    }
 
-        // Allow the vault to transfer stETH on this contract's behalf
-        staker.safeApprove(address(_vault), type(uint256).max);
+    function _mint(address to, uint256 amount) internal override {
+        totalSupply += amount;
+
+        unchecked {
+            // Cannot overflow because the sum of all user
+            // balances can't exceed the max uint256 value.
+            balanceOf[to] += amount;
+        }
+    }
+
+    function _burn(address from, uint256 amount) internal override {
+        balanceOf[from] -= amount;
+
+        // Cannot underflow because a user's balance
+        // will never be larger than the total supply.
+        unchecked {
+            totalSupply -= amount;
+        }
     }
 
     /**
@@ -171,17 +188,6 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         instantRedemptionValue = _instantRedemptionValue;
 
         emit SetInstantRedemptionValue(msg.sender, _instantRedemptionValue);
-    }
-
-    /**
-     * @notice Deposit ETH, receive MOON
-     * @param  recipient  address  MOON recipient address
-     */
-    function depositETH(address recipient) external payable {
-        if (msg.value == 0) revert InvalidAmount();
-
-        // Mint MOON for msg.sender, equal to the ETH deposited
-        _mint(recipient, msg.value);
     }
 
     /**
