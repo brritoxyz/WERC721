@@ -8,11 +8,15 @@ import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
+contract Moon is Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ERC4626;
     using SafeTransferLib for address payable;
     using FixedPointMathLib for uint256;
+
+    uint256 internal _totalSupply;
+
+    mapping(address => uint256) internal _balanceOf;
 
     // Maximum duration users must wait to redeem the full ETH value of MOON
     uint256 public constant MAX_REDEMPTION_DURATION = 28 days;
@@ -52,23 +56,24 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         vault = ERC4626(_vault);
     }
 
-    function _mint(address to, uint256 amount) internal override {
-        totalSupply += amount;
-
+    function _mint(address to, uint256 amount) internal {
         unchecked {
+            // Cannot overflow since tokens are 1:1 with ETH
+            _totalSupply += amount;
+
             // Cannot overflow because the sum of all user
             // balances can't exceed the max uint256 value.
-            balanceOf[to] += amount;
+            _balanceOf[to] += amount;
         }
     }
 
-    function _burn(address from, uint256 amount) internal override {
-        balanceOf[from] -= amount;
+    function _burn(address from, uint256 amount) internal {
+        _balanceOf[from] -= amount;
 
         // Cannot underflow because a user's balance
         // will never be larger than the total supply.
         unchecked {
-            totalSupply -= amount;
+            _totalSupply -= amount;
         }
     }
 
@@ -121,7 +126,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // the redeemed MOON amount to the total MOON supply
         shares = vault.balanceOf(address(this)).mulDivDown(
             redeemed,
-            totalSupply
+            _totalSupply
         );
 
         // Burn MOON from msg.sender - reverts if their balance is insufficient
@@ -235,7 +240,7 @@ contract Moon is Owned, ERC20("Redeemable Token", "MOON", 18), ReentrancyGuard {
         // the redeemed MOON amount to the total MOON supply
         shares = vault.balanceOf(address(this)).mulDivDown(
             redeemed,
-            totalSupply
+            _totalSupply
         );
 
         // Burn MOON from msg.sender - reverts if their balance is insufficient
