@@ -24,7 +24,6 @@ contract MoonBookV2Test is Test {
         );
         address pageAddress = book.createPage(LLAMA);
 
-
         page = MoonPage(pageAddress);
 
         assertEq(address(this), book.owner());
@@ -55,6 +54,9 @@ contract MoonBookV2Test is Test {
 
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(this), MoonPage(pageAddress).owner());
-        assertEq(address(collection), address(MoonPage(pageAddress).collection()));
+        assertEq(
+            address(collection),
+            address(MoonPage(pageAddress).collection())
+        );
     }
 }

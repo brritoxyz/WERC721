@@ -46,11 +46,33 @@ abstract contract ERC1155 {
 
     bytes private constant EMPTY_DATA = "";
 
+    string internal _uri = "";
+
     /*//////////////////////////////////////////////////////////////
                              METADATA LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function uri(uint256 id) public view virtual returns (string memory);
+    function _setURI(string memory newuri) internal {
+        _uri = newuri;
+
+        // The value of `0` for `id` is a catchall since IDs will never be zero
+        // See comment block below for more details on how to construct the token URI
+        emit URI(newuri, 0);
+    }
+
+    /**
+     * @dev See {IERC1155MetadataURI-uri}.
+     *
+     * This implementation returns the same URI for *all* token types. It relies
+     * on the token type ID substitution mechanism
+     * https://eips.ethereum.org/EIPS/eip-1155#metadata[defined in the EIP].
+     *
+     * Clients calling this function must replace the `\{id\}` substring with the
+     * actual token type ID.
+     */
+    function uri(uint256) public view virtual returns (string memory) {
+        return _uri;
+    }
 
     /*//////////////////////////////////////////////////////////////
                               ERC1155 LOGIC
