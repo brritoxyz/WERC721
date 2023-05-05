@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {ERC1155, ERC1155TokenReceiver} from "src/MoonERC1155.sol";
+import {ERC1155, ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
