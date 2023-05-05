@@ -1,24 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "src/base/MoonERC1155.sol";
 
-contract MoonPage is Owned, ERC721TokenReceiver, ERC1155 {
+contract MoonPage is Initializable, Owned, ERC721TokenReceiver, ERC1155 {
     uint256 private constant ONE = 1;
     bytes private constant EMPTY_DATA = "";
 
-    ERC721 public immutable collection;
+    ERC721 public collection;
 
     string private _uri = "";
 
     error Zero();
     error Invalid();
 
-    constructor(ERC721 _collection) Owned(msg.sender) {
-        if (address(_collection) == address(0)) revert Zero();
+    constructor() Owned(msg.sender) {
+        // Disable initialization on the implementation contract
+        _disableInitializers();
+    }
 
+    /**
+     * @notice Initializes the minimal proxy with an owner and collection contract
+     * @param  _owner       address  Contract owner (has ability to set URI)
+     * @param  _collection  ERC721   Collection contract
+     */
+    function initialize(
+        address _owner,
+        ERC721 _collection
+    ) external initializer {
+        owner = _owner;
         collection = _collection;
     }
 
