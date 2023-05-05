@@ -29,14 +29,11 @@ contract MoonERC1155 is _MoonERC1155 {
     }
 
     function mint(uint256 id) external {
-        _mint(msg.sender, id, 1, "");
+        _mint(msg.sender, id);
     }
 
-    function batchMint(
-        uint256[] calldata ids,
-        uint256[] calldata amounts
-    ) external {
-        _batchMint(msg.sender, ids, amounts, "");
+    function batchMint(uint256[] calldata ids) external {
+        _batchMint(msg.sender, ids);
     }
 }
 
@@ -146,7 +143,7 @@ contract SafeTransferFromTest is
     }
 
     function testMoonSafeBatchTransferFrom() external {
-        moon.batchMint(ids, amounts);
+        moon.batchMint(ids);
 
         assertEq(fullBalance, moon.balanceOfBatch(originalOwners, ids));
         assertEq(emptyBalance, moon.balanceOfBatch(newOwners, ids));

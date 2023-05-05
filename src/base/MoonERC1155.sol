@@ -41,10 +41,10 @@ abstract contract ERC1155 {
 
     mapping(address => mapping(address => bool)) public isApprovedForAll;
 
-    // When burning tokens, set the owner to the burn address (only 5,000 gas to go from
-    // non-zero value to non-zero value, compared to 21,000)
-    address private constant BURN_ADDRESS =
-        0x000000000000000000000000000000000000dEaD;
+    // Fixed values for token quantity and data-related functions
+    uint256 private constant ONE = 1;
+
+    bytes private constant EMPTY_DATA = "";
 
     /*//////////////////////////////////////////////////////////////
                              METADATA LOGIC
@@ -193,15 +193,10 @@ abstract contract ERC1155 {
                         INTERNAL MINT/BURN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _mint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) internal virtual {
+    function _mint(address to, uint256 id) internal {
         ownerOf[id] = to;
 
-        emit TransferSingle(msg.sender, address(0), to, id, amount);
+        emit TransferSingle(msg.sender, address(0), to, id, ONE);
 
         require(
             to.code.length == 0
@@ -210,25 +205,20 @@ abstract contract ERC1155 {
                     msg.sender,
                     address(0),
                     id,
-                    amount,
-                    data
+                    ONE,
+                    EMPTY_DATA
                 ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
-    function _batchMint(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual {
+    function _batchMint(address to, uint256[] calldata ids) internal virtual {
         uint256 idsLength = ids.length; // Saves MLOADs.
-
-        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+        uint256[] memory amounts = new uint256[](idsLength);
 
         for (uint256 i = 0; i < idsLength; ) {
             ownerOf[ids[i]] = to;
+            amounts[i] = ONE;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -247,23 +237,25 @@ abstract contract ERC1155 {
                     address(0),
                     ids,
                     amounts,
-                    data
+                    EMPTY_DATA
                 ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
-    function _batchBurn(
-        address from,
-        uint256[] memory ids,
-        uint256[] memory amounts
-    ) internal virtual {
-        uint256 idsLength = ids.length; // Saves MLOADs.
+    function _burn(address from, uint256 id) internal {
+        ownerOf[id] = address(0);
 
-        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+        emit TransferSingle(msg.sender, from, address(0), id, ONE);
+    }
+
+    function _batchBurn(address from, uint256[] calldata ids) internal virtual {
+        uint256 idsLength = ids.length; // Saves MLOADs.
+        uint256[] memory amounts = new uint256[](idsLength);
 
         for (uint256 i = 0; i < idsLength; ) {
-            ownerOf[ids[i]] = BURN_ADDRESS;
+            ownerOf[ids[i]] = address(0);
+            amounts[i] = ONE;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -273,12 +265,6 @@ abstract contract ERC1155 {
         }
 
         emit TransferBatch(msg.sender, from, address(0), ids, amounts);
-    }
-
-    function _burn(address from, uint256 id, uint256 amount) internal virtual {
-        ownerOf[id] = BURN_ADDRESS;
-
-        emit TransferSingle(msg.sender, from, address(0), id, amount);
     }
 }
 

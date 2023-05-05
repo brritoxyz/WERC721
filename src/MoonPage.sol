@@ -7,9 +7,6 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "src/base/MoonERC1155.sol";
 
 contract MoonPage is Initializable, Owned, ERC721TokenReceiver, ERC1155 {
-    uint256 private constant ONE = 1;
-    bytes private constant EMPTY_DATA = "";
-
     ERC721 public collection;
 
     string private _uri = "";
@@ -83,7 +80,7 @@ contract MoonPage is Initializable, Owned, ERC721TokenReceiver, ERC1155 {
 
         // Mint the derivative token for the specified recipient
         // Reverts if the recipient is unsafe, emits TransferSingle
-        _mint(recipient, _computeDerivativeId(id), ONE, EMPTY_DATA);
+        _mint(recipient, _computeDerivativeId(id));
     }
 
     /**
@@ -102,7 +99,7 @@ contract MoonPage is Initializable, Owned, ERC721TokenReceiver, ERC1155 {
 
         // Burn the derivative token before transferring the NFT to the recipient
         // The new owner is the burn address since it will be cheaper gas cost-wise
-        _burn(msg.sender, derivativeId, ONE);
+        _burn(msg.sender, derivativeId);
 
         // Transfer the NFT to the recipient
         collection.safeTransferFrom(address(this), recipient, id);
