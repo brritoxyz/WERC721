@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {DSInvariantTest} from "solmate/test/utils/DSInvariantTest.sol";
-import {ERC1155, ERC1155TokenReceiver} from "src/MoonERC1155.sol";
+import {ERC1155, ERC1155TokenReceiver} from "src/base/MoonERC1155.sol";
 
 // Solmate ERC1155 tests applied to MoonERC1155.sol
 // Original: https://raw.githubusercontent.com/transmissions11/solmate/main/src/test/ERC1155.t.sol
