@@ -9,7 +9,9 @@ verbosity = 3
 runs = 50
 
 [profile.optimized]
-optimizer_runs = 10_000
+optimizer_runs = 1_000_000
 via_ir = true
-bytecode_hash = 'none'
 out = 'optimized-out'
+
+[profile.intense.fuzz]
+runs = 10000
