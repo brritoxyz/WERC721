@@ -2,10 +2,11 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
+import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 import {ERC1155 as _MoonERC1155} from "src/base/MoonERC1155.sol";
 
-contract BaseERC1155 is ERC1155 {
+contract SolmateERC1155 is ERC1155 {
     function uri(uint256) public pure override returns (string memory) {
         return "";
     }
@@ -39,8 +40,18 @@ contract MoonERC1155 is _MoonERC1155 {
     }
 }
 
-contract MoonERC1155Test is Test, ERC1155TokenReceiver {
-    BaseERC1155 private immutable base = new BaseERC1155();
+contract SafeTransferFromTest is
+    Test,
+    ERC1155TokenReceiver,
+    ERC721TokenReceiver
+{
+    ERC721 private constant ERC721_VYPER =
+        ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
+
+    ERC721 private constant ERC721A =
+        ERC721(0xED5AF388653567Af2F388E6224dC7C4b3241C544);
+
+    SolmateERC1155 private immutable base = new SolmateERC1155();
     MoonERC1155 private immutable moon = new MoonERC1155();
 
     address private constant RECEIVER =
@@ -57,6 +68,38 @@ contract MoonERC1155Test is Test, ERC1155TokenReceiver {
     address[] private newOwners = [RECEIVER, RECEIVER, RECEIVER];
     uint256[] private fullBalance = [1, 1, 1];
     uint256[] private emptyBalance = [0, 0, 0];
+
+    /*//////////////////////////////////////////////////////////////
+                              ERC721 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function testERC721VyperSafeTransferFrom() external {
+        uint256 id = 0;
+
+        address originalOwner = ERC721_VYPER.ownerOf(id);
+
+        vm.prank(originalOwner);
+
+        ERC721_VYPER.safeTransferFrom(originalOwner, RECEIVER, id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              ERC721A LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function testERC721ASafeTransferFrom() external {
+        uint256 id = 0;
+
+        address originalOwner = ERC721A.ownerOf(id);
+
+        vm.prank(originalOwner);
+
+        ERC721A.safeTransferFrom(originalOwner, RECEIVER, id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              SolmateERC1155
+    //////////////////////////////////////////////////////////////*/
 
     function testBaseSafeTransferFrom() external {
         uint256 id = 0;
@@ -85,7 +128,7 @@ contract MoonERC1155Test is Test, ERC1155TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              MOONERC1155 LOGIC
+                              MoonERC1155
     //////////////////////////////////////////////////////////////*/
 
     function testMoonSafeTransferFrom() external {

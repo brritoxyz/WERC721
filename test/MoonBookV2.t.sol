@@ -24,10 +24,12 @@ contract MoonBookV2Test is Test {
         );
         address pageAddress = book.createPage(LLAMA);
 
-        assertEq(predeterminedPageAddress, pageAddress);
 
         page = MoonPage(pageAddress);
 
+        assertEq(address(this), book.owner());
+        assertEq(address(this), page.owner());
+        assertEq(predeterminedPageAddress, pageAddress);
         assertTrue(book.pageImplementation() != address(0));
     }
 
