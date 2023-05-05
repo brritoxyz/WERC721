@@ -39,9 +39,12 @@ abstract contract ERC1155 {
     // Tracks the owner of each non-fungible derivative
     mapping(uint256 => address) public ownerOf;
 
-    mapping(address => mapping(uint256 => uint256)) public balanceOf;
-
     mapping(address => mapping(address => bool)) public isApprovedForAll;
+
+    // When burning tokens, set the owner to the burn address (only 5,000 gas to go from
+    // non-zero value to non-zero value, compared to 21,000)
+    address private constant BURN_ADDRESS =
+        0x000000000000000000000000000000000000dEaD;
 
     /*//////////////////////////////////////////////////////////////
                              METADATA LOGIC
@@ -52,6 +55,20 @@ abstract contract ERC1155 {
     /*//////////////////////////////////////////////////////////////
                               ERC1155 LOGIC
     //////////////////////////////////////////////////////////////*/
+
+    function _balanceOf(
+        address owner,
+        uint256 id
+    ) private view returns (uint256) {
+        return ownerOf[id] == owner ? 1 : 0;
+    }
+
+    function balanceOf(
+        address owner,
+        uint256 id
+    ) external view returns (uint256) {
+        return _balanceOf(owner, id);
+    }
 
     function setApprovalForAll(address operator, bool approved) public virtual {
         isApprovedForAll[msg.sender][operator] = approved;
@@ -71,8 +88,11 @@ abstract contract ERC1155 {
             "NOT_AUTHORIZED"
         );
 
-        balanceOf[from][id] -= amount;
-        balanceOf[to][id] += amount;
+        // Verify that `from` owns the token prior to transfer
+        require(ownerOf[id] == from, "NOT_AUTHORIZED");
+
+        // Set new owner as `to`
+        ownerOf[id] = to;
 
         emit TransferSingle(msg.sender, from, to, id, amount);
 
@@ -112,8 +132,9 @@ abstract contract ERC1155 {
             id = ids[i];
             amount = amounts[i];
 
-            balanceOf[from][id] -= amount;
-            balanceOf[to][id] += amount;
+            require(ownerOf[id] == from, "NOT_AUTHORIZED");
+
+            ownerOf[id] = to;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -150,7 +171,7 @@ abstract contract ERC1155 {
         // the array index counter which cannot possibly overflow.
         unchecked {
             for (uint256 i = 0; i < owners.length; ++i) {
-                balances[i] = balanceOf[owners[i]][ids[i]];
+                balances[i] = _balanceOf(owners[i], ids[i]);
             }
         }
     }
@@ -178,7 +199,7 @@ abstract contract ERC1155 {
         uint256 amount,
         bytes memory data
     ) internal virtual {
-        balanceOf[to][id] += amount;
+        ownerOf[id] = to;
 
         emit TransferSingle(msg.sender, address(0), to, id, amount);
 
@@ -207,7 +228,7 @@ abstract contract ERC1155 {
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < idsLength; ) {
-            balanceOf[to][ids[i]] += amounts[i];
+            ownerOf[ids[i]] = to;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -242,7 +263,7 @@ abstract contract ERC1155 {
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < idsLength; ) {
-            balanceOf[from][ids[i]] -= amounts[i];
+            ownerOf[ids[i]] = BURN_ADDRESS;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -255,7 +276,7 @@ abstract contract ERC1155 {
     }
 
     function _burn(address from, uint256 id, uint256 amount) internal virtual {
-        balanceOf[from][id] -= amount;
+        ownerOf[id] = BURN_ADDRESS;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
     }
