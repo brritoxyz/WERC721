@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity 0.8.19;
 
 /// @notice Minimalist and gas efficient standard ERC1155 implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol)
@@ -24,13 +24,20 @@ abstract contract ERC1155 {
         uint256[] amounts
     );
 
-    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    event ApprovalForAll(
+        address indexed owner,
+        address indexed operator,
+        bool approved
+    );
 
     event URI(string value, uint256 indexed id);
 
     /*//////////////////////////////////////////////////////////////
                              ERC1155 STORAGE
     //////////////////////////////////////////////////////////////*/
+
+    // Tracks the owner of each non-fungible derivative
+    mapping(uint256 => address) public ownerOf;
 
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
@@ -59,7 +66,10 @@ abstract contract ERC1155 {
         uint256 amount,
         bytes calldata data
     ) public virtual {
-        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
 
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
@@ -69,8 +79,13 @@ abstract contract ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(msg.sender, from, id, amount, data) ==
-                    ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    msg.sender,
+                    from,
+                    id,
+                    amount,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -84,7 +99,10 @@ abstract contract ERC1155 {
     ) public virtual {
         require(ids.length == amounts.length, "LENGTH_MISMATCH");
 
-        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
@@ -109,18 +127,21 @@ abstract contract ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data) ==
-                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    from,
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
-    function balanceOfBatch(address[] calldata owners, uint256[] calldata ids)
-        public
-        view
-        virtual
-        returns (uint256[] memory balances)
-    {
+    function balanceOfBatch(
+        address[] calldata owners,
+        uint256[] calldata ids
+    ) public view virtual returns (uint256[] memory balances) {
         require(owners.length == ids.length, "LENGTH_MISMATCH");
 
         balances = new uint256[](owners.length);
@@ -138,7 +159,9 @@ abstract contract ERC1155 {
                               ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual returns (bool) {
         return
             interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
             interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
@@ -162,8 +185,13 @@ abstract contract ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(msg.sender, address(0), id, amount, data) ==
-                    ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    msg.sender,
+                    address(0),
+                    id,
+                    amount,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -193,8 +221,13 @@ abstract contract ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, address(0), ids, amounts, data) ==
-                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    address(0),
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -221,11 +254,7 @@ abstract contract ERC1155 {
         emit TransferBatch(msg.sender, from, address(0), ids, amounts);
     }
 
-    function _burn(
-        address from,
-        uint256 id,
-        uint256 amount
-    ) internal virtual {
+    function _burn(address from, uint256 id, uint256 amount) internal virtual {
         balanceOf[from][id] -= amount;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
