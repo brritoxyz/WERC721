@@ -148,11 +148,9 @@ abstract contract ERC1155 {
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
-        uint256 amount;
 
         for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
-            amount = amounts[i];
 
             require(ownerOf[id] == from, "NOT_AUTHORIZED");
 

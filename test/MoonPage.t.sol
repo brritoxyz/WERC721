@@ -61,8 +61,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testDeposit() external {
         uint256 id;
         address recipient;
+        uint256 iLen = ids.length;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i; i < iLen; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -106,9 +107,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testWithdraw() external {
         uint256 id;
         address recipient;
+        uint256 iLen = ids.length;
 
         // Deposit the NFTs and mint derivative tokens for recipients
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i; i < iLen; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -122,7 +124,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         address owner;
 
         // Withdraw the NFTs by redeeming the derivative tokens as their owners
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i; i < iLen; ) {
             id = ids[i];
             owner = accounts[i];
 
