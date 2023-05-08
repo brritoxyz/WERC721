@@ -4,14 +4,14 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {MoonBookV2} from "src/MoonBookV2.sol";
+import {MoonBook} from "src/MoonBook.sol";
 import {MoonPage} from "src/MoonPage.sol";
 
 contract MoonPageTest is Test, ERC721TokenReceiver {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
 
-    MoonBookV2 private immutable book;
+    MoonBook private immutable book;
     MoonPage private immutable page;
 
     uint256[] private ids = [1, 39, 111];
@@ -30,7 +30,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     );
 
     constructor() {
-        book = new MoonBookV2();
+        book = new MoonBook();
         page = MoonPage(book.createPage(LLAMA));
 
         // Verify that page cannot be initialized again
