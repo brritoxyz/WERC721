@@ -114,6 +114,9 @@ contract MoonPage is
         // Reverts if msg.sender does not have the token
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
+        // Revert if the price is zero
+        if (price == 0) revert Zero();
+
         // Update token owner to this contract to prevent double-listing
         ownerOf[id] = address(this);
 
@@ -129,9 +132,12 @@ contract MoonPage is
      * @param  newPrice  uint96   New price
      */
     function edit(uint256 id, uint96 newPrice) external {
+        // Revert if the new price is zero
+        if (newPrice == 0) revert Zero();
+
         Listing storage listing = listings[id];
 
-        // Reverts if msg.sender is not the seller
+        // Reverts if msg.sender is not the seller or listing does not exist
         if (listing.seller != msg.sender) revert Unauthorized();
 
         // Update the listing price
@@ -161,10 +167,11 @@ contract MoonPage is
      * @param  id  uint256  Collection token ID
      */
     function buy(uint256 id) external payable nonReentrant {
-        Listing memory listing = listings[id];
+        // Reverts if zero value was sent and also if the listing
+        // does not exist (listings cannot have a zero price)
+        if (msg.value == 0) revert Zero();
 
-        // Reverts if the listing does not exist
-        if (listing.seller == address(0)) revert Nonexistent();
+        Listing memory listing = listings[id];
 
         // Reverts if the msg.value does not cover the price
         if (msg.value != listing.price) revert Insufficient();

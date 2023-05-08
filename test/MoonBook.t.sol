@@ -32,6 +32,10 @@ contract MoonBookTest is Test {
         assertTrue(book.pageImplementation() != address(0));
     }
 
+    /*//////////////////////////////////////////////////////////////
+                             createPage
+    //////////////////////////////////////////////////////////////*/
+
     function testCannotCreatePageAlreadyCreated() external {
         assertEq(address(page), book.pages(LLAMA));
 

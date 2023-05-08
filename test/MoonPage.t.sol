@@ -28,6 +28,15 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 id,
         uint256 amount
     );
+    event List(uint256 indexed id, address indexed seller, uint96 price);
+    event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
+    event Cancel(uint256 indexed id, address indexed seller);
+    event Buy(
+        uint256 indexed id,
+        address indexed buyer,
+        address indexed seller,
+        uint96 price
+    );
 
     constructor() {
         book = new MoonBook();
@@ -54,6 +63,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         LLAMA.setApprovalForAll(address(page), true);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             deposit
+    //////////////////////////////////////////////////////////////*/
 
     function testCannotDepositRecipientZero() external {
         address recipient = address(0);
@@ -89,6 +102,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             withdraw
+    //////////////////////////////////////////////////////////////*/
 
     function testCannotWithdrawRecipientZero() external {
         address recipient = address(0);
@@ -139,6 +156,219 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             emit TransferSingle(owner, owner, address(0), id, 1);
 
             page.withdraw(id, recipient);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             list
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotListUnauthorized() external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint96 price = 1 ether;
+
+        // Mint a derivative token for a recipient and attempt to list on their behalf
+        page.deposit(id, recipient);
+
+        assertEq(recipient, page.ownerOf(id));
+        assertEq(1, page.balanceOf(recipient, id));
+
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.list(id, price);
+    }
+
+    function testCannotListPriceZero() external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint96 price = 0;
+
+        // Mint a derivative token for a recipient and attempt to list on their behalf
+        page.deposit(id, recipient);
+
+        assertEq(recipient, page.ownerOf(id));
+        assertEq(1, page.balanceOf(recipient, id));
+
+        // Call `list` as the recipient to ensure that they are authorized to sell
+        vm.prank(recipient);
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.list(id, price);
+    }
+
+    function testList(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        uint256 iLen = ids.length;
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            address recipient = accounts[i];
+            uint96 price = 0.1 ether * uint96(priceMultiplier);
+
+            page.deposit(id, recipient);
+
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(1, page.balanceOf(recipient, id));
+            assertEq(0, page.balanceOf(address(page), id));
+
+            vm.prank(recipient);
+            vm.expectEmit(true, true, false, true, address(page));
+
+            emit List(id, recipient, price);
+
+            page.list(id, price);
+
+            (address seller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(0, page.balanceOf(recipient, id));
+            assertEq(1, page.balanceOf(address(page), id));
+            assertEq(recipient, seller);
+            assertEq(price, listingPrice);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             edit
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotEditPriceZero() external {
+        uint256 id = ids[0];
+        uint96 price = 0;
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.edit(id, price);
+    }
+
+    function testCannotEditUnauthorized() external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint96 price = 1 ether;
+        uint96 newPrice = 2 ether;
+
+        page.deposit(id, recipient);
+
+        vm.prank(recipient);
+
+        page.list(id, price);
+
+        (address seller, ) = page.listings(id);
+
+        assertEq(recipient, seller);
+
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.edit(id, newPrice);
+    }
+
+    function testEdit(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        uint256 iLen = ids.length;
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            address recipient = accounts[i];
+            uint96 price = 0.1 ether * uint96(priceMultiplier);
+            uint96 newPrice = 0.2 ether * uint96(priceMultiplier);
+
+            assertTrue(price != newPrice);
+
+            page.deposit(id, recipient);
+
+            vm.prank(recipient);
+
+            page.list(id, price);
+
+            (address seller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(recipient, seller);
+            assertEq(price, listingPrice);
+
+            vm.prank(recipient);
+            vm.expectEmit(true, true, false, true, address(page));
+
+            emit Edit(id, recipient, newPrice);
+
+            page.edit(id, newPrice);
+
+            (seller, listingPrice) = page.listings(id);
+
+            // Verify that the updated listing has the same seller, different price
+            assertEq(recipient, seller);
+            assertEq(newPrice, listingPrice);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             cancel
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotCancelUnauthorized() external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint96 price = 1 ether;
+
+        page.deposit(id, recipient);
+
+        vm.prank(recipient);
+
+        page.list(id, price);
+
+        (address seller, ) = page.listings(id);
+
+        assertEq(recipient, seller);
+
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.cancel(id);
+    }
+
+    function testCancel(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        uint256 iLen = ids.length;
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            address recipient = accounts[i];
+            uint96 price = 0.1 ether * uint96(priceMultiplier);
+
+            page.deposit(id, recipient);
+
+            vm.prank(recipient);
+
+            page.list(id, price);
+
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(1, page.balanceOf(address(page), id));
+            assertEq(0, page.balanceOf(recipient, id));
+
+            vm.prank(recipient);
+            vm.expectEmit(true, true, false, true, address(page));
+
+            emit Cancel(id, recipient);
+
+            page.cancel(id);
+
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(0, page.balanceOf(address(page), id));
+            assertEq(1, page.balanceOf(recipient, id));
 
             unchecked {
                 ++i;
