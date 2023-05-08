@@ -267,7 +267,7 @@ contract MoonPage is
         // listing does not exist (listings cannot have a zero price)
         if (msg.value != listing.price) revert Insufficient();
 
-        // Delete listing prior to returning the token
+        // Delete listing prior to setting the token to the buyer
         delete listings[id];
 
         // Set the new token owner to the buyer
