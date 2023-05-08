@@ -375,4 +375,85 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             buy
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBuyMsgValueZero() external {
+        uint256 id = ids[0];
+        uint256 msgValue = 0;
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.buy{value: msgValue}(id);
+    }
+
+    function testCannotBuyMsgValueInsufficient(bool shouldList) external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint96 price = 1 ether;
+
+        // Reverts with `Insufficient` if msg.value is insufficient or if not listed
+        if (shouldList) {
+            page.deposit(id, recipient);
+
+            vm.prank(recipient);
+
+            page.list(id, price);
+        }
+
+        vm.expectRevert(MoonPage.Insufficient.selector);
+
+        // Attempt to buy with msg.value less than price
+        page.buy{value: price - 1}(id);
+    }
+
+    function testBuy(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        uint256 iLen = ids.length;
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            address recipient = accounts[i];
+            uint96 price = 0.1 ether * uint96(priceMultiplier);
+
+            page.deposit(id, recipient);
+
+            vm.prank(recipient);
+
+            page.list(id, price);
+
+            (address seller, uint96 listingPrice) = page.listings(id);
+            uint256 buyerBalanceBefore = address(this).balance;
+            uint256 sellerBalanceBefore = recipient.balance;
+
+            assertEq(recipient, seller);
+            assertEq(price, listingPrice);
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(1, page.balanceOf(address(page), id));
+            assertEq(0, page.balanceOf(address(this), id));
+
+            vm.expectEmit(true, true, true, true, address(page));
+
+            emit Buy(id, address(this), seller, price);
+
+            page.buy{value: price}(id);
+
+            (seller, listingPrice) = page.listings(id);
+
+            assertEq(address(0), seller);
+            assertEq(0, listingPrice);
+            assertEq(address(this), page.ownerOf(id));
+            assertEq(0, page.balanceOf(address(page), id));
+            assertEq(1, page.balanceOf(address(this), id));
+            assertEq(buyerBalanceBefore - price, address(this).balance);
+            assertEq(sellerBalanceBefore + price, recipient.balance);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }

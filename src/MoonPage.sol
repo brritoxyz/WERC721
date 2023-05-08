@@ -6,7 +6,7 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {ERC1155, ERC1155TokenReceiver} from "src/base/ERC1155.sol";
+import {ERC1155} from "src/base/ERC1155.sol";
 
 contract MoonPage is
     Initializable,
@@ -167,13 +167,13 @@ contract MoonPage is
      * @param  id  uint256  Collection token ID
      */
     function buy(uint256 id) external payable nonReentrant {
-        // Reverts if zero value was sent and also if the listing
-        // does not exist (listings cannot have a zero price)
+        // Reverts if zero value was sent
         if (msg.value == 0) revert Zero();
 
         Listing memory listing = listings[id];
 
-        // Reverts if the msg.value does not cover the price
+        // Reverts if the msg.value does not cover the price or if the
+        // listing does not exist (listings cannot have a zero price)
         if (msg.value != listing.price) revert Insufficient();
 
         // Delete listing prior to returning the token
