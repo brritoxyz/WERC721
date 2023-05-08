@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
-import {ERC1155 as _MoonERC1155} from "src/base/MoonERC1155.sol";
+import {ERC1155 as _MoonERC1155} from "src/base/ERC1155.sol";
 
 contract SolmateERC1155 is ERC1155 {
     function uri(uint256) public pure override returns (string memory) {

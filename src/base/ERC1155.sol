@@ -5,6 +5,24 @@ pragma solidity 0.8.19;
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol)
 abstract contract ERC1155 {
     /*//////////////////////////////////////////////////////////////
+                             ERC1155 STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    // Fixed value for single token amounts
+    uint256 private constant ONE = 1;
+
+    // Fixed value for unused `data` argument
+    bytes private constant EMPTY_DATA = "";
+
+    // Token metadata
+    string internal _uri = "";
+
+    // Tracks the owner of each non-fungible derivative
+    mapping(uint256 => address) public ownerOf;
+
+    mapping(address => mapping(address => bool)) public isApprovedForAll;
+
+    /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
@@ -31,22 +49,6 @@ abstract contract ERC1155 {
     );
 
     event URI(string value, uint256 indexed id);
-
-    /*//////////////////////////////////////////////////////////////
-                             ERC1155 STORAGE
-    //////////////////////////////////////////////////////////////*/
-
-    // Tracks the owner of each non-fungible derivative
-    mapping(uint256 => address) public ownerOf;
-
-    mapping(address => mapping(address => bool)) public isApprovedForAll;
-
-    // Fixed values for token quantity and data-related functions
-    uint256 private constant ONE = 1;
-
-    bytes private constant EMPTY_DATA = "";
-
-    string internal _uri = "";
 
     /*//////////////////////////////////////////////////////////////
                              METADATA LOGIC
