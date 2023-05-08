@@ -46,7 +46,7 @@ contract MoonPage is
      * @param  id         uint256  Collection token ID
      * @param  recipient  address  Derivative token recipient
      */
-    function deposit(uint256 id, address recipient) external {
+    function deposit(uint256 id, address recipient) external nonReentrant {
         if (recipient == address(0)) revert Zero();
 
         // Transfer the NFT to self before minting the derivative token
@@ -63,7 +63,7 @@ contract MoonPage is
      * @param  id         uint256  Collection token ID
      * @param  recipient  address  Derivative token recipient
      */
-    function withdraw(uint256 id, address recipient) external {
+    function withdraw(uint256 id, address recipient) external nonReentrant {
         if (recipient == address(0)) revert Zero();
 
         // Revert if msg.sender is not the owner of the derivative token
