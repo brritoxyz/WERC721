@@ -49,16 +49,21 @@ contract MoonPage is
 
     /**
      * @notice Initializes the minimal proxy with an owner and collection contract
-     * @param  _owner       address  Contract owner (has ability to set URI)
+     * @param  _owner       address  Contract owner (has permission to set URI)
      * @param  _collection  ERC721   Collection contract
      */
     function initialize(
         address _owner,
         ERC721 _collection
     ) external initializer {
+        // Initialize Owned by setting `owner` to protocol-controlled address
         owner = _owner;
-        collection = _collection;
+
+        // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
         locked = 1;
+
+        // Initialize this contract with the ERC721 collection contract
+        collection = _collection;
     }
 
     function setURI(string memory newuri) external onlyOwner {
@@ -152,7 +157,7 @@ contract MoonPage is
     }
 
     /**
-     * @notice Cancel a listing
+     * @notice Fulfill a listing
      * @param  id  uint256  Collection token ID
      */
     function buy(uint256 id) external payable nonReentrant {

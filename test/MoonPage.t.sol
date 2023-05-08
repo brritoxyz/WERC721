@@ -32,6 +32,11 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     constructor() {
         book = new MoonBookV2();
         page = MoonPage(book.createPage(LLAMA));
+
+        // Verify that page cannot be initialized again
+        vm.expectRevert("Initializable: contract is already initialized");
+
+        page.initialize(address(this), LLAMA);
     }
 
     function setUp() external {
