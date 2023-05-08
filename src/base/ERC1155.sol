@@ -234,59 +234,10 @@ abstract contract ERC1155 {
         );
     }
 
-    function _batchMint(address to, uint256[] calldata ids) internal virtual {
-        uint256 idsLength = ids.length; // Saves MLOADs.
-        uint256[] memory amounts = new uint256[](idsLength);
-
-        for (uint256 i = 0; i < idsLength; ) {
-            ownerOf[ids[i]] = to;
-            amounts[i] = ONE;
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit TransferBatch(msg.sender, address(0), to, ids, amounts);
-
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
-                    msg.sender,
-                    address(0),
-                    ids,
-                    amounts,
-                    EMPTY_DATA
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
-            "UNSAFE_RECIPIENT"
-        );
-    }
-
     function _burn(address from, uint256 id) internal {
         ownerOf[id] = address(0);
 
         emit TransferSingle(msg.sender, from, address(0), id, ONE);
-    }
-
-    function _batchBurn(address from, uint256[] calldata ids) internal virtual {
-        uint256 idsLength = ids.length; // Saves MLOADs.
-        uint256[] memory amounts = new uint256[](idsLength);
-
-        for (uint256 i = 0; i < idsLength; ) {
-            ownerOf[ids[i]] = address(0);
-            amounts[i] = ONE;
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit TransferBatch(msg.sender, from, address(0), ids, amounts);
     }
 }
 

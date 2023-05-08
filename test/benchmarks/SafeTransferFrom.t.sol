@@ -33,7 +33,13 @@ contract MoonERC1155 is _MoonERC1155 {
     }
 
     function batchMint(uint256[] calldata ids) external {
-        _batchMint(msg.sender, ids);
+        for (uint256 i; i < ids.length; ) {
+            _mint(msg.sender, ids[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
 
