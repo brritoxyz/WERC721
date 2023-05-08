@@ -6,7 +6,7 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {ERC1155} from "src/base/ERC1155.sol";
+import {ERC1155, ERC1155TokenReceiver} from "src/base/ERC1155.sol";
 
 contract MoonPage is
     Initializable,
@@ -88,6 +88,57 @@ contract MoonPage is
     }
 
     /**
+     * @notice Batch deposit
+     * @param  ids        uint256[]  Collection token IDs
+     * @param  recipient  address    Derivative token recipient
+     */
+    function batchDeposit(
+        uint256[] calldata ids,
+        address recipient
+    ) external nonReentrant {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert Zero();
+        if (recipient == address(0)) revert Zero();
+
+        uint256 id;
+        uint256[] memory amounts = new uint256[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            id = ids[i];
+
+            // Transfer the NFT to self before minting the derivative token
+            // Reverts if unapproved or if msg.sender does not have the token
+            collection.safeTransferFrom(msg.sender, address(this), id);
+
+            // Mint the derivative token for the specified recipient
+            ownerOf[id] = recipient;
+
+            // Set the `amounts` element to ONE - emitted in the TransferBatch event
+            amounts[i] = ONE;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, address(0), recipient, ids, amounts);
+
+        require(
+            recipient.code.length == 0
+                ? recipient != address(0)
+                : ERC1155TokenReceiver(recipient).onERC1155BatchReceived(
+                    msg.sender,
+                    address(0),
+                    ids,
+                    amounts,
+                    EMPTY_DATA
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /**
      * @notice Withdraw a NFT from the vault by redeeming a derivative token
      * @param  id         uint256  Collection token ID
      * @param  recipient  address  Derivative token recipient
@@ -96,13 +147,53 @@ contract MoonPage is
         if (recipient == address(0)) revert Zero();
 
         // Revert if msg.sender is not the owner of the derivative token
-        if (ownerOf[id] != msg.sender) revert Invalid();
+        if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Burn the derivative token before transferring the NFT to the recipient
         _burn(msg.sender, id);
 
         // Transfer the NFT to the recipient
         collection.safeTransferFrom(address(this), recipient, id);
+    }
+
+    /**
+     * @notice Batch withdraw
+     * @param  ids        uint256[]  Collection token IDs
+     * @param  recipient  address    Derivative token recipient
+     */
+    function batchWithdraw(
+        uint256[] calldata ids,
+        address recipient
+    ) external nonReentrant {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert Zero();
+        if (recipient == address(0)) revert Zero();
+
+        uint256 id;
+        uint256[] memory amounts = new uint256[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            id = ids[i];
+
+            // Revert if msg.sender is not the owner of the derivative token
+            if (ownerOf[id] != msg.sender) revert Unauthorized();
+
+            // Burn the derivative token before transferring the NFT to the recipient
+            ownerOf[id] = address(0);
+
+            // Set the `amounts` element to ONE - emitted in the TransferBatch event
+            amounts[i] = ONE;
+
+            // Transfer the NFT to the recipient
+            collection.safeTransferFrom(address(this), recipient, id);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, msg.sender, address(0), ids, amounts);
     }
 
     /**

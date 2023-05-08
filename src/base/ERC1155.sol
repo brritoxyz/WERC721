@@ -9,10 +9,10 @@ abstract contract ERC1155 {
     //////////////////////////////////////////////////////////////*/
 
     // Fixed value for single token amounts
-    uint256 private constant ONE = 1;
+    uint256 internal constant ONE = 1;
 
     // Fixed value for unused `data` argument
-    bytes private constant EMPTY_DATA = "";
+    bytes internal constant EMPTY_DATA = "";
 
     // Token metadata
     string internal _uri = "";

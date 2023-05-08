@@ -10,6 +10,7 @@ import {MoonPage} from "src/MoonPage.sol";
 contract MoonPageTest is Test, ERC721TokenReceiver {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
+    uint256 private constant ONE = 1;
 
     MoonBook private immutable book;
     MoonPage private immutable page;
@@ -27,6 +28,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         address indexed to,
         uint256 id,
         uint256 amount
+    );
+    event TransferBatch(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] amounts
     );
     event List(uint256 indexed id, address indexed seller, uint96 price);
     event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
@@ -86,6 +94,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             recipient = accounts[i];
 
             assertEq(address(this), LLAMA.ownerOf(id));
+            assertEq(address(0), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
 
             vm.expectEmit(true, true, true, true, address(page));
@@ -95,7 +104,72 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             page.deposit(id, recipient);
 
             assertEq(address(page), LLAMA.ownerOf(id));
+            assertEq(recipient, page.ownerOf(id));
             assertEq(1, page.balanceOf(recipient, id));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchDeposit
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchDepositIdsZero() external {
+        uint256[] memory depositIds = new uint256[](0);
+        address recipient = accounts[0];
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchDeposit(depositIds, recipient);
+    }
+
+    function testCannotBatchDepositRecipientZero() external {
+        uint256[] memory depositIds = new uint256[](1);
+        depositIds[0] = ids[0];
+        address recipient = address(0);
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchDeposit(depositIds, recipient);
+    }
+
+    function testBatchDeposit() external {
+        uint256 iLen = ids.length;
+        address recipient = accounts[0];
+        uint256[] memory amounts = new uint256[](iLen);
+
+        // For batching the balance check
+        address[] memory batchBalanceRecipient = new address[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            batchBalanceRecipient[i] = recipient;
+            amounts[i] = ONE;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit TransferBatch(address(this), address(0), recipient, ids, amounts);
+
+        page.batchDeposit(ids, recipient);
+
+        uint256[] memory balances = page.balanceOfBatch(
+            batchBalanceRecipient,
+            ids
+        );
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+
+            assertEq(1, balances[i]);
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(address(page), LLAMA.ownerOf(id));
 
             unchecked {
                 ++i;
@@ -115,13 +189,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.withdraw(ids[0], recipient);
     }
 
-    function testCannotWithdrawMsgSenderInvalid() external {
+    function testCannotWithdrawMsgSenderUnauthorized() external {
         address msgSender = accounts[0];
         uint256 id = ids[0];
         address recipient = accounts[0];
 
         vm.prank(msgSender);
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(MoonPage.Unauthorized.selector);
 
         page.withdraw(id, recipient);
     }
@@ -156,6 +230,99 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             emit TransferSingle(owner, owner, address(0), id, 1);
 
             page.withdraw(id, recipient);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchWithdraw
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchWithdrawIdsZero() external {
+        uint256[] memory withdrawIds = new uint256[](0);
+        address recipient = accounts[0];
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchWithdraw(withdrawIds, recipient);
+    }
+
+    function testCannotBatchWithdrawRecipientZero() external {
+        uint256[] memory withdrawIds = new uint256[](1);
+        address recipient = address(0);
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchWithdraw(withdrawIds, recipient);
+    }
+
+    function testCannotBatchWithdrawMsgSenderUnauthorized() external {
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        vm.prank(address(this));
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.batchWithdraw(ids, address(this));
+    }
+
+    function testBatchWithdraw() external {
+        uint256 iLen = ids.length;
+        address recipient = accounts[0];
+        uint256[] memory amounts = new uint256[](iLen);
+
+        // For batching the balance check
+        address[] memory batchBalanceRecipient = new address[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            batchBalanceRecipient[i] = recipient;
+            amounts[i] = ONE;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        page.batchDeposit(ids, recipient);
+
+        uint256[] memory balances = page.balanceOfBatch(
+            batchBalanceRecipient,
+            ids
+        );
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+
+            assertEq(1, balances[i]);
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(address(page), LLAMA.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        address withdrawRecipient = address(this);
+
+        vm.prank(recipient);
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit TransferBatch(recipient, recipient, address(0), ids, amounts);
+
+        page.batchWithdraw(ids, withdrawRecipient);
+
+        balances = page.balanceOfBatch(batchBalanceRecipient, ids);
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+
+            assertEq(0, balances[i]);
+            assertEq(address(0), page.ownerOf(id));
+            assertEq(withdrawRecipient, LLAMA.ownerOf(id));
 
             unchecked {
                 ++i;
