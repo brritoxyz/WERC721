@@ -24,8 +24,11 @@ contract MoonPage is
 
     ERC721 public collection;
 
+    address payable public tipRecipient;
+
     mapping(uint256 => Listing) public listings;
 
+    event SetTipRecipient(address tipRecipient);
     event List(uint256 indexed id, address indexed seller, uint96 price);
     event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
     event Cancel(uint256 indexed id, address indexed seller);
@@ -68,6 +71,12 @@ contract MoonPage is
 
     function setURI(string memory newuri) external onlyOwner {
         _setURI(newuri);
+    }
+
+    function setTipRecipient(address payable _tipRecipient) external onlyOwner {
+        tipRecipient = _tipRecipient;
+
+        emit SetTipRecipient(_tipRecipient);
     }
 
     /**
