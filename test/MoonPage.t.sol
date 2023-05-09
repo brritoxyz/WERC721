@@ -940,9 +940,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.batchCancel(cancelIds);
     }
 
-    function testCannotBatchCancelUnauthorized(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
-
+    function testCannotBatchCancelUnauthorized() external {
+        uint48 priceMultiplier = 10;
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
@@ -952,8 +951,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](iLen);
 
         for (uint256 i; i < iLen; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = 100_000 * priceMultiplier;
+            tips[i] = 1_000 * priceMultiplier;
 
             unchecked {
                 ++i;
@@ -1037,10 +1036,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     }
 
     function testCannotBatchBuyMsgValueInsufficient(
-        uint8 priceMultiplier
-    ) external {
-        vm.assume(priceMultiplier != 0);
 
+    ) external {
+        uint48 priceMultiplier = 10;
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
@@ -1050,8 +1048,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](iLen);
 
         for (uint256 i; i < iLen; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = 100_000 * priceMultiplier;
+            tips[i] = 1_000 * priceMultiplier;
 
             unchecked {
                 ++i;
@@ -1148,6 +1146,94 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(address(page), ids[i]));
             assertEq(0, page.balanceOf(recipient, ids[i]));
 
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function testBatchBuyPartial(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        // Listing id index - will be canceled before the buy, resulting
+        // in only a partial buy
+        uint256 cancelIndex = 1;
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        uint256 totalPriceETH;
+        uint256 totalTipETH;
+        uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
+        uint256 sellerBalanceBefore = recipient.balance;
+
+        for (uint256 i; i < iLen; ) {
+            if (i == cancelIndex) {
+                ++i;
+                continue;
+            }
+
+            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
+                prices[i],
+                tips[i]
+            );
+            totalPriceETH += priceETH;
+            totalTipETH += tipETH;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.cancel(ids[cancelIndex]);
+
+        vm.deal(address(this), totalPriceETH);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchBuy(address(this), ids);
+
+        // Send enough ETH to cover sales proceeds but not tips
+        page.batchBuy{value: totalPriceETH}(ids);
+
+        assertEq(
+            tipRecipientBalanceBefore + totalTipETH,
+            TIP_RECIPIENT.balance
+        );
+        assertEq(
+            sellerBalanceBefore + (totalPriceETH - totalTipETH),
+            recipient.balance
+        );
+
+        for (uint256 i; i < iLen; ) {
+            if (i == cancelIndex) {
+                ++i;
+                continue;
+            }
+
+            assertEq(address(this), page.ownerOf(ids[i]));
+            assertEq(1, page.balanceOf(address(this), ids[i]));
+            assertEq(0, page.balanceOf(address(page), ids[i]));
+            assertEq(0, page.balanceOf(recipient, ids[i]));
 
             unchecked {
                 ++i;

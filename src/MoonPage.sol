@@ -455,7 +455,7 @@ contract MoonPage is
                 uint256 salesProceeds
             ) = _calculateTransferValues(listing.price, listing.tip);
 
-            // Continue to the next id if the listing does not exist (e.g. listing purchased before this call)
+            // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call)
             if (priceETH == 0) continue;
 
             // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
