@@ -45,10 +45,14 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] ids,
         uint256[] amounts
     );
-    event List(uint256 indexed id);
-    event Edit(uint256 indexed id);
-    event Cancel(uint256 indexed id);
-    event Buy(uint256 indexed id);
+    event Initialize(address owner, ERC721 collection);
+    event SetTipRecipient(address tipRecipient);
+    event List(uint256 indexed id, address indexed seller);
+    event Edit(uint256 indexed id, address indexed seller);
+    event Cancel(uint256 indexed id, address indexed seller);
+    event Buy(uint256 indexed id, address indexed buyer);
+    event BatchList(uint256[] ids);
+    event BatchBuy(uint256[] ids);
 
     constructor() {
         book = new MoonBook();
@@ -401,9 +405,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(address(page), id));
 
             vm.prank(recipient);
-            vm.expectEmit(true, false, false, true, address(page));
+            vm.expectEmit(true, true, false, true, address(page));
 
-            emit List(id);
+            emit List(id, recipient);
 
             page.list(id, price, tip);
 
@@ -481,9 +485,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(price, listingPrice);
 
             vm.prank(recipient);
-            vm.expectEmit(true, false, false, true, address(page));
+            vm.expectEmit(true, true, false, true, address(page));
 
-            emit Edit(id);
+            emit Edit(id, recipient);
 
             page.edit(id, newPrice);
 
@@ -542,9 +546,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(recipient, id));
 
             vm.prank(recipient);
-            vm.expectEmit(true, false, false, true, address(page));
+            vm.expectEmit(true, true, false, true, address(page));
 
-            emit Cancel(id);
+            emit Cancel(id, recipient);
 
             page.cancel(id);
 
@@ -628,7 +632,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             vm.expectEmit(true, false, false, true, address(page));
 
-            emit Buy(id);
+            emit Buy(id, recipient);
 
             page.buy{value: priceETH}(id);
 

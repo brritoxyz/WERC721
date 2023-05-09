@@ -26,7 +26,7 @@ contract MoonPage is
         uint48 tip;
     }
 
-    // Price and tips are denominated in 0.00000001 ETH to tightly pack the struct
+    // Price and tips are denominated in 0.00000001 ETH
     uint256 public constant VALUE_DENOM = 0.00000001 ether;
 
     ERC721 public collection;
@@ -37,10 +37,12 @@ contract MoonPage is
 
     event Initialize(address owner, ERC721 collection);
     event SetTipRecipient(address tipRecipient);
-    event List(uint256 indexed id);
-    event Edit(uint256 indexed id);
-    event Cancel(uint256 indexed id);
-    event Buy(uint256 indexed id);
+    event List(uint256 indexed id, address indexed seller);
+    event Edit(uint256 indexed id, address indexed seller);
+    event Cancel(uint256 indexed id, address indexed seller);
+    event Buy(uint256 indexed id, address indexed buyer);
+    event BatchList(uint256[] ids);
+    event BatchBuy(uint256[] ids);
 
     error Zero();
     error Invalid();
@@ -111,6 +113,132 @@ contract MoonPage is
     }
 
     /**
+     * @notice Withdraw a NFT from the vault by redeeming a derivative token
+     * @param  id         uint256  Collection token ID
+     * @param  recipient  address  Derivative token recipient
+     */
+    function withdraw(uint256 id, address recipient) external nonReentrant {
+        if (recipient == address(0)) revert Zero();
+
+        // Revert if msg.sender is not the owner of the derivative token
+        if (ownerOf[id] != msg.sender) revert Unauthorized();
+
+        // Burn the derivative token before transferring the NFT to the recipient
+        _burn(msg.sender, id);
+
+        // Transfer the NFT to the recipient
+        collection.safeTransferFrom(address(this), recipient, id);
+    }
+
+    /**
+     * @notice Create a listing
+     * @param  id     uint256  Collection token ID
+     * @param  price  uint48   Price
+     * @param  tip    uint48   Tip amount
+     */
+    function _list(uint256 id, uint48 price, uint48 tip) private {
+        // Reverts if msg.sender does not have the token
+        if (ownerOf[id] != msg.sender) revert Unauthorized();
+
+        // Revert if the price is zero
+        if (price == 0) revert Zero();
+
+        // Revert if the tip is greater than the price
+        if (price < tip) revert Invalid();
+
+        // Update token owner to this contract to prevent double-listing
+        ownerOf[id] = address(this);
+
+        // Set the listing
+        listings[id] = Listing(msg.sender, price, tip);
+    }
+
+    /**
+     * @notice Create a listing
+     * @param  id     uint256  Collection token ID
+     * @param  price  uint48   Price
+     * @param  tip    uint48   Tip amount
+     */
+    function list(uint256 id, uint48 price, uint48 tip) external {
+        _list(id, price, tip);
+
+        emit List(id, msg.sender);
+    }
+
+    /**
+     * @notice Edit a listing
+     * @param  id        uint256  Collection token ID
+     * @param  newPrice  uint48   New price
+     */
+    function edit(uint256 id, uint48 newPrice) external {
+        // Revert if the new price is zero
+        if (newPrice == 0) revert Zero();
+
+        Listing storage listing = listings[id];
+
+        // Reverts if msg.sender is not the seller or listing does not exist
+        if (listing.seller != msg.sender) revert Unauthorized();
+
+        listing.price = newPrice;
+
+        emit Edit(id, msg.sender);
+    }
+
+    /**
+     * @notice Cancel a listing
+     * @param  id  uint256  Collection token ID
+     */
+    function cancel(uint256 id) external {
+        // Reverts if msg.sender is not the seller
+        if (listings[id].seller != msg.sender) revert Unauthorized();
+
+        // Delete listing prior to returning the token
+        delete listings[id];
+
+        ownerOf[id] = msg.sender;
+
+        emit Cancel(id, msg.sender);
+    }
+
+    /**
+     * @notice Fulfill a listing
+     * @param  id  uint256  Collection token ID
+     */
+    function buy(uint256 id) external payable nonReentrant {
+        // Reverts if zero value was sent
+        if (msg.value == 0) revert Zero();
+
+        Listing memory listing = listings[id];
+        (uint256 priceETH, uint256 salesProceeds) = _calculateTransferValues(
+            listing.price,
+            listing.tip
+        );
+
+        // Revert if the listing does not exist (listing price cannot be zero)
+        if (priceETH == 0) revert Nonexistent();
+
+        // Reverts if the msg.value does not cover the listing price in ETH
+        if (msg.value < priceETH) revert Insufficient();
+
+        // Delete listing prior to setting the token to the buyer
+        delete listings[id];
+
+        // Set the new token owner to the buyer
+        ownerOf[id] = msg.sender;
+
+        // Transfer the sales proceeds to the seller
+        payable(listing.seller).safeTransferETH(salesProceeds);
+
+        // Transfer the tip to the designated recipient, if any. Value
+        // sent may contain a buyer tip, which is why we are checking
+        // the difference between msg.value and the sales proceeds
+        if (msg.value - salesProceeds != 0)
+            tipRecipient.safeTransferETH(msg.value - salesProceeds);
+
+        emit Buy(id, msg.sender);
+    }
+
+    /**
      * @notice Batch deposit
      * @param  ids        uint256[]  Collection token IDs
      * @param  recipient  address    Derivative token recipient
@@ -162,24 +290,6 @@ contract MoonPage is
     }
 
     /**
-     * @notice Withdraw a NFT from the vault by redeeming a derivative token
-     * @param  id         uint256  Collection token ID
-     * @param  recipient  address  Derivative token recipient
-     */
-    function withdraw(uint256 id, address recipient) external nonReentrant {
-        if (recipient == address(0)) revert Zero();
-
-        // Revert if msg.sender is not the owner of the derivative token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
-
-        // Burn the derivative token before transferring the NFT to the recipient
-        _burn(msg.sender, id);
-
-        // Transfer the NFT to the recipient
-        collection.safeTransferFrom(address(this), recipient, id);
-    }
-
-    /**
      * @notice Batch withdraw
      * @param  ids        uint256[]  Collection token IDs
      * @param  recipient  address    Derivative token recipient
@@ -220,100 +330,89 @@ contract MoonPage is
     }
 
     /**
-     * @notice Create a listing
-     * @param  id     uint256  Collection token ID
-     * @param  price  uint48   Price
-     * @param  tip    uint48   Tip amount
+     * @notice Create a batch of listings
+     * @param  ids     uint256[]  Collection token IDs
+     * @param  prices  uint48[]   Prices
+     * @param  tips    uint48[]   Tip amounts
      */
-    function list(uint256 id, uint48 price, uint48 tip) external {
-        // Reverts if msg.sender does not have the token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
+    function batchList(
+        uint256[] calldata ids,
+        uint48[] calldata prices,
+        uint48[] calldata tips
+    ) external {
+        uint256 iLen = ids.length;
 
-        // Revert if the price is zero
-        if (price == 0) revert Zero();
+        if (iLen == 0) revert Invalid();
 
-        // Revert if the tip is greater than the price
-        if (price < tip) revert Invalid();
+        for (uint256 i; i < iLen; ) {
+            // Set each listing - reverts if the `prices` or `tips` arrays are
+            // not equal in length to the `ids` array
+            _list(ids[i], prices[i], tips[i]);
 
-        // Update token owner to this contract to prevent double-listing
-        ownerOf[id] = address(this);
+            unchecked {
+                ++i;
+            }
+        }
 
-        // Set the listing
-        listings[id] = Listing(msg.sender, price, tip);
-
-        emit List(id);
+        emit BatchList(ids);
     }
 
     /**
-     * @notice Edit a listing
-     * @param  id        uint256  Collection token ID
-     * @param  newPrice  uint48   New price
+     * @notice Fulfill a batch of listings
+     * @param  ids  uint256[]  Collection token IDs
      */
-    function edit(uint256 id, uint48 newPrice) external {
-        // Revert if the new price is zero
-        if (newPrice == 0) revert Zero();
+    function batchBuy(uint256[] calldata ids) external payable nonReentrant {
+        uint256 iLen = ids.length;
 
-        Listing storage listing = listings[id];
+        if (iLen == 0) revert Invalid();
 
-        // Reverts if msg.sender is not the seller or listing does not exist
-        if (listing.seller != msg.sender) revert Unauthorized();
-
-        listing.price = newPrice;
-
-        emit Edit(id);
-    }
-
-    /**
-     * @notice Cancel a listing
-     * @param  id  uint256  Collection token ID
-     */
-    function cancel(uint256 id) external {
-        // Reverts if msg.sender is not the seller
-        if (listings[id].seller != msg.sender) revert Unauthorized();
-
-        // Delete listing prior to returning the token
-        delete listings[id];
-
-        ownerOf[id] = msg.sender;
-
-        emit Cancel(id);
-    }
-
-    /**
-     * @notice Fulfill a listing
-     * @param  id  uint256  Collection token ID
-     */
-    function buy(uint256 id) external payable nonReentrant {
         // Reverts if zero value was sent
         if (msg.value == 0) revert Zero();
 
-        Listing memory listing = listings[id];
-        (uint256 priceETH, uint256 salesProceeds) = _calculateTransferValues(
-            listing.price,
-            listing.tip
-        );
+        uint256 id;
+        uint256 totalPriceETH;
+        uint256 totalSalesProceeds;
 
-        // Revert if the listing does not exist (listing price cannot be zero)
-        if (priceETH == 0) revert Nonexistent();
+        for (uint256 i; i < iLen; ) {
+            id = ids[i];
 
-        // Reverts if the msg.value does not cover the listing price in ETH
-        if (msg.value < priceETH) revert Insufficient();
+            // Increment iterator variable since we are conditionally skipping (i.e. listing does not exist)
+            unchecked {
+                ++i;
+            }
 
-        // Delete listing prior to setting the token to the buyer
-        delete listings[id];
+            Listing memory listing = listings[id];
+            (
+                uint256 priceETH,
+                uint256 salesProceeds
+            ) = _calculateTransferValues(listing.price, listing.tip);
 
-        // Set the new token owner to the buyer
-        ownerOf[id] = msg.sender;
+            // Continue to the next id if the listing does not exist (e.g. listing purchased before this call)
+            if (priceETH == 0) continue;
 
-        // Transfer the sales proceeds to the seller
-        payable(listing.seller).safeTransferETH(salesProceeds);
+            // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
+            totalPriceETH += priceETH;
 
-        // Transfer the tip to the designated recipient, if any. Value
-        // sent may contain a buyer tip, which is why we are checking
-        // the difference between msg.value and the sales proceeds
-        if (msg.value - salesProceeds != 0)
-            tipRecipient.safeTransferETH(msg.value - salesProceeds);
+            // Accrue totalSalesProceeds, which will enable us to calculate and transfer the tip in a single call
+            totalSalesProceeds += salesProceeds;
 
-        emit Buy(id);
+            // Delete listing prior to setting the token to the buyer
+            delete listings[id];
+
+            // Set the new token owner to the buyer
+            ownerOf[id] = msg.sender;
+
+            // Transfer the sales proceeds to the seller
+            payable(listing.seller).safeTransferETH(salesProceeds);
+        }
+
+        // Revert if msg.value does not cover the *total* listing price in ETH
+        if (msg.value < totalPriceETH) revert Insufficient();
+
+        // Transfer the cumulative tips (if any) to the tip recipient
+        if (msg.value - totalSalesProceeds != 0)
+            tipRecipient.safeTransferETH(msg.value - totalSalesProceeds);
+
+        emit BatchBuy(ids);
     }
 }
