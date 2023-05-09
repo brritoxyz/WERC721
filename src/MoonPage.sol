@@ -20,11 +20,14 @@ contract MoonPage is
     struct Listing {
         // Seller address
         address seller;
-        // Adequate for 79m ether
-        uint96 price;
+        // Adequate for 281m ether since the denomination is 0.001 ETH
+        uint48 price;
         // Optional tip amount
-        uint256 tip;
+        uint48 tip;
     }
+
+    // Price and tips are denominated in 0.001 ETH to tightly pack the struct
+    uint256 public constant VALUE_DENOM = 0.001 ether;
 
     ERC721 public collection;
 
@@ -34,14 +37,9 @@ contract MoonPage is
 
     event SetTipRecipient(address tipRecipient);
     event List(uint256 indexed id);
-    event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
-    event Cancel(uint256 indexed id, address indexed seller);
-    event Buy(
-        uint256 indexed id,
-        address indexed buyer,
-        address indexed seller,
-        uint96 price
-    );
+    event Edit(uint256 indexed id);
+    event Cancel(uint256 indexed id);
+    event Buy(uint256 indexed id);
 
     error Zero();
     error Invalid();
@@ -212,10 +210,10 @@ contract MoonPage is
     /**
      * @notice Create a listing
      * @param  id     uint256  Collection token ID
-     * @param  price  uint96   Price
-     * @param  tip    uint256  Tip amount
+     * @param  price  uint48   Price
+     * @param  tip    uint48   Tip amount
      */
-    function list(uint256 id, uint96 price, uint256 tip) external {
+    function list(uint256 id, uint48 price, uint48 tip) external {
         // Reverts if msg.sender does not have the token
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
@@ -234,9 +232,10 @@ contract MoonPage is
     /**
      * @notice Edit a listing
      * @param  id        uint256  Collection token ID
-     * @param  newPrice  uint96   New price
+     * @param  newPrice  uint48   New price
+     * @param  newTip    uint48   New tip amount
      */
-    function edit(uint256 id, uint96 newPrice) external {
+    function edit(uint256 id, uint48 newPrice, uint48 newTip) external {
         // Revert if the new price is zero
         if (newPrice == 0) revert Zero();
 
@@ -245,10 +244,13 @@ contract MoonPage is
         // Reverts if msg.sender is not the seller or listing does not exist
         if (listing.seller != msg.sender) revert Unauthorized();
 
-        // Update the listing price
-        listing.price = newPrice;
+        // Only update the listing price if it has changed
+        if (newPrice != listing.price) listing.price = newPrice;
 
-        emit Edit(id, msg.sender, newPrice);
+        // Only update the listing tip if it has changed
+        if (newTip != listing.tip) listing.tip = newTip;
+
+        emit Edit(id);
     }
 
     /**
@@ -264,7 +266,7 @@ contract MoonPage is
 
         ownerOf[id] = msg.sender;
 
-        emit Cancel(id, msg.sender);
+        emit Cancel(id);
     }
 
     /**
@@ -290,6 +292,6 @@ contract MoonPage is
         // Transfer ETH to the seller
         payable(listing.seller).safeTransferETH(msg.value);
 
-        emit Buy(id, msg.sender, listing.seller, listing.price);
+        emit Buy(id);
     }
 }
