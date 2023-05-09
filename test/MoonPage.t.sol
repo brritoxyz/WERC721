@@ -10,10 +10,6 @@ import {MoonBook} from "src/MoonBook.sol";
 import {MoonPage} from "src/MoonPage.sol";
 
 contract MoonPageTest is Test, ERC721TokenReceiver {
-    ERC20 private constant STAKER =
-        ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    ERC4626 private constant VAULT =
-        ERC4626(0xA0D3707c569ff8C87FA923d3823eC5D81c98Be78);
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 private constant ONE = 1;

@@ -19,8 +19,6 @@ contract DummyERC4626 is ERC4626(new DummyERC20(), "", "") {
 }
 
 contract MoonBookTest is Test {
-    using FixedPointMathLib for uint256;
-
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
 

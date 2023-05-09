@@ -41,8 +41,10 @@ contract MoonPage is
     event Edit(uint256 indexed id, address indexed seller);
     event Cancel(uint256 indexed id, address indexed seller);
     event Buy(uint256 indexed id, address indexed buyer);
-    event BatchList(uint256[] ids);
-    event BatchBuy(uint256[] ids);
+    event BatchList(address indexed seller, uint256[] ids);
+    event BatchEdit(address indexed seller, uint256[] ids);
+    event BatchCancel(address indexed seller, uint256[] ids);
+    event BatchBuy(address indexed buyer, uint256[] ids);
 
     error Zero();
     error Invalid();
@@ -354,7 +356,73 @@ contract MoonPage is
             }
         }
 
-        emit BatchList(ids);
+        emit BatchList(msg.sender, ids);
+    }
+
+    /**
+     * @notice Edit a batch of listings
+     * @param  ids        uint256[]  Collection token IDs
+     * @param  newPrices  uint48[]   New prices
+     */
+    function batchEdit(
+        uint256[] calldata ids,
+        uint48[] calldata newPrices
+    ) external {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert Invalid();
+
+        uint48 newPrice;
+
+        for (uint256 i; i < iLen; ) {
+            newPrice = newPrices[i];
+
+            // Revert if the new price is zero
+            if (newPrice == 0) revert Zero();
+
+            Listing storage listing = listings[ids[i]];
+
+            // Reverts if msg.sender is not the seller or listing does not exist
+            if (listing.seller != msg.sender) revert Unauthorized();
+
+            listing.price = newPrice;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit BatchEdit(msg.sender, ids);
+    }
+
+    /**
+     * @notice Cancel a batch of listings
+     * @param  ids  uint256[]  Collection token IDs
+     */
+    function batchCancel(uint256[] calldata ids) external {
+        uint256 iLen = ids.length;
+
+        if (iLen == 0) revert Invalid();
+
+        uint256 id;
+
+        for (uint256 i; i < iLen; ) {
+            id = ids[i];
+
+            // Reverts if msg.sender is not the seller
+            if (listings[id].seller != msg.sender) revert Unauthorized();
+
+            // Delete listing prior to returning the token
+            delete listings[id];
+
+            ownerOf[id] = msg.sender;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit BatchCancel(msg.sender, ids);
     }
 
     /**
@@ -413,6 +481,6 @@ contract MoonPage is
         if (msg.value - totalSalesProceeds != 0)
             tipRecipient.safeTransferETH(msg.value - totalSalesProceeds);
 
-        emit BatchBuy(ids);
+        emit BatchBuy(msg.sender, ids);
     }
 }
