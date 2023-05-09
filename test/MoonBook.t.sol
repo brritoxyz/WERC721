@@ -45,11 +45,21 @@ contract MoonBookTest is Test {
         assertEq(address(this), page.owner());
         assertEq(predeterminedPageAddress, pageAddress);
         assertTrue(moon.pageImplementation() != address(0));
+
+        vm.expectRevert("Initializable: contract is already initialized");
+
+        page.initialize(address(this), LLAMA);
     }
 
     /*//////////////////////////////////////////////////////////////
                              createPage
     //////////////////////////////////////////////////////////////*/
+
+    function testCannotCreatePageCollectionInvalid() external {
+        vm.expectRevert(MoonBook.Invalid.selector);
+
+        moon.createPage(ERC721(address(0)));
+    }
 
     function testCannotCreatePageAlreadyCreated() external {
         assertEq(address(page), moon.pages(LLAMA));
@@ -78,5 +88,9 @@ contract MoonBookTest is Test {
             address(collection),
             address(MoonPage(pageAddress).collection())
         );
+
+        vm.expectRevert("Initializable: contract is already initialized");
+
+        MoonPage(pageAddress).initialize(address(this), collection);
     }
 }
