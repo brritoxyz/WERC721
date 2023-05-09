@@ -22,7 +22,7 @@ contract MoonPage is
         address seller;
         // Adequate for 281m ether since the denomination is 0.001 ETH
         uint48 price;
-        // Optional tip amount
+        // Optional tip amount - deducted from the sales proceeds
         uint48 tip;
     }
 
@@ -220,6 +220,9 @@ contract MoonPage is
         // Revert if the price is zero
         if (price == 0) revert Zero();
 
+        // Revert if the tip is greater than the price
+        if (price < tip) revert Invalid();
+
         // Update token owner to this contract to prevent double-listing
         ownerOf[id] = address(this);
 
@@ -233,9 +236,8 @@ contract MoonPage is
      * @notice Edit a listing
      * @param  id        uint256  Collection token ID
      * @param  newPrice  uint48   New price
-     * @param  newTip    uint48   New tip amount
      */
-    function edit(uint256 id, uint48 newPrice, uint48 newTip) external {
+    function edit(uint256 id, uint48 newPrice) external {
         // Revert if the new price is zero
         if (newPrice == 0) revert Zero();
 
@@ -246,9 +248,6 @@ contract MoonPage is
 
         // Only update the listing price if it has changed
         if (newPrice != listing.price) listing.price = newPrice;
-
-        // Only update the listing tip if it has changed
-        if (newTip != listing.tip) listing.tip = newTip;
 
         emit Edit(id);
     }
@@ -279,9 +278,15 @@ contract MoonPage is
 
         Listing memory listing = listings[id];
 
+        uint256 listingPriceETH = uint256(listing.price) * VALUE_DENOM;
+
+        // Revert if the listing does not exist (listing price cannot be zero)
+        if (listingPriceETH == 0) revert Nonexistent();
+
         // Reverts if the msg.value does not cover the price or if the
         // listing does not exist (listings cannot have a zero price)
-        if (msg.value != listing.price) revert Insufficient();
+        // The msg.value required is the price multiplied by the fixed denom
+        if (msg.value < listingPriceETH) revert Insufficient();
 
         // Delete listing prior to setting the token to the buyer
         delete listings[id];
@@ -289,8 +294,16 @@ contract MoonPage is
         // Set the new token owner to the buyer
         ownerOf[id] = msg.sender;
 
-        // Transfer ETH to the seller
-        payable(listing.seller).safeTransferETH(msg.value);
+        // ETH sent to the seller (price minus seller tip)
+        uint256 salesProceeds = listingPriceETH -
+            (uint256(listing.tip) * VALUE_DENOM);
+
+        payable(listing.seller).safeTransferETH(salesProceeds);
+
+        // msg.value may contain a buyer tip, which is why we are checking
+        // the difference vs. checking just the listing tip value
+        if (msg.value - salesProceeds != 0)
+            tipRecipient.safeTransferETH(msg.value - salesProceeds);
 
         emit Buy(id);
     }

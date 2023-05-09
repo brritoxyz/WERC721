@@ -17,9 +17,12 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 private constant ONE = 1;
+    address payable private constant TIP_RECIPIENT =
+        payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
     MoonBook private immutable book;
     MoonPage private immutable page;
+    uint256 private immutable valueDenom;
 
     uint256[] private ids = [1, 39, 111];
     address[] private accounts = [
@@ -50,11 +53,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     constructor() {
         book = new MoonBook(STAKER, VAULT);
         page = MoonPage(book.createPage(LLAMA));
+        valueDenom = page.VALUE_DENOM();
 
         // Verify that page cannot be initialized again
         vm.expectRevert("Initializable: contract is already initialized");
 
         page.initialize(address(this), LLAMA);
+        page.setTipRecipient(TIP_RECIPIENT);
     }
 
     function setUp() external {
@@ -71,6 +76,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         }
 
         LLAMA.setApprovalForAll(address(page), true);
+    }
+
+    function _calculateValue(
+        uint256 price,
+        uint256 tip
+    ) private view returns (uint256 priceETH, uint256 tipETH) {
+        return (price * valueDenom, tip * valueDenom);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -418,11 +430,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotEditPriceZero() external {
         uint256 id = ids[0];
         uint48 price = 0;
-        uint48 tip = 10;
 
         vm.expectRevert(MoonPage.Zero.selector);
 
-        page.edit(id, price, tip);
+        page.edit(id, price);
     }
 
     function testCannotEditUnauthorized() external {
@@ -431,7 +442,6 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint48 price = 100;
         uint48 tip = 10;
         uint48 newPrice = 200;
-        uint48 newTip = 100;
 
         page.deposit(id, recipient);
 
@@ -446,7 +456,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         vm.expectRevert(MoonPage.Unauthorized.selector);
 
-        page.edit(id, newPrice, newTip);
+        page.edit(id, newPrice);
     }
 
     function testEdit(uint8 priceMultiplier) external {
@@ -460,7 +470,6 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             uint48 price = 100 * uint48(priceMultiplier);
             uint48 tip = 10 * uint48(priceMultiplier);
             uint48 newPrice = 200 * uint48(priceMultiplier);
-            uint48 newTip = 20 * uint48(priceMultiplier);
 
             assertTrue(price != newPrice);
 
@@ -481,7 +490,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             emit Edit(id);
 
-            page.edit(id, newPrice, newTip);
+            page.edit(id, newPrice);
 
             (seller, listingPrice, listingTip) = page.listings(id);
 
@@ -585,24 +594,37 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             vm.prank(recipient);
 
             page.list(id, price, tip);
-        }
 
-        vm.expectRevert(MoonPage.Insufficient.selector);
+            vm.expectRevert(MoonPage.Insufficient.selector);
+        } else {
+            vm.expectRevert(MoonPage.Nonexistent.selector);
+        }
 
         // Attempt to buy with msg.value less than price
         page.buy{value: price - 1}(id);
     }
 
-    function testBuy(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testBuy(uint48 price, uint48 tip) external {
+        vm.assume(price != 0);
+        vm.assume(price < 1_000_000);
+        vm.assume(price > tip);
+        vm.assume(tip < 1_000);
 
-        uint256 iLen = ids.length;
+        uint256 id;
+        address recipient;
+        uint256 priceETH;
+        uint256 tipETH;
+        address seller;
+        uint48 listingPrice;
+        uint48 listingTip;
 
-        for (uint256 i; i < iLen; ) {
-            uint256 id = ids[i];
-            address recipient = accounts[i];
-            uint48 price = 100 * uint48(priceMultiplier);
-            uint48 tip = 10 * uint48(priceMultiplier);
+        for (uint256 i; i < ids.length; ) {
+            id = ids[i];
+            recipient = accounts[i];
+
+            // Retrieve the ETH amounts for determining the sufficient msg.value
+            // and to also check that the proper amounts were received by all parties
+            (priceETH, tipETH) = _calculateValue(price, tip);
 
             page.deposit(id, recipient);
 
@@ -610,32 +632,29 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             page.list(id, price, tip);
 
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
-            uint256 buyerBalanceBefore = address(this).balance;
+            (seller, listingPrice, listingTip) = page.listings(id);
             uint256 sellerBalanceBefore = recipient.balance;
-
-            assertEq(recipient, seller);
-            assertEq(price, listingPrice);
-            assertEq(address(page), page.ownerOf(id));
-            assertEq(1, page.balanceOf(address(page), id));
-            assertEq(0, page.balanceOf(address(this), id));
+            uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
 
             vm.expectEmit(true, false, false, true, address(page));
 
             emit Buy(id);
 
-            page.buy{value: price}(id);
+            page.buy{value: priceETH}(id);
 
             (seller, listingPrice, listingTip) = page.listings(id);
 
             assertEq(address(0), seller);
             assertEq(0, listingPrice);
+            assertEq(0, listingTip);
             assertEq(address(this), page.ownerOf(id));
             assertEq(0, page.balanceOf(address(page), id));
             assertEq(1, page.balanceOf(address(this), id));
-            assertEq(buyerBalanceBefore - price, address(this).balance);
-            assertEq(sellerBalanceBefore + price, recipient.balance);
+            assertEq(
+                sellerBalanceBefore + priceETH - tipETH,
+                recipient.balance
+            );
+            assertEq(tipRecipientBalanceBefore + tipETH, TIP_RECIPIENT.balance);
 
             unchecked {
                 ++i;
