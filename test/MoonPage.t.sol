@@ -51,7 +51,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     event Buy(uint256 indexed id);
 
     constructor() {
-        book = new MoonBook(STAKER, VAULT);
+        book = new MoonBook();
         page = MoonPage(book.createPage(LLAMA));
         valueDenom = page.VALUE_DENOM();
 
@@ -350,8 +350,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotListUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100;
-        uint48 tip = 10;
+        uint48 price = 100_000;
+        uint48 tip = 1_000;
 
         // Mint a derivative token for a recipient and attempt to list on their behalf
         page.deposit(id, recipient);
@@ -368,7 +368,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 id = ids[0];
         address recipient = accounts[0];
         uint48 price = 0;
-        uint48 tip = 10;
+        uint48 tip = 1_000;
 
         // Mint a derivative token for a recipient and attempt to list on their behalf
         page.deposit(id, recipient);
@@ -383,7 +383,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.list(id, price, tip);
     }
 
-    function testList(uint8 priceMultiplier) external {
+    function testList(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
         uint256 iLen = ids.length;
@@ -391,8 +391,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100 * uint48(priceMultiplier);
-            uint48 tip = 10 * uint48(priceMultiplier);
+            uint48 price = 100_000 * uint48(priceMultiplier);
+            uint48 tip = 1_000 * uint48(priceMultiplier);
 
             page.deposit(id, recipient);
 
@@ -439,8 +439,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotEditUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100;
-        uint48 tip = 10;
+        uint48 price = 100_000;
+        uint48 tip = 1_000;
         uint48 newPrice = 200;
 
         page.deposit(id, recipient);
@@ -449,17 +449,12 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.list(id, price, tip);
 
-        (address seller, uint48 listingPrice, uint48 listingTip) = page
-            .listings(id);
-
-        assertEq(recipient, seller);
-
         vm.expectRevert(MoonPage.Unauthorized.selector);
 
         page.edit(id, newPrice);
     }
 
-    function testEdit(uint8 priceMultiplier) external {
+    function testEdit(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
         uint256 iLen = ids.length;
@@ -467,8 +462,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100 * uint48(priceMultiplier);
-            uint48 tip = 10 * uint48(priceMultiplier);
+            uint48 price = 100_000 * uint48(priceMultiplier);
+            uint48 tip = 1_000 * uint48(priceMultiplier);
             uint48 newPrice = 200 * uint48(priceMultiplier);
 
             assertTrue(price != newPrice);
@@ -511,8 +506,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotCancelUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100;
-        uint48 tip = 10;
+        uint48 price = 100_000;
+        uint48 tip = 1_000;
 
         page.deposit(id, recipient);
 
@@ -520,17 +515,12 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.list(id, price, tip);
 
-        (address seller, uint48 listingPrice, uint48 listingTip) = page
-            .listings(id);
-
-        assertEq(recipient, seller);
-
         vm.expectRevert(MoonPage.Unauthorized.selector);
 
         page.cancel(id);
     }
 
-    function testCancel(uint8 priceMultiplier) external {
+    function testCancel(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
         uint256 iLen = ids.length;
@@ -538,8 +528,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         for (uint256 i; i < iLen; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100 * uint48(priceMultiplier);
-            uint48 tip = 10 * uint48(priceMultiplier);
+            uint48 price = 100_000 * uint48(priceMultiplier);
+            uint48 tip = 1_000 * uint48(priceMultiplier);
 
             page.deposit(id, recipient);
 
@@ -584,8 +574,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotBuyMsgValueInsufficient(bool shouldList) external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100;
-        uint48 tip = 10;
+        uint48 price = 100_000;
+        uint48 tip = 1_000;
 
         // Reverts with `Insufficient` if msg.value is insufficient or if not listed
         if (shouldList) {

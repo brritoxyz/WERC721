@@ -20,14 +20,14 @@ contract MoonPage is
     struct Listing {
         // Seller address
         address seller;
-        // Adequate for 281m ether since the denomination is 0.001 ETH
+        // Adequate for 2.8m ether since the denomination is 0.00000001 ETH
         uint48 price;
         // Optional tip amount - deducted from the sales proceeds
         uint48 tip;
     }
 
-    // Price and tips are denominated in 0.001 ETH to tightly pack the struct
-    uint256 public constant VALUE_DENOM = 0.001 ether;
+    // Price and tips are denominated in 0.00000001 ETH to tightly pack the struct
+    uint256 public constant VALUE_DENOM = 0.00000001 ether;
 
     ERC721 public collection;
 
@@ -35,6 +35,7 @@ contract MoonPage is
 
     mapping(uint256 => Listing) public listings;
 
+    event Initialize(address owner, ERC721 collection);
     event SetTipRecipient(address tipRecipient);
     event List(uint256 indexed id);
     event Edit(uint256 indexed id);
@@ -52,6 +53,14 @@ contract MoonPage is
         _disableInitializers();
     }
 
+    function _calculateTransferValues(
+        uint256 price,
+        uint256 tip
+    ) private pure returns (uint256 priceETH, uint256 salesProceeds) {
+        priceETH = price * VALUE_DENOM;
+        salesProceeds = priceETH - (tip * VALUE_DENOM);
+    }
+
     /**
      * @notice Initializes the minimal proxy with an owner and collection contract
      * @param  _owner       address  Contract owner (has permission to set URI)
@@ -62,6 +71,7 @@ contract MoonPage is
         ERC721 _collection
     ) external initializer {
         // Initialize Owned by setting `owner` to protocol-controlled address
+        // The owner *only* has the ability to set the URI and change the tip recipient
         owner = _owner;
 
         // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
@@ -69,6 +79,8 @@ contract MoonPage is
 
         // Initialize this contract with the ERC721 collection contract
         collection = _collection;
+
+        emit Initialize(_owner, _collection);
     }
 
     function setURI(string memory newuri) external onlyOwner {
@@ -246,8 +258,7 @@ contract MoonPage is
         // Reverts if msg.sender is not the seller or listing does not exist
         if (listing.seller != msg.sender) revert Unauthorized();
 
-        // Only update the listing price if it has changed
-        if (newPrice != listing.price) listing.price = newPrice;
+        listing.price = newPrice;
 
         emit Edit(id);
     }
@@ -277,16 +288,16 @@ contract MoonPage is
         if (msg.value == 0) revert Zero();
 
         Listing memory listing = listings[id];
-
-        uint256 listingPriceETH = uint256(listing.price) * VALUE_DENOM;
+        (uint256 priceETH, uint256 salesProceeds) = _calculateTransferValues(
+            listing.price,
+            listing.tip
+        );
 
         // Revert if the listing does not exist (listing price cannot be zero)
-        if (listingPriceETH == 0) revert Nonexistent();
+        if (priceETH == 0) revert Nonexistent();
 
-        // Reverts if the msg.value does not cover the price or if the
-        // listing does not exist (listings cannot have a zero price)
-        // The msg.value required is the price multiplied by the fixed denom
-        if (msg.value < listingPriceETH) revert Insufficient();
+        // Reverts if the msg.value does not cover the listing price in ETH
+        if (msg.value < priceETH) revert Insufficient();
 
         // Delete listing prior to setting the token to the buyer
         delete listings[id];
@@ -294,14 +305,12 @@ contract MoonPage is
         // Set the new token owner to the buyer
         ownerOf[id] = msg.sender;
 
-        // ETH sent to the seller (price minus seller tip)
-        uint256 salesProceeds = listingPriceETH -
-            (uint256(listing.tip) * VALUE_DENOM);
-
+        // Transfer the sales proceeds to the seller
         payable(listing.seller).safeTransferETH(salesProceeds);
 
-        // msg.value may contain a buyer tip, which is why we are checking
-        // the difference vs. checking just the listing tip value
+        // Transfer the tip to the designated recipient, if any. Value
+        // sent may contain a buyer tip, which is why we are checking
+        // the difference between msg.value and the sales proceeds
         if (msg.value - salesProceeds != 0)
             tipRecipient.safeTransferETH(msg.value - salesProceeds);
 
