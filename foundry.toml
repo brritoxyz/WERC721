@@ -8,7 +8,7 @@ bytecode_hash = 'none'
 gas_reports = ["MoonBook", "MoonPage"]
 
 [fuzz]
-runs = 10
+runs = 100
 
 [profile.optimized]
 optimizer_runs = 1_000_000

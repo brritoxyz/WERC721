@@ -57,7 +57,7 @@ abstract contract ERC1155 {
     function _setURI(string memory newuri) internal {
         _uri = newuri;
 
-        // The value of `0` for `id` is a catchall since IDs will never be zero
+        // The value of `0` for `id` is a placeholder ID
         // See comment block below for more details on how to construct the token URI
         emit URI(newuri, 0);
     }

@@ -41,14 +41,17 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] ids,
         uint256[] amounts
     );
+    event URI(string value, uint256 indexed id);
     event Initialize(address owner, ERC721 collection);
     event SetTipRecipient(address tipRecipient);
     event List(uint256 indexed id, address indexed seller);
     event Edit(uint256 indexed id, address indexed seller);
     event Cancel(uint256 indexed id, address indexed seller);
     event Buy(uint256 indexed id, address indexed buyer);
-    event BatchList(uint256[] ids);
-    event BatchBuy(uint256[] ids);
+    event BatchList(address indexed seller, uint256[] ids);
+    event BatchEdit(address indexed seller, uint256[] ids);
+    event BatchCancel(address indexed seller, uint256[] ids);
+    event BatchBuy(address indexed buyer, uint256[] ids);
 
     constructor() {
         book = new MoonBook();
@@ -78,11 +81,81 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         LLAMA.setApprovalForAll(address(page), true);
     }
 
-    function _calculateValue(
+    function _calculateTransferValues(
         uint256 price,
         uint256 tip
     ) private view returns (uint256 priceETH, uint256 tipETH) {
         return (price * valueDenom, tip * valueDenom);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setURI
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetURIUnauthorized() external {
+        address caller = accounts[0];
+
+        assertTrue(caller != page.owner());
+
+        vm.prank(caller);
+        vm.expectRevert("UNAUTHORIZED");
+
+        page.setURI("");
+    }
+
+    function testSetURI() external {
+        address caller = address(this);
+        string memory newuri = "hello";
+
+        assertEq(caller, page.owner());
+
+        // Compare uri string hashes
+        assertTrue(
+            keccak256(abi.encodePacked(newuri)) !=
+                keccak256(abi.encodePacked(page.uri(0)))
+        );
+
+        vm.expectEmit(false, true, false, true, address(page));
+
+        emit URI(newuri, 0);
+
+        page.setURI(newuri);
+
+        assertEq(
+            keccak256(abi.encodePacked(newuri)),
+            keccak256(abi.encodePacked(page.uri(0)))
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setTipRecipient
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetTipRecipientUnauthorized() external {
+        address caller = accounts[0];
+
+        assertTrue(caller != page.owner());
+
+        vm.prank(caller);
+        vm.expectRevert("UNAUTHORIZED");
+
+        page.setTipRecipient(payable(address(0)));
+    }
+
+    function testSetTipRecipient() external {
+        address caller = address(this);
+        address payable tipRecipient = payable(accounts[0]);
+
+        assertEq(caller, page.owner());
+        assertTrue(tipRecipient != page.tipRecipient());
+
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit SetTipRecipient(tipRecipient);
+
+        page.setTipRecipient(tipRecipient);
+
+        assertEq(tipRecipient, page.tipRecipient());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -364,6 +437,25 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.list(id, price, tip);
     }
 
+    function testCannotListPriceLessThanTipInvalid() external {
+        uint256 id = ids[0];
+        address recipient = accounts[0];
+        uint48 price = 100_000;
+
+        // Price cannot be less than tip
+        uint48 tip = price + 1;
+
+        assertLt(price, tip);
+
+        // Mint a derivative token for a recipient and attempt to list on their behalf
+        page.deposit(id, recipient);
+
+        vm.prank(recipient);
+        vm.expectRevert(MoonPage.Invalid.selector);
+
+        page.list(id, price, tip);
+    }
+
     function testCannotListPriceZero() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
@@ -614,7 +706,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             // Retrieve the ETH amounts for determining the sufficient msg.value
             // and to also check that the proper amounts were received by all parties
-            (priceETH, tipETH) = _calculateValue(price, tip);
+            (priceETH, tipETH) = _calculateTransferValues(price, tip);
 
             page.deposit(id, recipient);
 
@@ -645,6 +737,417 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
                 recipient.balance
             );
             assertEq(tipRecipientBalanceBefore + tipETH, TIP_RECIPIENT.balance);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchList
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchListEmptyIdsArrayInvalid() external {
+        uint256[] memory listIds = new uint256[](0);
+        uint48[] memory prices = new uint48[](0);
+        uint48[] memory tips = new uint48[](0);
+
+        vm.expectRevert(MoonPage.Invalid.selector);
+
+        page.batchList(listIds, prices, tips);
+    }
+
+    function testCannotBatchListMismatchedArrayInvalid() external {
+        uint48[] memory prices = new uint48[](0);
+        uint48[] memory tips = new uint48[](ids.length);
+
+        vm.expectRevert(stdError.indexOOBError);
+
+        page.batchList(ids, prices, tips);
+
+        prices = new uint48[](ids.length);
+        tips = new uint48[](0);
+
+        vm.expectRevert(stdError.indexOOBError);
+
+        page.batchList(ids, prices, tips);
+    }
+
+    function testBatchList(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchList(recipient, ids);
+
+        page.batchList(ids, prices, tips);
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            (address seller, uint48 listingPrice, uint48 listingTip) = page
+                .listings(id);
+
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(0, page.balanceOf(recipient, id));
+            assertEq(1, page.balanceOf(address(page), id));
+            assertEq(recipient, seller);
+            assertEq(prices[i], listingPrice);
+            assertEq(tips[i], listingTip);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchEdit
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchEditEmptyIdsArrayInvalid() external {
+        uint256[] memory editIds = new uint256[](0);
+        uint48[] memory newPrices = new uint48[](0);
+
+        vm.expectRevert(MoonPage.Invalid.selector);
+
+        page.batchEdit(editIds, newPrices);
+    }
+
+    function testCannotBatchEditMismatchedArrayInvalid() external {
+        uint48[] memory newPrices = new uint48[](0);
+
+        vm.expectRevert(stdError.indexOOBError);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testCannotBatchEditNewPriceZero() external {
+        uint48[] memory newPrices = new uint48[](ids.length);
+
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testCannotBatchEditUnauthorized() external {
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory newPrices = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000;
+            tips[i] = 1_000;
+            newPrices[i] = 200_000;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testBatchEdit(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory newPrices = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+            newPrices[i] = 200_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        vm.prank(recipient);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchEdit(recipient, ids);
+
+        page.batchEdit(ids, newPrices);
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            (address seller, uint48 listingPrice, uint48 listingTip) = page
+                .listings(id);
+
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(0, page.balanceOf(recipient, id));
+            assertEq(1, page.balanceOf(address(page), id));
+            assertEq(recipient, seller);
+            assertEq(newPrices[i], listingPrice);
+            assertEq(tips[i], listingTip);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchCancel
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchCancelEmptyIdsArrayInvalid() external {
+        uint256[] memory cancelIds = new uint256[](0);
+
+        vm.expectRevert(MoonPage.Invalid.selector);
+
+        page.batchCancel(cancelIds);
+    }
+
+    function testCannotBatchCancelUnauthorized(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        vm.expectRevert(MoonPage.Unauthorized.selector);
+
+        page.batchCancel(ids);
+    }
+
+    function testBatchCancel(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        vm.prank(recipient);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchCancel(recipient, ids);
+
+        page.batchCancel(ids);
+
+        for (uint256 i; i < iLen; ) {
+            uint256 id = ids[i];
+            (address seller, uint48 listingPrice, uint48 listingTip) = page
+                .listings(id);
+
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(1, page.balanceOf(recipient, id));
+            assertEq(0, page.balanceOf(address(page), id));
+            assertEq(address(0), seller);
+            assertEq(0, listingPrice);
+            assertEq(0, listingTip);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchBuy
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchBuyEmptyIdsArrayInvalid() external {
+        uint256[] memory buyIds = new uint256[](0);
+
+        vm.expectRevert(MoonPage.Invalid.selector);
+
+        page.batchBuy(buyIds);
+    }
+
+    function testCannotBatchBuyMsgValueZero() external {
+        vm.expectRevert(MoonPage.Zero.selector);
+
+        page.batchBuy(ids);
+    }
+
+    function testCannotBatchBuyMsgValueInsufficient(
+        uint8 priceMultiplier
+    ) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        uint256 totalSalesProceeds;
+
+        for (uint256 i; i < iLen; ) {
+            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
+                prices[i],
+                tips[i]
+            );
+            totalSalesProceeds += (priceETH - tipETH);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.deal(address(this), totalSalesProceeds);
+        vm.expectRevert(MoonPage.Insufficient.selector);
+
+        // Send enough ETH to cover sales proceeds but not tips
+        page.batchBuy{value: totalSalesProceeds}(ids);
+    }
+
+    function testBatchBuy(uint8 priceMultiplier) external {
+        vm.assume(priceMultiplier != 0);
+
+        address recipient = accounts[0];
+
+        page.batchDeposit(ids, recipient);
+
+        uint256 iLen = ids.length;
+        uint48[] memory prices = new uint48[](iLen);
+        uint48[] memory tips = new uint48[](iLen);
+
+        for (uint256 i; i < iLen; ) {
+            prices[i] = 100_000 * uint48(priceMultiplier);
+            tips[i] = 1_000 * uint48(priceMultiplier);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(recipient);
+
+        page.batchList(ids, prices, tips);
+
+        uint256 totalPriceETH;
+        uint256 totalTipETH;
+        uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
+        uint256 sellerBalanceBefore = recipient.balance;
+
+        for (uint256 i; i < iLen; ) {
+            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
+                prices[i],
+                tips[i]
+            );
+            totalPriceETH += priceETH;
+            totalTipETH += tipETH;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.deal(address(this), totalPriceETH);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchBuy(address(this), ids);
+
+        // Send enough ETH to cover sales proceeds but not tips
+        page.batchBuy{value: totalPriceETH}(ids);
+
+        assertEq(
+            tipRecipientBalanceBefore + totalTipETH,
+            TIP_RECIPIENT.balance
+        );
+        assertEq(
+            sellerBalanceBefore + (totalPriceETH - totalTipETH),
+            recipient.balance
+        );
+
+        for (uint256 i; i < iLen; ) {
+            assertEq(address(this), page.ownerOf(ids[i]));
+            assertEq(1, page.balanceOf(address(this), ids[i]));
+            assertEq(0, page.balanceOf(address(page), ids[i]));
+            assertEq(0, page.balanceOf(recipient, ids[i]));
+
 
             unchecked {
                 ++i;
