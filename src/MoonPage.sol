@@ -18,8 +18,12 @@ contract MoonPage is
     using SafeTransferLib for address payable;
 
     struct Listing {
+        // Seller address
         address seller;
+        // Adequate for 79m ether
         uint96 price;
+        // Optional tip amount
+        uint256 tip;
     }
 
     ERC721 public collection;
@@ -29,7 +33,7 @@ contract MoonPage is
     mapping(uint256 => Listing) public listings;
 
     event SetTipRecipient(address tipRecipient);
-    event List(uint256 indexed id, address indexed seller, uint96 price);
+    event List(uint256 indexed id);
     event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
     event Cancel(uint256 indexed id, address indexed seller);
     event Buy(
@@ -209,8 +213,9 @@ contract MoonPage is
      * @notice Create a listing
      * @param  id     uint256  Collection token ID
      * @param  price  uint96   Price
+     * @param  tip    uint256  Tip amount
      */
-    function list(uint256 id, uint96 price) external {
+    function list(uint256 id, uint96 price, uint256 tip) external {
         // Reverts if msg.sender does not have the token
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
@@ -221,9 +226,9 @@ contract MoonPage is
         ownerOf[id] = address(this);
 
         // Set the listing
-        listings[id] = Listing(msg.sender, price);
+        listings[id] = Listing(msg.sender, price, tip);
 
-        emit List(id, msg.sender, price);
+        emit List(id);
     }
 
     /**

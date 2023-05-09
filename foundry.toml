@@ -5,9 +5,10 @@ out = 'out'
 libs = ['lib']
 verbosity = 3
 bytecode_hash = 'none'
+gas_reports = ["MoonBook", "MoonPage"]
 
 [fuzz]
-runs = 100
+runs = 10
 
 [profile.optimized]
 optimizer_runs = 1_000_000

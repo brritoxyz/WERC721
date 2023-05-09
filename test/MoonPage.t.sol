@@ -42,7 +42,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] ids,
         uint256[] amounts
     );
-    event List(uint256 indexed id, address indexed seller, uint96 price);
+    event List(uint256 indexed id);
     event Edit(uint256 indexed id, address indexed seller, uint96 newPrice);
     event Cancel(uint256 indexed id, address indexed seller);
     event Buy(
@@ -353,7 +353,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         vm.expectRevert(MoonPage.Unauthorized.selector);
 
-        page.list(id, price);
+        page.list(id, price, 0);
     }
 
     function testCannotListPriceZero() external {
@@ -371,7 +371,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         vm.prank(recipient);
         vm.expectRevert(MoonPage.Zero.selector);
 
-        page.list(id, price);
+        page.list(id, price, 0);
     }
 
     function testList(uint8 priceMultiplier) external {
@@ -383,6 +383,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             uint256 id = ids[i];
             address recipient = accounts[i];
             uint96 price = 0.1 ether * uint96(priceMultiplier);
+            uint256 tip = 0.01 ether * uint256(priceMultiplier);
 
             page.deposit(id, recipient);
 
@@ -391,19 +392,21 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(address(page), id));
 
             vm.prank(recipient);
-            vm.expectEmit(true, true, false, true, address(page));
+            vm.expectEmit(true, false, false, true, address(page));
 
-            emit List(id, recipient, price);
+            emit List(id);
 
-            page.list(id, price);
+            page.list(id, price, tip);
 
-            (address seller, uint96 listingPrice) = page.listings(id);
+            (address seller, uint96 listingPrice, uint256 listingTip) = page
+                .listings(id);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
             assertEq(1, page.balanceOf(address(page), id));
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
+            assertEq(tip, listingTip);
 
             unchecked {
                 ++i;
@@ -434,9 +437,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         vm.prank(recipient);
 
-        page.list(id, price);
+        page.list(id, price, 0);
 
-        (address seller, ) = page.listings(id);
+        (address seller, uint96 listingPrice, uint256 listingTip) = page
+            .listings(id);
 
         assertEq(recipient, seller);
 
@@ -462,9 +466,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             vm.prank(recipient);
 
-            page.list(id, price);
+            page.list(id, price, 0);
 
-            (address seller, uint96 listingPrice) = page.listings(id);
+            (address seller, uint96 listingPrice, uint256 listingTip) = page
+                .listings(id);
 
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
@@ -476,7 +481,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             page.edit(id, newPrice);
 
-            (seller, listingPrice) = page.listings(id);
+            (seller, listingPrice, listingTip) = page.listings(id);
 
             // Verify that the updated listing has the same seller, different price
             assertEq(recipient, seller);
@@ -501,9 +506,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         vm.prank(recipient);
 
-        page.list(id, price);
+        page.list(id, price, 0);
 
-        (address seller, ) = page.listings(id);
+        (address seller, uint96 listingPrice, uint256 listingTip) = page
+            .listings(id);
 
         assertEq(recipient, seller);
 
@@ -526,7 +532,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             vm.prank(recipient);
 
-            page.list(id, price);
+            page.list(id, price, 0);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(1, page.balanceOf(address(page), id));
@@ -573,7 +579,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             vm.prank(recipient);
 
-            page.list(id, price);
+            page.list(id, price, 0);
         }
 
         vm.expectRevert(MoonPage.Insufficient.selector);
@@ -596,9 +602,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             vm.prank(recipient);
 
-            page.list(id, price);
+            page.list(id, price, 0);
 
-            (address seller, uint96 listingPrice) = page.listings(id);
+            (address seller, uint96 listingPrice, uint256 listingTip) = page
+                .listings(id);
             uint256 buyerBalanceBefore = address(this).balance;
             uint256 sellerBalanceBefore = recipient.balance;
 
@@ -614,7 +621,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             page.buy{value: price}(id);
 
-            (seller, listingPrice) = page.listings(id);
+            (seller, listingPrice, listingTip) = page.listings(id);
 
             assertEq(address(0), seller);
             assertEq(0, listingPrice);
