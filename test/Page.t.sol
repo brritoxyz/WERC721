@@ -6,18 +6,18 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {MoonBook} from "src/MoonBook.sol";
-import {MoonPage} from "src/MoonPage.sol";
+import {Book} from "src/Book.sol";
+import {Page} from "src/Page.sol";
 
-contract MoonPageTest is Test, ERC721TokenReceiver {
+contract PageTest is Test, ERC721TokenReceiver {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 private constant ONE = 1;
     address payable private constant TIP_RECIPIENT =
         payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
-    MoonBook private immutable book;
-    MoonPage private immutable page;
+    Book private immutable book;
+    Page private immutable page;
     uint256 private immutable valueDenom;
 
     uint256[] private ids = [1, 39, 111];
@@ -59,8 +59,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     event BatchBuy(uint256[] ids);
 
     constructor() {
-        book = new MoonBook();
-        page = MoonPage(book.createPage(LLAMA));
+        book = new Book();
+        page = Page(book.createPage(LLAMA));
         valueDenom = page.VALUE_DENOM();
 
         // Verify that page cannot be initialized again
@@ -170,7 +170,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotDepositRecipientZero() external {
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.deposit(ids[0], recipient);
     }
@@ -211,7 +211,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] memory depositIds = new uint256[](0);
         address recipient = accounts[0];
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.batchDeposit(depositIds, recipient);
     }
@@ -221,7 +221,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         depositIds[0] = ids[0];
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.batchDeposit(depositIds, recipient);
     }
@@ -283,7 +283,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         address recipient = accounts[0];
 
         vm.prank(msgSender);
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.withdraw(id, recipient);
     }
@@ -332,7 +332,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] memory withdrawIds = new uint256[](0);
         address recipient = accounts[0];
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.batchWithdraw(withdrawIds, recipient);
     }
@@ -355,7 +355,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.batchDeposit(ids, recipient);
 
         vm.prank(address(this));
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.batchWithdraw(ids, address(this));
     }
@@ -432,7 +432,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         assertEq(recipient, page.ownerOf(id));
         assertEq(1, page.balanceOf(recipient, id));
 
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.list(id, price, tip);
     }
@@ -451,7 +451,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.deposit(id, recipient);
 
         vm.prank(recipient);
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.list(id, price, tip);
     }
@@ -470,7 +470,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         // Call `list` as the recipient to ensure that they are authorized to sell
         vm.prank(recipient);
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.list(id, price, tip);
     }
@@ -521,7 +521,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 id = ids[0];
         uint48 price = 0;
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.edit(id, price);
     }
@@ -539,7 +539,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.list(id, price, tip);
 
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.edit(id, newPrice);
     }
@@ -603,7 +603,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.list(id, price, tip);
 
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.cancel(id);
     }
@@ -652,7 +652,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 id = ids[0];
         uint256 msgValue = 0;
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.buy{value: msgValue}(id);
     }
@@ -671,9 +671,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
             page.list(id, price, tip);
 
-            vm.expectRevert(MoonPage.Insufficient.selector);
+            vm.expectRevert(Page.Insufficient.selector);
         } else {
-            vm.expectRevert(MoonPage.Nonexistent.selector);
+            vm.expectRevert(Page.Nonexistent.selector);
         }
 
         // Attempt to buy with msg.value less than price
@@ -682,9 +682,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
     function testBuy(uint48 price, uint48 tip) external {
         vm.assume(price != 0);
-        vm.assume(price < 1_000_000);
-        vm.assume(price > tip);
-        vm.assume(tip < 1_000);
+        vm.assume(tip < price);
 
         uint256 id;
         address recipient;
@@ -747,7 +745,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint48[] memory prices = new uint48[](0);
         uint48[] memory tips = new uint48[](0);
 
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.batchList(listIds, prices, tips);
     }
@@ -820,7 +818,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] memory editIds = new uint256[](0);
         uint48[] memory newPrices = new uint48[](0);
 
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.batchEdit(editIds, newPrices);
     }
@@ -836,7 +834,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotBatchEditNewPriceZero() external {
         uint48[] memory newPrices = new uint48[](ids.length);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -864,7 +862,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchList(ids, prices, tips);
 
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -926,7 +924,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotBatchCancelEmptyIdsArrayInvalid() external {
         uint256[] memory cancelIds = new uint256[](0);
 
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.batchCancel(cancelIds);
     }
@@ -953,7 +951,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchList(ids, prices, tips);
 
-        vm.expectRevert(MoonPage.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.batchCancel(ids);
     }
@@ -1013,13 +1011,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotBatchBuyEmptyIdsArrayInvalid() external {
         uint256[] memory buyIds = new uint256[](0);
 
-        vm.expectRevert(MoonPage.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.batchBuy(buyIds);
     }
 
     function testCannotBatchBuyMsgValueZero() external {
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert(Page.Zero.selector);
 
         page.batchBuy(ids);
     }
@@ -1061,7 +1059,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         }
 
         vm.deal(address(this), totalSellerProceeds);
-        vm.expectRevert(MoonPage.Insufficient.selector);
+        vm.expectRevert(Page.Insufficient.selector);
 
         // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalSellerProceeds}(ids);

@@ -8,7 +8,7 @@ import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
 import {ERC1155} from "src/base/ERC1155.sol";
 
-contract MoonPage is
+contract Page is
     Initializable,
     Owned,
     ReentrancyGuard,

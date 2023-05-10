@@ -7,8 +7,8 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {MoonBook} from "src/MoonBook.sol";
-import {MoonPage} from "src/MoonPage.sol";
+import {Book} from "src/Book.sol";
+import {Page} from "src/Page.sol";
 
 contract DummyERC20 is ERC20("", "", 18) {}
 
@@ -18,18 +18,18 @@ contract DummyERC4626 is ERC4626(new DummyERC20(), "", "") {
     }
 }
 
-contract MoonBookTest is Test {
+contract BookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
 
-    MoonBook private immutable moon;
-    MoonPage private immutable page;
+    Book private immutable moon;
+    Page private immutable page;
     address private immutable moonAddr;
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
-        moon = new MoonBook();
+        moon = new Book();
         moonAddr = address(moon);
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
@@ -39,7 +39,7 @@ contract MoonBookTest is Test {
         );
         address pageAddress = moon.createPage(LLAMA);
 
-        page = MoonPage(pageAddress);
+        page = Page(pageAddress);
 
         assertEq(address(this), moon.owner());
         assertEq(address(this), page.owner());
@@ -56,7 +56,7 @@ contract MoonBookTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotCreatePageCollectionInvalid() external {
-        vm.expectRevert(MoonBook.Invalid.selector);
+        vm.expectRevert(Book.Invalid.selector);
 
         moon.createPage(ERC721(address(0)));
     }
@@ -64,7 +64,7 @@ contract MoonBookTest is Test {
     function testCannotCreatePageAlreadyCreated() external {
         assertEq(address(page), moon.pages(LLAMA));
 
-        vm.expectRevert(MoonBook.AlreadyExists.selector);
+        vm.expectRevert(Book.AlreadyExists.selector);
 
         moon.createPage(LLAMA);
     }
@@ -83,14 +83,14 @@ contract MoonBookTest is Test {
         address pageAddress = moon.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
-        assertEq(address(this), MoonPage(pageAddress).owner());
+        assertEq(address(this), Page(pageAddress).owner());
         assertEq(
             address(collection),
-            address(MoonPage(pageAddress).collection())
+            address(Page(pageAddress).collection())
         );
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        MoonPage(pageAddress).initialize(address(this), collection);
+        Page(pageAddress).initialize(address(this), collection);
     }
 }

@@ -4,23 +4,23 @@ pragma solidity 0.8.19;
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {MoonPage} from "src/MoonPage.sol";
+import {Page} from "src/Page.sol";
 
-contract MoonBook is Owned {
+contract Book is Owned {
     // Paired with the collection address to compute the CREATE2 salt
     bytes12 public constant SALT_FRAGMENT = bytes12("JPAGE||EGAPJ");
 
-    // MoonPage implementation contract address
+    // Page implementation contract address
     address public immutable pageImplementation;
 
-    // ERC721 collections mapped to their MoonPage contracts
+    // ERC721 collections mapped to their Page contracts
     mapping(ERC721 => address) public pages;
 
     error Invalid();
     error AlreadyExists();
 
     constructor() Owned(msg.sender) {
-        pageImplementation = address(new MoonPage());
+        pageImplementation = address(new Page());
     }
 
     function createPage(ERC721 collection) external returns (address page) {
@@ -36,7 +36,7 @@ contract MoonBook is Owned {
         );
 
         // Initialize minimal proxy with the owner and collection
-        MoonPage(page).initialize(owner, collection);
+        Page(page).initialize(owner, collection);
 
         // Update the mapping to point the collection to its page
         pages[collection] = page;
