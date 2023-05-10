@@ -46,8 +46,7 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint256[] ids,
         uint256[] amounts
     );
-    event URI(string value, uint256 indexed id);
-    event Initialize(address owner, ERC721 collection);
+    event Initialize(address owner, ERC721 collection, address tipRecipient);
     event SetTipRecipient(address tipRecipient);
     event List(uint256 id);
     event Edit(uint256 id);
@@ -59,15 +58,14 @@ contract PageTest is Test, ERC721TokenReceiver {
     event BatchBuy(uint256[] ids);
 
     constructor() {
-        book = new Book();
+        book = new Book(TIP_RECIPIENT);
         page = Page(book.createPage(LLAMA));
         valueDenom = page.VALUE_DENOM();
 
         // Verify that page cannot be initialized again
         vm.expectRevert("Initializable: contract is already initialized");
 
-        page.initialize(address(this), LLAMA);
-        page.setTipRecipient(TIP_RECIPIENT);
+        page.initialize(address(this), LLAMA, TIP_RECIPIENT);
     }
 
     function setUp() external {
@@ -94,47 +92,30 @@ contract PageTest is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             setURI
+                             uri
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotSetURIUnauthorized() external {
-        address caller = accounts[0];
+    function testURI() external {
+        uint256 id = ids[0];
+        string memory collectionURI = LLAMA.tokenURI(id);
 
-        assertTrue(caller != page.owner());
-
-        vm.prank(caller);
-        vm.expectRevert("UNAUTHORIZED");
-
-        page.setURI("");
-    }
-
-    function testSetURI() external {
-        address caller = address(this);
-        string memory newuri = "hello";
-
-        assertEq(caller, page.owner());
-
-        // Compare uri string hashes
-        assertTrue(
-            keccak256(abi.encodePacked(newuri)) !=
-                keccak256(abi.encodePacked(page.uri(0)))
-        );
-
-        vm.expectEmit(false, true, false, true, address(page));
-
-        emit URI(newuri, 0);
-
-        page.setURI(newuri);
+        page.uri(id);
 
         assertEq(
-            keccak256(abi.encodePacked(newuri)),
-            keccak256(abi.encodePacked(page.uri(0)))
+            keccak256(abi.encodePacked(collectionURI)),
+            keccak256(abi.encodePacked(page.uri(id)))
         );
     }
 
     /*//////////////////////////////////////////////////////////////
                              setTipRecipient
     //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetTipRecipientZero() external {
+        vm.expectRevert(Page.Zero.selector);
+
+        page.setTipRecipient(payable(address(0)));
+    }
 
     function testCannotSetTipRecipientUnauthorized() external {
         address caller = accounts[0];

@@ -21,34 +21,80 @@ contract DummyERC4626 is ERC4626(new DummyERC20(), "", "") {
 contract BookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
+    address payable private constant TIP_RECIPIENT =
+        payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
-    Book private immutable moon;
+    address[] private accounts = [
+        0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
+        0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
+        0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+    ];
+
+    Book private immutable book;
     Page private immutable page;
-    address private immutable moonAddr;
+    address private immutable bookAddr;
 
+    event SetTipRecipient(address tipRecipient);
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
-        moon = new Book();
-        moonAddr = address(moon);
+        book = new Book(TIP_RECIPIENT);
+        bookAddr = address(book);
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
-            moon.pageImplementation(),
-            keccak256(abi.encodePacked(LLAMA, moon.SALT_FRAGMENT())),
-            address(moon)
+            book.pageImplementation(),
+            keccak256(abi.encodePacked(LLAMA, book.SALT_FRAGMENT())),
+            address(book)
         );
-        address pageAddress = moon.createPage(LLAMA);
+        address pageAddress = book.createPage(LLAMA);
 
         page = Page(pageAddress);
 
-        assertEq(address(this), moon.owner());
+        assertEq(address(this), book.owner());
         assertEq(address(this), page.owner());
         assertEq(predeterminedPageAddress, pageAddress);
-        assertTrue(moon.pageImplementation() != address(0));
+        assertTrue(book.pageImplementation() != address(0));
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        page.initialize(address(this), LLAMA);
+        page.initialize(address(this), LLAMA, TIP_RECIPIENT);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setTipRecipient
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetTipRecipientZero() external {
+        vm.expectRevert(Book.Zero.selector);
+
+        book.setTipRecipient(payable(address(0)));
+    }
+
+    function testCannotSetTipRecipientUnauthorized() external {
+        address caller = accounts[0];
+
+        assertTrue(caller != book.owner());
+
+        vm.prank(caller);
+        vm.expectRevert("UNAUTHORIZED");
+
+        book.setTipRecipient(payable(address(0)));
+    }
+
+    function testSetTipRecipient() external {
+        address caller = address(this);
+        address payable tipRecipient = payable(accounts[0]);
+
+        assertEq(caller, book.owner());
+        assertTrue(tipRecipient != book.tipRecipient());
+
+        vm.expectEmit(false, false, false, true, address(book));
+
+        emit SetTipRecipient(tipRecipient);
+
+        book.setTipRecipient(tipRecipient);
+
+        assertEq(tipRecipient, book.tipRecipient());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -56,41 +102,39 @@ contract BookTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotCreatePageCollectionInvalid() external {
-        vm.expectRevert(Book.Invalid.selector);
+        vm.expectRevert(Book.Zero.selector);
 
-        moon.createPage(ERC721(address(0)));
+        book.createPage(ERC721(address(0)));
     }
 
     function testCannotCreatePageAlreadyCreated() external {
-        assertEq(address(page), moon.pages(LLAMA));
+        assertEq(address(page), book.pages(LLAMA));
 
         vm.expectRevert(Book.AlreadyExists.selector);
 
-        moon.createPage(LLAMA);
+        book.createPage(LLAMA);
     }
 
     function testCreatePage(ERC721 collection) external {
         vm.assume(address(collection) != address(0));
         vm.assume(address(collection) != address(LLAMA));
 
-        assertEq(address(0), moon.pages(collection));
+        assertEq(address(0), book.pages(collection));
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
-            moon.pageImplementation(),
-            keccak256(abi.encodePacked(collection, moon.SALT_FRAGMENT())),
-            address(moon)
+            book.pageImplementation(),
+            keccak256(abi.encodePacked(collection, book.SALT_FRAGMENT())),
+            address(book)
         );
-        address pageAddress = moon.createPage(collection);
+        address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(this), Page(pageAddress).owner());
-        assertEq(
-            address(collection),
-            address(Page(pageAddress).collection())
-        );
+        assertEq(address(collection), address(Page(pageAddress).collection()));
+        assertEq(TIP_RECIPIENT, Page(pageAddress).tipRecipient());
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        Page(pageAddress).initialize(address(this), collection);
+        Page(pageAddress).initialize(address(this), collection, TIP_RECIPIENT);
     }
 }

@@ -10,7 +10,7 @@ contract DeploymentScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        new Book();
+        new Book(payable(vm.envAddress("TIP_RECIPIENT")));
 
         vm.stopBroadcast();
     }

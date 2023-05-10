@@ -6,14 +6,14 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {ERC1155} from "src/base/ERC1155.sol";
+import {ERC1155NS} from "src/base/ERC1155NS.sol";
 
 contract Page is
     Initializable,
     Owned,
     ReentrancyGuard,
     ERC721TokenReceiver,
-    ERC1155
+    ERC1155NS
 {
     using SafeTransferLib for address payable;
 
@@ -26,6 +26,9 @@ contract Page is
         uint48 tip;
     }
 
+    // Fixed value for single token amounts
+    uint256 private constant ONE = 1;
+
     // Price and tips are denominated in 0.00000001 ETH
     uint256 public constant VALUE_DENOM = 0.00000001 ether;
 
@@ -35,7 +38,7 @@ contract Page is
 
     mapping(uint256 => Listing) public listings;
 
-    event Initialize(address owner, ERC721 collection);
+    event Initialize(address owner, ERC721 collection, address tipRecipient);
     event SetTipRecipient(address tipRecipient);
     event List(uint256 id);
     event Edit(uint256 id);
@@ -67,12 +70,15 @@ contract Page is
 
     /**
      * @notice Initializes the minimal proxy with an owner and collection contract
-     * @param  _owner       address  Contract owner (has permission to set URI)
-     * @param  _collection  ERC721   Collection contract
+     * @dev    There is no param validation to save gas (the Book contract will always input non-zero values)
+     * @param  _owner         address  Contract owner (has permission to changes the tip recipient)
+     * @param  _collection    ERC721   Collection contract
+     * @param  _tipRecipient  address  Tip recipient
      */
     function initialize(
         address _owner,
-        ERC721 _collection
+        ERC721 _collection,
+        address payable _tipRecipient
     ) external initializer {
         // Initialize Owned by setting `owner` to protocol-controlled address
         // The owner *only* has the ability to set the URI and change the tip recipient
@@ -84,14 +90,19 @@ contract Page is
         // Initialize this contract with the ERC721 collection contract
         collection = _collection;
 
-        emit Initialize(_owner, _collection);
+        // Initialize this contract with a tip recipient (can later be modified by the owner if needed)
+        tipRecipient = _tipRecipient;
+
+        emit Initialize(_owner, _collection, _tipRecipient);
     }
 
-    function setURI(string memory newuri) external onlyOwner {
-        _setURI(newuri);
+    function uri(uint256 id) public view override returns (string memory) {
+        return collection.tokenURI(id);
     }
 
     function setTipRecipient(address payable _tipRecipient) external onlyOwner {
+        if (_tipRecipient == address(0)) revert Zero();
+
         tipRecipient = _tipRecipient;
 
         emit SetTipRecipient(_tipRecipient);

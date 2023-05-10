@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.19;
 
+/// @notice This non-standard (NS) ERC-1155 implementation deviates from the standard in exactly the following ways:
+///         - `TransferSingle` and `TransferBatch` events are NOT emitted for mints and burns
+///         - `TransferSingle` and `TransferBatch` events are NOT emitted outside of `safeTransferFrom` and `safeBatchTransferFrom`
+///         - `onERC1155Received` and `onERC1155BatchReceived` are NOT called outside of `safeTransferFrom` and `safeBatchTransferFrom`
 /// @notice Minimalist and gas efficient standard ERC1155 implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol)
-abstract contract ERC1155 {
+abstract contract ERC1155NS {
     /*//////////////////////////////////////////////////////////////
                              ERC1155 STORAGE
     //////////////////////////////////////////////////////////////*/
-
-    // Fixed value for single token amounts
-    uint256 internal constant ONE = 1;
-
-    // Fixed value for unused `data` argument
-    bytes internal constant EMPTY_DATA = "";
-
-    // Token metadata
-    string internal _uri = "";
 
     // Tracks the owner of each non-fungible derivative
     mapping(uint256 => address) public ownerOf;
@@ -54,27 +49,7 @@ abstract contract ERC1155 {
                              METADATA LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function _setURI(string memory newuri) internal {
-        _uri = newuri;
-
-        // The value of `0` for `id` is a placeholder ID
-        // See comment block below for more details on how to construct the token URI
-        emit URI(newuri, 0);
-    }
-
-    /**
-     * @dev See {IERC1155MetadataURI-uri}.
-     *
-     * This implementation returns the same URI for *all* token types. It relies
-     * on the token type ID substitution mechanism
-     * https://eips.ethereum.org/EIPS/eip-1155#metadata[defined in the EIP].
-     *
-     * Clients calling this function must replace the `\{id\}` substring with the
-     * actual token type ID.
-     */
-    function uri(uint256) public view virtual returns (string memory) {
-        return _uri;
-    }
+    function uri(uint256 id) public view virtual returns (string memory);
 
     /*//////////////////////////////////////////////////////////////
                               ERC1155 LOGIC
@@ -209,35 +184,6 @@ abstract contract ERC1155 {
             interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
             interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
             interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        INTERNAL MINT/BURN LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function _mint(address to, uint256 id) internal {
-        ownerOf[id] = to;
-
-        emit TransferSingle(msg.sender, address(0), to, id, ONE);
-
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
-                    msg.sender,
-                    address(0),
-                    id,
-                    ONE,
-                    EMPTY_DATA
-                ) == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
-    }
-
-    function _burn(address from, uint256 id) internal {
-        ownerOf[id] = address(0);
-
-        emit TransferSingle(msg.sender, from, address(0), id, ONE);
     }
 }
 
