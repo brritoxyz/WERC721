@@ -60,6 +60,13 @@ contract Page is
         _disableInitializers();
     }
 
+    /**
+     * @notice Calculates the listing-related values in the specified ETH denomination
+     * @param  price           uint256  Listing price
+     * @param  tip             uint256  Listing tip
+     * @return priceETH        uint256  Listing price in ETH
+     * @return sellerProceeds  uint256  Proceeds received by the seller in ETH (listing price - listing tip)
+     */
     function _calculateListingValues(
         uint256 price,
         uint256 tip
@@ -96,10 +103,19 @@ contract Page is
         emit Initialize(_owner, _collection, _tipRecipient);
     }
 
+    /**
+     * @notice Retrieves the collection token URI for the specified ID
+     * @param  id  uint256  Token ID
+     * @return     string   Token URI
+     */
     function uri(uint256 id) public view override returns (string memory) {
         return collection.tokenURI(id);
     }
 
+    /**
+     * @notice Sets the tip recipient
+     * @param  _tipRecipient  address  Tip recipient (receives optional tips)
+     */
     function setTipRecipient(address payable _tipRecipient) external onlyOwner {
         if (_tipRecipient == address(0)) revert Zero();
 

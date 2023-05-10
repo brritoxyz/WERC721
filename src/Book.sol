@@ -31,6 +31,10 @@ contract Book is Owned {
         tipRecipient = _tipRecipient;
     }
 
+    /**
+     * @notice Sets the tip recipient
+     * @param  _tipRecipient  address  Tip recipient (receives optional tips)
+     */
     function setTipRecipient(address payable _tipRecipient) external onlyOwner {
         if (_tipRecipient == address(0)) revert Zero();
 
@@ -39,6 +43,11 @@ contract Book is Owned {
         emit SetTipRecipient(_tipRecipient);
     }
 
+    /**
+     * @notice Creates a new Page contract (minimal proxy) for the given collection
+     * @param  collection  ERC721   NFT collection
+     * @return page        address  Page contract address
+     */
     function createPage(ERC721 collection) external returns (address page) {
         // Revert if the collection is the zero address
         if (address(collection) == address(0)) revert Zero();
