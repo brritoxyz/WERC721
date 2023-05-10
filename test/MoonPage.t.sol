@@ -173,9 +173,8 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testDeposit() external {
         uint256 id;
         address recipient;
-        uint256 iLen = ids.length;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -223,14 +222,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     }
 
     function testBatchDeposit() external {
-        uint256 iLen = ids.length;
         address recipient = accounts[0];
-        uint256[] memory amounts = new uint256[](iLen);
+        uint256[] memory amounts = new uint256[](ids.length);
 
         // For batching the balance check
-        address[] memory batchBalanceRecipient = new address[](iLen);
+        address[] memory batchBalanceRecipient = new address[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             batchBalanceRecipient[i] = recipient;
             amounts[i] = ONE;
 
@@ -250,7 +248,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             ids
         );
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(1, balances[i]);
@@ -289,10 +287,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testWithdraw() external {
         uint256 id;
         address recipient;
-        uint256 iLen = ids.length;
 
         // Deposit the NFTs and mint derivative tokens for recipients
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -306,7 +303,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         address owner;
 
         // Withdraw the NFTs by redeeming the derivative tokens as their owners
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
             owner = accounts[i];
 
@@ -357,14 +354,13 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     }
 
     function testBatchWithdraw() external {
-        uint256 iLen = ids.length;
         address recipient = accounts[0];
-        uint256[] memory amounts = new uint256[](iLen);
+        uint256[] memory amounts = new uint256[](ids.length);
 
         // For batching the balance check
-        address[] memory batchBalanceRecipient = new address[](iLen);
+        address[] memory batchBalanceRecipient = new address[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             batchBalanceRecipient[i] = recipient;
             amounts[i] = ONE;
 
@@ -380,7 +376,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             ids
         );
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(1, balances[i]);
@@ -403,7 +399,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         balances = page.balanceOfBatch(batchBalanceRecipient, ids);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(0, balances[i]);
@@ -478,9 +474,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testList(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
-        uint256 iLen = ids.length;
-
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
             uint48 price = 100_000 * uint48(priceMultiplier);
@@ -549,9 +543,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testEdit(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
-        uint256 iLen = ids.length;
-
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
             uint48 price = 100_000 * uint48(priceMultiplier);
@@ -615,9 +607,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCancel(uint16 priceMultiplier) external {
         vm.assume(priceMultiplier != 0);
 
-        uint256 iLen = ids.length;
-
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
             uint48 price = 100_000 * uint48(priceMultiplier);
@@ -781,11 +771,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * uint48(priceMultiplier);
             tips[i] = 1_000 * uint48(priceMultiplier);
 
@@ -801,7 +790,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchList(ids, prices, tips);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint48 listingPrice, uint48 listingTip) = page
                 .listings(id);
@@ -853,12 +842,11 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
-        uint48[] memory newPrices = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
+        uint48[] memory newPrices = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000;
             tips[i] = 1_000;
             newPrices[i] = 200_000;
@@ -884,12 +872,11 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
-        uint48[] memory newPrices = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
+        uint48[] memory newPrices = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * uint48(priceMultiplier);
             tips[i] = 1_000 * uint48(priceMultiplier);
             newPrices[i] = 200_000 * uint48(priceMultiplier);
@@ -910,7 +897,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchEdit(ids, newPrices);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint48 listingPrice, uint48 listingTip) = page
                 .listings(id);
@@ -946,11 +933,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * priceMultiplier;
             tips[i] = 1_000 * priceMultiplier;
 
@@ -975,11 +961,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * uint48(priceMultiplier);
             tips[i] = 1_000 * uint48(priceMultiplier);
 
@@ -999,7 +984,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchCancel(ids);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint48 listingPrice, uint48 listingTip) = page
                 .listings(id);
@@ -1035,19 +1020,16 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.batchBuy(ids);
     }
 
-    function testCannotBatchBuyMsgValueInsufficient(
-
-    ) external {
+    function testCannotBatchBuyMsgValueInsufficient() external {
         uint48 priceMultiplier = 10;
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * priceMultiplier;
             tips[i] = 1_000 * priceMultiplier;
 
@@ -1060,25 +1042,25 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchList(ids, prices, tips);
 
-        uint256 totalSalesProceeds;
+        uint256 totalSellerProceeds;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
                 prices[i],
                 tips[i]
             );
-            totalSalesProceeds += (priceETH - tipETH);
+            totalSellerProceeds += (priceETH - tipETH);
 
             unchecked {
                 ++i;
             }
         }
 
-        vm.deal(address(this), totalSalesProceeds);
+        vm.deal(address(this), totalSellerProceeds);
         vm.expectRevert(MoonPage.Insufficient.selector);
 
-        // Send enough ETH to cover sales proceeds but not tips
-        page.batchBuy{value: totalSalesProceeds}(ids);
+        // Send enough ETH to cover seller proceeds but not tips
+        page.batchBuy{value: totalSellerProceeds}(ids);
     }
 
     function testBatchBuy(uint8 priceMultiplier) external {
@@ -1088,11 +1070,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * uint48(priceMultiplier);
             tips[i] = 1_000 * uint48(priceMultiplier);
 
@@ -1110,7 +1091,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
         uint256 sellerBalanceBefore = recipient.balance;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
                 prices[i],
                 tips[i]
@@ -1128,7 +1109,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         emit BatchBuy(address(this), ids);
 
-        // Send enough ETH to cover sales proceeds but not tips
+        // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);
 
         assertEq(
@@ -1140,7 +1121,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             recipient.balance
         );
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             assertEq(address(this), page.ownerOf(ids[i]));
             assertEq(1, page.balanceOf(address(this), ids[i]));
             assertEq(0, page.balanceOf(address(page), ids[i]));
@@ -1163,11 +1144,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         page.batchDeposit(ids, recipient);
 
-        uint256 iLen = ids.length;
-        uint48[] memory prices = new uint48[](iLen);
-        uint48[] memory tips = new uint48[](iLen);
+        uint48[] memory prices = new uint48[](ids.length);
+        uint48[] memory tips = new uint48[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             prices[i] = 100_000 * uint48(priceMultiplier);
             tips[i] = 1_000 * uint48(priceMultiplier);
 
@@ -1185,7 +1165,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
         uint256 sellerBalanceBefore = recipient.balance;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             if (i == cancelIndex) {
                 ++i;
                 continue;
@@ -1212,7 +1192,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
 
         emit BatchBuy(address(this), ids);
 
-        // Send enough ETH to cover sales proceeds but not tips
+        // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);
 
         assertEq(
@@ -1224,7 +1204,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             recipient.balance
         );
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             if (i == cancelIndex) {
                 ++i;
                 continue;

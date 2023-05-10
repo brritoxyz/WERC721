@@ -57,12 +57,12 @@ contract MoonPage is
         _disableInitializers();
     }
 
-    function _calculateTransferValues(
+    function _calculateListingValues(
         uint256 price,
         uint256 tip
-    ) private pure returns (uint256 priceETH, uint256 salesProceeds) {
+    ) private pure returns (uint256 priceETH, uint256 sellerProceeds) {
         priceETH = price * VALUE_DENOM;
-        salesProceeds = priceETH - (tip * VALUE_DENOM);
+        sellerProceeds = priceETH - (tip * VALUE_DENOM);
     }
 
     /**
@@ -98,8 +98,8 @@ contract MoonPage is
     }
 
     /**
-     * @notice Deposit a NFT into the vault and receive a redeemable derivative token
-     * @param  id         uint256  Collection token ID
+     * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
+     * @param  id         uint256  Token ID
      * @param  recipient  address  Derivative token recipient
      */
     function deposit(uint256 id, address recipient) external nonReentrant {
@@ -109,15 +109,15 @@ contract MoonPage is
         // Reverts if unapproved or if msg.sender does not have the token
         collection.safeTransferFrom(msg.sender, address(this), id);
 
-        // Mint the derivative token for the specified recipient
+        // Mint the derivative token for the specified recipient (same ID)
         // Reverts if the recipient is unsafe, emits TransferSingle
         _mint(recipient, id);
     }
 
     /**
      * @notice Withdraw a NFT from the vault by redeeming a derivative token
-     * @param  id         uint256  Collection token ID
-     * @param  recipient  address  Derivative token recipient
+     * @param  id         uint256  Token ID
+     * @param  recipient  address  NFT recipient
      */
     function withdraw(uint256 id, address recipient) external nonReentrant {
         if (recipient == address(0)) revert Zero();
@@ -134,7 +134,7 @@ contract MoonPage is
 
     /**
      * @notice Create a listing
-     * @param  id     uint256  Collection token ID
+     * @param  id     uint256  Token ID
      * @param  price  uint48   Price
      * @param  tip    uint48   Tip amount
      */
@@ -157,7 +157,7 @@ contract MoonPage is
 
     /**
      * @notice Create a listing
-     * @param  id     uint256  Collection token ID
+     * @param  id     uint256  Token ID
      * @param  price  uint48   Price
      * @param  tip    uint48   Tip amount
      */
@@ -169,7 +169,7 @@ contract MoonPage is
 
     /**
      * @notice Edit a listing
-     * @param  id        uint256  Collection token ID
+     * @param  id        uint256  Token ID
      * @param  newPrice  uint48   New price
      */
     function edit(uint256 id, uint48 newPrice) external {
@@ -188,7 +188,7 @@ contract MoonPage is
 
     /**
      * @notice Cancel a listing
-     * @param  id  uint256  Collection token ID
+     * @param  id  uint256  Token ID
      */
     function cancel(uint256 id) external {
         // Reverts if msg.sender is not the seller
@@ -204,20 +204,21 @@ contract MoonPage is
 
     /**
      * @notice Fulfill a listing
-     * @param  id  uint256  Collection token ID
+     * @param  id  uint256  Token ID
      */
     function buy(uint256 id) external payable nonReentrant {
         // Reverts if zero value was sent
         if (msg.value == 0) revert Zero();
 
         Listing memory listing = listings[id];
-        (uint256 priceETH, uint256 salesProceeds) = _calculateTransferValues(
+
+        // Revert if the listing does not exist (listing price cannot be zero)
+        if (listing.price == 0) revert Nonexistent();
+
+        (uint256 priceETH, uint256 sellerProceeds) = _calculateListingValues(
             listing.price,
             listing.tip
         );
-
-        // Revert if the listing does not exist (listing price cannot be zero)
-        if (priceETH == 0) revert Nonexistent();
 
         // Reverts if the msg.value does not cover the listing price in ETH
         if (msg.value < priceETH) revert Insufficient();
@@ -229,35 +230,33 @@ contract MoonPage is
         ownerOf[id] = msg.sender;
 
         // Transfer the sales proceeds to the seller
-        payable(listing.seller).safeTransferETH(salesProceeds);
+        payable(listing.seller).safeTransferETH(sellerProceeds);
 
         // Transfer the tip to the designated recipient, if any. Value
         // sent may contain a buyer tip, which is why we are checking
         // the difference between msg.value and the sales proceeds
-        if (msg.value - salesProceeds != 0)
-            tipRecipient.safeTransferETH(msg.value - salesProceeds);
+        if (msg.value - sellerProceeds != 0)
+            tipRecipient.safeTransferETH(msg.value - sellerProceeds);
 
         emit Buy(id, msg.sender);
     }
 
     /**
      * @notice Batch deposit
-     * @param  ids        uint256[]  Collection token IDs
+     * @param  ids        uint256[]  Token IDs
      * @param  recipient  address    Derivative token recipient
      */
     function batchDeposit(
         uint256[] calldata ids,
         address recipient
     ) external nonReentrant {
-        uint256 iLen = ids.length;
-
-        if (iLen == 0) revert Zero();
+        if (ids.length == 0) revert Zero();
         if (recipient == address(0)) revert Zero();
 
         uint256 id;
-        uint256[] memory amounts = new uint256[](iLen);
+        uint256[] memory amounts = new uint256[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
             // Transfer the NFT to self before minting the derivative token
@@ -293,22 +292,20 @@ contract MoonPage is
 
     /**
      * @notice Batch withdraw
-     * @param  ids        uint256[]  Collection token IDs
-     * @param  recipient  address    Derivative token recipient
+     * @param  ids        uint256[]  Token IDs
+     * @param  recipient  address    NFT recipient
      */
     function batchWithdraw(
         uint256[] calldata ids,
         address recipient
     ) external nonReentrant {
-        uint256 iLen = ids.length;
-
-        if (iLen == 0) revert Zero();
+        if (ids.length == 0) revert Zero();
         if (recipient == address(0)) revert Zero();
 
         uint256 id;
-        uint256[] memory amounts = new uint256[](iLen);
+        uint256[] memory amounts = new uint256[](ids.length);
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
             // Revert if msg.sender is not the owner of the derivative token
@@ -333,7 +330,7 @@ contract MoonPage is
 
     /**
      * @notice Create a batch of listings
-     * @param  ids     uint256[]  Collection token IDs
+     * @param  ids     uint256[]  Token IDs
      * @param  prices  uint48[]   Prices
      * @param  tips    uint48[]   Tip amounts
      */
@@ -342,11 +339,9 @@ contract MoonPage is
         uint48[] calldata prices,
         uint48[] calldata tips
     ) external {
-        uint256 iLen = ids.length;
+        if (ids.length == 0) revert Invalid();
 
-        if (iLen == 0) revert Invalid();
-
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
             // not equal in length to the `ids` array
             _list(ids[i], prices[i], tips[i]);
@@ -361,20 +356,18 @@ contract MoonPage is
 
     /**
      * @notice Edit a batch of listings
-     * @param  ids        uint256[]  Collection token IDs
+     * @param  ids        uint256[]  Token IDs
      * @param  newPrices  uint48[]   New prices
      */
     function batchEdit(
         uint256[] calldata ids,
         uint48[] calldata newPrices
     ) external {
-        uint256 iLen = ids.length;
-
-        if (iLen == 0) revert Invalid();
+        if (ids.length == 0) revert Invalid();
 
         uint48 newPrice;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             newPrice = newPrices[i];
 
             // Revert if the new price is zero
@@ -397,16 +390,14 @@ contract MoonPage is
 
     /**
      * @notice Cancel a batch of listings
-     * @param  ids  uint256[]  Collection token IDs
+     * @param  ids  uint256[]  Token IDs
      */
     function batchCancel(uint256[] calldata ids) external {
-        uint256 iLen = ids.length;
-
-        if (iLen == 0) revert Invalid();
+        if (ids.length == 0) revert Invalid();
 
         uint256 id;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
             // Reverts if msg.sender is not the seller
@@ -427,21 +418,19 @@ contract MoonPage is
 
     /**
      * @notice Fulfill a batch of listings
-     * @param  ids  uint256[]  Collection token IDs
+     * @param  ids  uint256[]  Token IDs
      */
     function batchBuy(uint256[] calldata ids) external payable nonReentrant {
-        uint256 iLen = ids.length;
-
-        if (iLen == 0) revert Invalid();
+        if (ids.length == 0) revert Invalid();
 
         // Reverts if zero value was sent
         if (msg.value == 0) revert Zero();
 
         uint256 id;
         uint256 totalPriceETH;
-        uint256 totalSalesProceeds;
+        uint256 totalSellerProceeds;
 
-        for (uint256 i; i < iLen; ) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
             // Increment iterator variable since we are conditionally skipping (i.e. listing does not exist)
@@ -450,19 +439,20 @@ contract MoonPage is
             }
 
             Listing memory listing = listings[id];
-            (
-                uint256 priceETH,
-                uint256 salesProceeds
-            ) = _calculateTransferValues(listing.price, listing.tip);
 
             // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call)
-            if (priceETH == 0) continue;
+            if (listing.price == 0) continue;
+
+            (
+                uint256 priceETH,
+                uint256 sellerProceeds
+            ) = _calculateListingValues(listing.price, listing.tip);
 
             // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
             totalPriceETH += priceETH;
 
-            // Accrue totalSalesProceeds, which will enable us to calculate and transfer the tip in a single call
-            totalSalesProceeds += salesProceeds;
+            // Accrue totalSellerProceeds, which will enable us to calculate and transfer the tip in a single call
+            totalSellerProceeds += sellerProceeds;
 
             // Delete listing prior to setting the token to the buyer
             delete listings[id];
@@ -471,15 +461,15 @@ contract MoonPage is
             ownerOf[id] = msg.sender;
 
             // Transfer the sales proceeds to the seller
-            payable(listing.seller).safeTransferETH(salesProceeds);
+            payable(listing.seller).safeTransferETH(sellerProceeds);
         }
 
         // Revert if msg.value does not cover the *total* listing price in ETH
         if (msg.value < totalPriceETH) revert Insufficient();
 
         // Transfer the cumulative tips (if any) to the tip recipient
-        if (msg.value - totalSalesProceeds != 0)
-            tipRecipient.safeTransferETH(msg.value - totalSalesProceeds);
+        if (msg.value - totalSellerProceeds != 0)
+            tipRecipient.safeTransferETH(msg.value - totalSellerProceeds);
 
         emit BatchBuy(msg.sender, ids);
     }
