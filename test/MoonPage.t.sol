@@ -27,6 +27,11 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
     ];
 
+    event Transfer(
+        address indexed from,
+        address indexed to,
+        uint256 indexed id
+    );
     event TransferSingle(
         address indexed operator,
         address indexed from,
@@ -44,14 +49,14 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     event URI(string value, uint256 indexed id);
     event Initialize(address owner, ERC721 collection);
     event SetTipRecipient(address tipRecipient);
-    event List(uint256 indexed id, address indexed seller);
-    event Edit(uint256 indexed id, address indexed seller);
-    event Cancel(uint256 indexed id, address indexed seller);
-    event Buy(uint256 indexed id, address indexed buyer);
-    event BatchList(address indexed seller, uint256[] ids);
-    event BatchEdit(address indexed seller, uint256[] ids);
-    event BatchCancel(address indexed seller, uint256[] ids);
-    event BatchBuy(address indexed buyer, uint256[] ids);
+    event List(uint256 id);
+    event Edit(uint256 id);
+    event Cancel(uint256 id);
+    event Buy(uint256 id);
+    event BatchList(uint256[] ids);
+    event BatchEdit(uint256[] ids);
+    event BatchCancel(uint256[] ids);
+    event BatchBuy(uint256[] ids);
 
     constructor() {
         book = new MoonBook();
@@ -165,7 +170,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotDepositRecipientZero() external {
         address recipient = address(0);
 
-        vm.expectRevert("UNSAFE_RECIPIENT");
+        vm.expectRevert(MoonPage.Zero.selector);
 
         page.deposit(ids[0], recipient);
     }
@@ -182,9 +187,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(address(0), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
 
-            vm.expectEmit(true, true, true, true, address(page));
+            vm.expectEmit(true, true, true, true, address(LLAMA));
 
-            emit TransferSingle(address(this), address(0), recipient, id, 1);
+            emit Transfer(address(this), address(page), id);
 
             page.deposit(id, recipient);
 
@@ -216,7 +221,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         depositIds[0] = ids[0];
         address recipient = address(0);
 
-        vm.expectRevert("UNSAFE_RECIPIENT");
+        vm.expectRevert(MoonPage.Zero.selector);
 
         page.batchDeposit(depositIds, recipient);
     }
@@ -236,10 +241,6 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
                 ++i;
             }
         }
-
-        vm.expectEmit(true, true, true, true, address(page));
-
-        emit TransferBatch(address(this), address(0), recipient, ids, amounts);
 
         page.batchDeposit(ids, recipient);
 
@@ -311,9 +312,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             owner = accounts[i];
 
             vm.prank(owner);
-            vm.expectEmit(true, true, true, true, address(page));
+            vm.expectEmit(true, true, true, true, address(LLAMA));
 
-            emit TransferSingle(owner, owner, address(0), id, 1);
+            emit Transfer(address(page), recipient, id);
 
             page.withdraw(id, recipient);
 
@@ -397,9 +398,6 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         address withdrawRecipient = address(this);
 
         vm.prank(recipient);
-        vm.expectEmit(true, true, true, true, address(page));
-
-        emit TransferBatch(recipient, recipient, address(0), ids, amounts);
 
         page.batchWithdraw(ids, withdrawRecipient);
 
@@ -493,9 +491,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(address(page), id));
 
             vm.prank(recipient);
-            vm.expectEmit(true, true, false, true, address(page));
+            vm.expectEmit(false, false, false, true, address(page));
 
-            emit List(id, recipient);
+            emit List(id);
 
             page.list(id, price, tip);
 
@@ -571,9 +569,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(price, listingPrice);
 
             vm.prank(recipient);
-            vm.expectEmit(true, true, false, true, address(page));
+            vm.expectEmit(false, false, false, true, address(page));
 
-            emit Edit(id, recipient);
+            emit Edit(id);
 
             page.edit(id, newPrice);
 
@@ -630,9 +628,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             assertEq(0, page.balanceOf(recipient, id));
 
             vm.prank(recipient);
-            vm.expectEmit(true, true, false, true, address(page));
+            vm.expectEmit(false, false, false, true, address(page));
 
-            emit Cancel(id, recipient);
+            emit Cancel(id);
 
             page.cancel(id);
 
@@ -714,9 +712,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
             uint256 sellerBalanceBefore = recipient.balance;
             uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
 
-            vm.expectEmit(true, false, false, true, address(page));
+            vm.expectEmit(false, false, false, true, address(page));
 
-            emit Buy(id, recipient);
+            emit Buy(id);
 
             page.buy{value: priceETH}(id);
 
@@ -790,9 +788,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         }
 
         vm.prank(recipient);
-        vm.expectEmit(true, false, false, true, address(page));
+        vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchList(recipient, ids);
+        emit BatchList(ids);
 
         page.batchList(ids, prices, tips);
 
@@ -897,9 +895,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.batchList(ids, prices, tips);
 
         vm.prank(recipient);
-        vm.expectEmit(true, false, false, true, address(page));
+        vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchEdit(recipient, ids);
+        emit BatchEdit(ids);
 
         page.batchEdit(ids, newPrices);
 
@@ -984,9 +982,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.batchList(ids, prices, tips);
 
         vm.prank(recipient);
-        vm.expectEmit(true, false, false, true, address(page));
+        vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchCancel(recipient, ids);
+        emit BatchCancel(ids);
 
         page.batchCancel(ids);
 
@@ -1111,9 +1109,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         }
 
         vm.deal(address(this), totalPriceETH);
-        vm.expectEmit(true, false, false, true, address(page));
+        vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchBuy(address(this), ids);
+        emit BatchBuy(ids);
 
         // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);
@@ -1194,9 +1192,9 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         page.cancel(ids[cancelIndex]);
 
         vm.deal(address(this), totalPriceETH);
-        vm.expectEmit(true, false, false, true, address(page));
+        vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchBuy(address(this), ids);
+        emit BatchBuy(ids);
 
         // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);

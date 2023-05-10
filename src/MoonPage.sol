@@ -6,7 +6,7 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {ERC1155, ERC1155TokenReceiver} from "src/base/ERC1155.sol";
+import {ERC1155} from "src/base/ERC1155.sol";
 
 contract MoonPage is
     Initializable,
@@ -37,14 +37,14 @@ contract MoonPage is
 
     event Initialize(address owner, ERC721 collection);
     event SetTipRecipient(address tipRecipient);
-    event List(uint256 indexed id, address indexed seller);
-    event Edit(uint256 indexed id, address indexed seller);
-    event Cancel(uint256 indexed id, address indexed seller);
-    event Buy(uint256 indexed id, address indexed buyer);
-    event BatchList(address indexed seller, uint256[] ids);
-    event BatchEdit(address indexed seller, uint256[] ids);
-    event BatchCancel(address indexed seller, uint256[] ids);
-    event BatchBuy(address indexed buyer, uint256[] ids);
+    event List(uint256 id);
+    event Edit(uint256 id);
+    event Cancel(uint256 id);
+    event Buy(uint256 id);
+    event BatchList(uint256[] ids);
+    event BatchEdit(uint256[] ids);
+    event BatchCancel(uint256[] ids);
+    event BatchBuy(uint256[] ids);
 
     error Zero();
     error Invalid();
@@ -103,13 +103,14 @@ contract MoonPage is
      * @param  recipient  address  Derivative token recipient
      */
     function deposit(uint256 id, address recipient) external nonReentrant {
+        if (recipient == address(0)) revert Zero();
+
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
         collection.transferFrom(msg.sender, address(this), id);
 
         // Mint the derivative token for the specified recipient (same ID)
-        // Reverts if the recipient is considered unsafe, and emits `TransferSingle`
-        _mint(recipient, id);
+        ownerOf[id] = recipient;
     }
 
     /**
@@ -122,8 +123,7 @@ contract MoonPage is
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Burn the derivative token before transferring the NFT to the recipient
-        // Reverts if the recipient is unsafe (zero address or no receiver method if contract)
-        _burn(msg.sender, id);
+        ownerOf[id] = address(0);
 
         // Transfer the NFT to the recipient - reverts if recipient is zero address
         collection.safeTransferFrom(address(this), recipient, id);
@@ -161,7 +161,7 @@ contract MoonPage is
     function list(uint256 id, uint48 price, uint48 tip) external {
         _list(id, price, tip);
 
-        emit List(id, msg.sender);
+        emit List(id);
     }
 
     /**
@@ -180,7 +180,7 @@ contract MoonPage is
 
         listing.price = newPrice;
 
-        emit Edit(id, msg.sender);
+        emit Edit(id);
     }
 
     /**
@@ -196,7 +196,7 @@ contract MoonPage is
 
         ownerOf[id] = msg.sender;
 
-        emit Cancel(id, msg.sender);
+        emit Cancel(id);
     }
 
     /**
@@ -235,7 +235,7 @@ contract MoonPage is
         if (msg.value - sellerProceeds != 0)
             tipRecipient.safeTransferETH(msg.value - sellerProceeds);
 
-        emit Buy(id, msg.sender);
+        emit Buy(id);
     }
 
     /**
@@ -248,6 +248,7 @@ contract MoonPage is
         address recipient
     ) external nonReentrant {
         if (ids.length == 0) revert Zero();
+        if (recipient == address(0)) revert Zero();
 
         uint256 id;
         uint256[] memory amounts = new uint256[](ids.length);
@@ -269,21 +270,6 @@ contract MoonPage is
                 ++i;
             }
         }
-
-        emit TransferBatch(msg.sender, address(0), recipient, ids, amounts);
-
-        require(
-            recipient.code.length == 0
-                ? recipient != address(0)
-                : ERC1155TokenReceiver(recipient).onERC1155BatchReceived(
-                    msg.sender,
-                    address(0),
-                    ids,
-                    amounts,
-                    EMPTY_DATA
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
-            "UNSAFE_RECIPIENT"
-        );
     }
 
     /**
@@ -319,8 +305,6 @@ contract MoonPage is
                 ++i;
             }
         }
-
-        emit TransferBatch(msg.sender, msg.sender, address(0), ids, amounts);
     }
 
     /**
@@ -346,7 +330,7 @@ contract MoonPage is
             }
         }
 
-        emit BatchList(msg.sender, ids);
+        emit BatchList(ids);
     }
 
     /**
@@ -380,7 +364,7 @@ contract MoonPage is
             }
         }
 
-        emit BatchEdit(msg.sender, ids);
+        emit BatchEdit(ids);
     }
 
     /**
@@ -408,7 +392,7 @@ contract MoonPage is
             }
         }
 
-        emit BatchCancel(msg.sender, ids);
+        emit BatchCancel(ids);
     }
 
     /**
@@ -466,6 +450,6 @@ contract MoonPage is
         if (msg.value - totalSellerProceeds != 0)
             tipRecipient.safeTransferETH(msg.value - totalSellerProceeds);
 
-        emit BatchBuy(msg.sender, ids);
+        emit BatchBuy(ids);
     }
 }
