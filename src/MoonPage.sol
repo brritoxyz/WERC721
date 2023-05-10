@@ -103,14 +103,12 @@ contract MoonPage is
      * @param  recipient  address  Derivative token recipient
      */
     function deposit(uint256 id, address recipient) external nonReentrant {
-        if (recipient == address(0)) revert Zero();
-
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
         collection.transferFrom(msg.sender, address(this), id);
 
         // Mint the derivative token for the specified recipient (same ID)
-        // Reverts if the recipient is unsafe, emits TransferSingle
+        // Reverts if the recipient is considered unsafe, and emits `TransferSingle`
         _mint(recipient, id);
     }
 
@@ -120,15 +118,14 @@ contract MoonPage is
      * @param  recipient  address  NFT recipient
      */
     function withdraw(uint256 id, address recipient) external nonReentrant {
-        if (recipient == address(0)) revert Zero();
-
         // Revert if msg.sender is not the owner of the derivative token
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Burn the derivative token before transferring the NFT to the recipient
+        // Reverts if the recipient is unsafe (zero address or no receiver method if contract)
         _burn(msg.sender, id);
 
-        // Transfer the NFT to the recipient
+        // Transfer the NFT to the recipient - reverts if recipient is zero address
         collection.safeTransferFrom(address(this), recipient, id);
     }
 
@@ -251,7 +248,6 @@ contract MoonPage is
         address recipient
     ) external nonReentrant {
         if (ids.length == 0) revert Zero();
-        if (recipient == address(0)) revert Zero();
 
         uint256 id;
         uint256[] memory amounts = new uint256[](ids.length);
@@ -300,7 +296,6 @@ contract MoonPage is
         address recipient
     ) external nonReentrant {
         if (ids.length == 0) revert Zero();
-        if (recipient == address(0)) revert Zero();
 
         uint256 id;
         uint256[] memory amounts = new uint256[](ids.length);
@@ -317,7 +312,7 @@ contract MoonPage is
             // Set the `amounts` element to ONE - emitted in the TransferBatch event
             amounts[i] = ONE;
 
-            // Transfer the NFT to the recipient
+            // Transfer the NFT to the recipient - reverts if the recipient is the zero address
             collection.safeTransferFrom(address(this), recipient, id);
 
             unchecked {

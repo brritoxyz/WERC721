@@ -165,7 +165,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotDepositRecipientZero() external {
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert("UNSAFE_RECIPIENT");
 
         page.deposit(ids[0], recipient);
     }
@@ -216,7 +216,7 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         depositIds[0] = ids[0];
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        vm.expectRevert("UNSAFE_RECIPIENT");
 
         page.batchDeposit(depositIds, recipient);
     }
@@ -268,7 +268,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
     function testCannotWithdrawRecipientZero() external {
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        page.deposit(ids[0], accounts[0]);
+
+        vm.prank(accounts[0]);
+        vm.expectRevert();
 
         page.withdraw(ids[0], recipient);
     }
@@ -337,7 +340,10 @@ contract MoonPageTest is Test, ERC721TokenReceiver {
         uint256[] memory withdrawIds = new uint256[](1);
         address recipient = address(0);
 
-        vm.expectRevert(MoonPage.Zero.selector);
+        page.batchDeposit(ids, accounts[0]);
+
+        vm.prank(accounts[0]);
+        vm.expectRevert();
 
         page.batchWithdraw(withdrawIds, recipient);
     }
