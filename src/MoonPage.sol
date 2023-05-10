@@ -107,7 +107,7 @@ contract MoonPage is
 
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
-        collection.safeTransferFrom(msg.sender, address(this), id);
+        collection.transferFrom(msg.sender, address(this), id);
 
         // Mint the derivative token for the specified recipient (same ID)
         // Reverts if the recipient is unsafe, emits TransferSingle
@@ -261,7 +261,7 @@ contract MoonPage is
 
             // Transfer the NFT to self before minting the derivative token
             // Reverts if unapproved or if msg.sender does not have the token
-            collection.safeTransferFrom(msg.sender, address(this), id);
+            collection.transferFrom(msg.sender, address(this), id);
 
             // Mint the derivative token for the specified recipient
             ownerOf[id] = recipient;
