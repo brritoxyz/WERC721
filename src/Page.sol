@@ -76,6 +76,90 @@ contract Page is
     }
 
     /**
+     * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
+     * @param  id         uint256  Token ID
+     * @param  recipient  address  Derivative token recipient
+     */
+    function _deposit(uint256 id, address recipient) private {
+        // Transfer the NFT to self before minting the derivative token
+        // Reverts if unapproved or if msg.sender does not have the token
+        collection.transferFrom(msg.sender, address(this), id);
+
+        // Mint the derivative token for the specified recipient (same ID)
+        ownerOf[id] = recipient;
+    }
+
+    /**
+     * @notice Withdraw a NFT from the vault by redeeming a derivative token
+     * @param  id         uint256  Token ID
+     * @param  recipient  address  NFT recipient
+     */
+    function _withdraw(uint256 id, address recipient) private {
+        // Revert if msg.sender is not the owner of the derivative token
+        if (ownerOf[id] != msg.sender) revert Unauthorized();
+
+        // Burn the derivative token before transferring the NFT to the recipient
+        ownerOf[id] = address(0);
+
+        // Transfer the NFT to the recipient - reverts if recipient is zero address
+        collection.safeTransferFrom(address(this), recipient, id);
+    }
+
+    /**
+     * @notice Create a listing
+     * @param  id     uint256  Token ID
+     * @param  price  uint48   Price
+     * @param  tip    uint48   Tip amount
+     */
+    function _list(uint256 id, uint48 price, uint48 tip) private {
+        // Reverts if msg.sender does not have the token
+        if (ownerOf[id] != msg.sender) revert Unauthorized();
+
+        // Revert if the price is zero
+        if (price == 0) revert Zero();
+
+        // Revert if the tip is greater than the price
+        if (price < tip) revert Invalid();
+
+        // Update token owner to this contract to prevent double-listing
+        ownerOf[id] = address(this);
+
+        // Set the listing
+        listings[id] = Listing(msg.sender, price, tip);
+    }
+
+    /**
+     * @notice Edit a listing
+     * @param  id        uint256  Token ID
+     * @param  newPrice  uint48   New price
+     */
+    function _edit(uint256 id, uint48 newPrice) private {
+        // Revert if the new price is zero
+        if (newPrice == 0) revert Zero();
+
+        Listing storage listing = listings[id];
+
+        // Reverts if msg.sender is not the seller or listing does not exist
+        if (listing.seller != msg.sender) revert Unauthorized();
+
+        listing.price = newPrice;
+    }
+
+    /**
+     * @notice Cancel a listing
+     * @param  id  uint256  Token ID
+     */
+    function _cancel(uint256 id) private {
+        // Reverts if msg.sender is not the seller
+        if (listings[id].seller != msg.sender) revert Unauthorized();
+
+        // Delete listing prior to returning the token
+        delete listings[id];
+
+        ownerOf[id] = msg.sender;
+    }
+
+    /**
      * @notice Initializes the minimal proxy with an owner and collection contract
      * @dev    There is no param validation to save gas (the Book contract will always input non-zero values)
      * @param  _owner         address  Contract owner (has permission to changes the tip recipient)
@@ -132,12 +216,7 @@ contract Page is
     function deposit(uint256 id, address recipient) external nonReentrant {
         if (recipient == address(0)) revert Zero();
 
-        // Transfer the NFT to self before minting the derivative token
-        // Reverts if unapproved or if msg.sender does not have the token
-        collection.transferFrom(msg.sender, address(this), id);
-
-        // Mint the derivative token for the specified recipient (same ID)
-        ownerOf[id] = recipient;
+        _deposit(id, recipient);
     }
 
     /**
@@ -146,37 +225,7 @@ contract Page is
      * @param  recipient  address  NFT recipient
      */
     function withdraw(uint256 id, address recipient) external nonReentrant {
-        // Revert if msg.sender is not the owner of the derivative token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
-
-        // Burn the derivative token before transferring the NFT to the recipient
-        ownerOf[id] = address(0);
-
-        // Transfer the NFT to the recipient - reverts if recipient is zero address
-        collection.safeTransferFrom(address(this), recipient, id);
-    }
-
-    /**
-     * @notice Create a listing
-     * @param  id     uint256  Token ID
-     * @param  price  uint48   Price
-     * @param  tip    uint48   Tip amount
-     */
-    function _list(uint256 id, uint48 price, uint48 tip) private {
-        // Reverts if msg.sender does not have the token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
-
-        // Revert if the price is zero
-        if (price == 0) revert Zero();
-
-        // Revert if the tip is greater than the price
-        if (price < tip) revert Invalid();
-
-        // Update token owner to this contract to prevent double-listing
-        ownerOf[id] = address(this);
-
-        // Set the listing
-        listings[id] = Listing(msg.sender, price, tip);
+        _withdraw(id, recipient);
     }
 
     /**
@@ -197,15 +246,7 @@ contract Page is
      * @param  newPrice  uint48   New price
      */
     function edit(uint256 id, uint48 newPrice) external {
-        // Revert if the new price is zero
-        if (newPrice == 0) revert Zero();
-
-        Listing storage listing = listings[id];
-
-        // Reverts if msg.sender is not the seller or listing does not exist
-        if (listing.seller != msg.sender) revert Unauthorized();
-
-        listing.price = newPrice;
+        _edit(id, newPrice);
 
         emit Edit(id);
     }
@@ -215,13 +256,7 @@ contract Page is
      * @param  id  uint256  Token ID
      */
     function cancel(uint256 id) external {
-        // Reverts if msg.sender is not the seller
-        if (listings[id].seller != msg.sender) revert Unauthorized();
-
-        // Delete listing prior to returning the token
-        delete listings[id];
-
-        ownerOf[id] = msg.sender;
+        _cancel(id);
 
         emit Cancel(id);
     }
@@ -277,17 +312,8 @@ contract Page is
         if (ids.length == 0) revert Zero();
         if (recipient == address(0)) revert Zero();
 
-        uint256 id;
-
         for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            // Transfer the NFT to self before minting the derivative token
-            // Reverts if unapproved or if msg.sender does not have the token
-            collection.transferFrom(msg.sender, address(this), id);
-
-            // Mint the derivative token for the specified recipient
-            ownerOf[id] = recipient;
+            _deposit(ids[i], recipient);
 
             unchecked {
                 ++i;
@@ -306,19 +332,8 @@ contract Page is
     ) external nonReentrant {
         if (ids.length == 0) revert Zero();
 
-        uint256 id;
-
         for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            // Revert if msg.sender is not the owner of the derivative token
-            if (ownerOf[id] != msg.sender) revert Unauthorized();
-
-            // Burn the derivative token before transferring the NFT to the recipient
-            ownerOf[id] = address(0);
-
-            // Transfer the NFT to the recipient - reverts if the recipient is the zero address
-            collection.safeTransferFrom(address(this), recipient, id);
+            _withdraw(ids[i], recipient);
 
             unchecked {
                 ++i;
@@ -341,7 +356,7 @@ contract Page is
 
         for (uint256 i; i < ids.length; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
-            // not equal in length to the `ids` array
+            // not equal in length to the `ids` array (indexOOB error)
             _list(ids[i], prices[i], tips[i]);
 
             unchecked {
@@ -363,20 +378,9 @@ contract Page is
     ) external {
         if (ids.length == 0) revert Invalid();
 
-        uint48 newPrice;
-
         for (uint256 i; i < ids.length; ) {
-            newPrice = newPrices[i];
-
-            // Revert if the new price is zero
-            if (newPrice == 0) revert Zero();
-
-            Listing storage listing = listings[ids[i]];
-
-            // Reverts if msg.sender is not the seller or listing does not exist
-            if (listing.seller != msg.sender) revert Unauthorized();
-
-            listing.price = newPrice;
+            // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
+            _edit(ids[i], newPrices[i]);
 
             unchecked {
                 ++i;
@@ -393,18 +397,8 @@ contract Page is
     function batchCancel(uint256[] calldata ids) external {
         if (ids.length == 0) revert Invalid();
 
-        uint256 id;
-
         for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            // Reverts if msg.sender is not the seller
-            if (listings[id].seller != msg.sender) revert Unauthorized();
-
-            // Delete listing prior to returning the token
-            delete listings[id];
-
-            ownerOf[id] = msg.sender;
+            _cancel(ids[i]);
 
             unchecked {
                 ++i;

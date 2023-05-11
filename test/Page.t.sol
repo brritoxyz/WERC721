@@ -280,6 +280,10 @@ contract PageTest is Test, ERC721TokenReceiver {
 
             page.deposit(id, recipient);
 
+            assertEq(address(page), LLAMA.ownerOf(id));
+            assertEq(recipient, page.ownerOf(id));
+            assertEq(1, page.balanceOf(recipient, id));
+
             unchecked {
                 ++i;
             }
@@ -298,6 +302,10 @@ contract PageTest is Test, ERC721TokenReceiver {
             emit Transfer(address(page), recipient, id);
 
             page.withdraw(id, recipient);
+
+            assertEq(recipient, LLAMA.ownerOf(id));
+            assertEq(address(0), page.ownerOf(id));
+            assertEq(0, page.balanceOf(recipient, id));
 
             unchecked {
                 ++i;
