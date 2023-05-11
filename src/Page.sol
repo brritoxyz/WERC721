@@ -278,7 +278,6 @@ contract Page is
         if (recipient == address(0)) revert Zero();
 
         uint256 id;
-        uint256[] memory amounts = new uint256[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
@@ -289,9 +288,6 @@ contract Page is
 
             // Mint the derivative token for the specified recipient
             ownerOf[id] = recipient;
-
-            // Set the `amounts` element to ONE - emitted in the TransferBatch event
-            amounts[i] = ONE;
 
             unchecked {
                 ++i;
@@ -311,7 +307,6 @@ contract Page is
         if (ids.length == 0) revert Zero();
 
         uint256 id;
-        uint256[] memory amounts = new uint256[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
@@ -321,9 +316,6 @@ contract Page is
 
             // Burn the derivative token before transferring the NFT to the recipient
             ownerOf[id] = address(0);
-
-            // Set the `amounts` element to ONE - emitted in the TransferBatch event
-            amounts[i] = ONE;
 
             // Transfer the NFT to the recipient - reverts if the recipient is the zero address
             collection.safeTransferFrom(address(this), recipient, id);
