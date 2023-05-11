@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 /// @notice This non-standard (NS) ERC-1155 implementation deviates from the standard in exactly the following ways:
 ///         - `TransferSingle` and `TransferBatch` events are NOT emitted for mints and burns

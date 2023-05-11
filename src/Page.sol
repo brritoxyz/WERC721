@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
@@ -25,9 +25,6 @@ contract Page is
         // Optional tip amount - deducted from the sales proceeds
         uint48 tip;
     }
-
-    // Fixed value for single token amounts
-    uint256 private constant ONE = 1;
 
     // Price and tips are denominated in 0.00000001 ETH
     uint256 public constant VALUE_DENOM = 0.00000001 ether;
@@ -71,8 +68,12 @@ contract Page is
         uint256 price,
         uint256 tip
     ) private pure returns (uint256 priceETH, uint256 sellerProceeds) {
-        priceETH = price * VALUE_DENOM;
-        sellerProceeds = priceETH - (tip * VALUE_DENOM);
+        // Price and tip are upcasted to uint256 from uint48 (i.e. their max value is 2**48 - 1)
+        // Knowing that, we can be sure that the below will never overflow since (2**48 - 1) * 1e-8 < (2**256 - 1)
+        unchecked {
+            priceETH = price * VALUE_DENOM;
+            sellerProceeds = priceETH - (tip * VALUE_DENOM);
+        }
     }
 
     /**
@@ -214,8 +215,6 @@ contract Page is
      * @param  recipient  address  Derivative token recipient
      */
     function deposit(uint256 id, address recipient) external nonReentrant {
-        if (recipient == address(0)) revert Zero();
-
         _deposit(id, recipient);
     }
 
@@ -266,9 +265,6 @@ contract Page is
      * @param  id  uint256  Token ID
      */
     function buy(uint256 id) external payable nonReentrant {
-        // Reverts if zero value was sent
-        if (msg.value == 0) revert Zero();
-
         Listing memory listing = listings[id];
 
         // Revert if the listing does not exist (listing price cannot be zero)
@@ -309,9 +305,7 @@ contract Page is
         uint256[] calldata ids,
         address recipient
     ) external nonReentrant {
-        if (ids.length == 0) revert Zero();
-        if (recipient == address(0)) revert Zero();
-
+        // If ids.length is zero then the loop body never runs and caller wastes gas
         for (uint256 i; i < ids.length; ) {
             _deposit(ids[i], recipient);
 
@@ -330,8 +324,6 @@ contract Page is
         uint256[] calldata ids,
         address recipient
     ) external nonReentrant {
-        if (ids.length == 0) revert Zero();
-
         for (uint256 i; i < ids.length; ) {
             _withdraw(ids[i], recipient);
 
@@ -352,8 +344,6 @@ contract Page is
         uint48[] calldata prices,
         uint48[] calldata tips
     ) external {
-        if (ids.length == 0) revert Invalid();
-
         for (uint256 i; i < ids.length; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
             // not equal in length to the `ids` array (indexOOB error)
@@ -376,8 +366,6 @@ contract Page is
         uint256[] calldata ids,
         uint48[] calldata newPrices
     ) external {
-        if (ids.length == 0) revert Invalid();
-
         for (uint256 i; i < ids.length; ) {
             // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
             _edit(ids[i], newPrices[i]);
@@ -395,8 +383,6 @@ contract Page is
      * @param  ids  uint256[]  Token IDs
      */
     function batchCancel(uint256[] calldata ids) external {
-        if (ids.length == 0) revert Invalid();
-
         for (uint256 i; i < ids.length; ) {
             _cancel(ids[i]);
 
@@ -413,11 +399,6 @@ contract Page is
      * @param  ids  uint256[]  Token IDs
      */
     function batchBuy(uint256[] calldata ids) external payable nonReentrant {
-        if (ids.length == 0) revert Invalid();
-
-        // Reverts if zero value was sent
-        if (msg.value == 0) revert Zero();
-
         uint256 id;
         uint256 totalPriceETH;
         uint256 totalSellerProceeds;
@@ -443,8 +424,11 @@ contract Page is
             // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
             totalPriceETH += priceETH;
 
-            // Accrue totalSellerProceeds, which will enable us to calculate and transfer the tip in a single call
-            totalSellerProceeds += sellerProceeds;
+            // Since seller proceeds is a subset of totalPriceETH, won't overflow without totalPriceETH doing so and reverting first
+            unchecked {
+                // Accrue totalSellerProceeds, which will enable us to calculate and transfer the tip in a single call
+                totalSellerProceeds += sellerProceeds;
+            }
 
             // Delete listing prior to setting the token to the buyer
             delete listings[id];

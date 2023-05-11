@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -148,14 +148,6 @@ contract PageTest is Test, ERC721TokenReceiver {
                              deposit
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotDepositRecipientZero() external {
-        address recipient = address(0);
-
-        vm.expectRevert(Page.Zero.selector);
-
-        page.deposit(ids[0], recipient);
-    }
-
     function testDeposit() external {
         uint256 id;
         address recipient;
@@ -187,25 +179,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     /*//////////////////////////////////////////////////////////////
                              batchDeposit
     //////////////////////////////////////////////////////////////*/
-
-    function testCannotBatchDepositIdsZero() external {
-        uint256[] memory depositIds = new uint256[](0);
-        address recipient = accounts[0];
-
-        vm.expectRevert(Page.Zero.selector);
-
-        page.batchDeposit(depositIds, recipient);
-    }
-
-    function testCannotBatchDepositRecipientZero() external {
-        uint256[] memory depositIds = new uint256[](1);
-        depositIds[0] = ids[0];
-        address recipient = address(0);
-
-        vm.expectRevert(Page.Zero.selector);
-
-        page.batchDeposit(depositIds, recipient);
-    }
 
     function testBatchDeposit() external {
         address recipient = accounts[0];
@@ -316,15 +289,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     /*//////////////////////////////////////////////////////////////
                              batchWithdraw
     //////////////////////////////////////////////////////////////*/
-
-    function testCannotBatchWithdrawIdsZero() external {
-        uint256[] memory withdrawIds = new uint256[](0);
-        address recipient = accounts[0];
-
-        vm.expectRevert(Page.Zero.selector);
-
-        page.batchWithdraw(withdrawIds, recipient);
-    }
 
     function testCannotBatchWithdrawRecipientZero() external {
         uint256[] memory withdrawIds = new uint256[](1);
@@ -637,15 +601,6 @@ contract PageTest is Test, ERC721TokenReceiver {
                              buy
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBuyMsgValueZero() external {
-        uint256 id = ids[0];
-        uint256 msgValue = 0;
-
-        vm.expectRevert(Page.Zero.selector);
-
-        page.buy{value: msgValue}(id);
-    }
-
     function testCannotBuyMsgValueInsufficient(bool shouldList) external {
         uint256 id = ids[0];
         address recipient = accounts[0];
@@ -729,16 +684,6 @@ contract PageTest is Test, ERC721TokenReceiver {
                              batchList
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchListEmptyIdsArrayInvalid() external {
-        uint256[] memory listIds = new uint256[](0);
-        uint48[] memory prices = new uint48[](0);
-        uint48[] memory tips = new uint48[](0);
-
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.batchList(listIds, prices, tips);
-    }
-
     function testCannotBatchListMismatchedArrayInvalid() external {
         uint48[] memory prices = new uint48[](0);
         uint48[] memory tips = new uint48[](ids.length);
@@ -802,15 +747,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     /*//////////////////////////////////////////////////////////////
                              batchEdit
     //////////////////////////////////////////////////////////////*/
-
-    function testCannotBatchEditEmptyIdsArrayInvalid() external {
-        uint256[] memory editIds = new uint256[](0);
-        uint48[] memory newPrices = new uint48[](0);
-
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.batchEdit(editIds, newPrices);
-    }
 
     function testCannotBatchEditMismatchedArrayInvalid() external {
         uint48[] memory newPrices = new uint48[](0);
@@ -910,14 +846,6 @@ contract PageTest is Test, ERC721TokenReceiver {
                              batchCancel
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchCancelEmptyIdsArrayInvalid() external {
-        uint256[] memory cancelIds = new uint256[](0);
-
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.batchCancel(cancelIds);
-    }
-
     function testCannotBatchCancelUnauthorized() external {
         uint48 priceMultiplier = 10;
         address recipient = accounts[0];
@@ -996,20 +924,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     /*//////////////////////////////////////////////////////////////
                              batchBuy
     //////////////////////////////////////////////////////////////*/
-
-    function testCannotBatchBuyEmptyIdsArrayInvalid() external {
-        uint256[] memory buyIds = new uint256[](0);
-
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.batchBuy(buyIds);
-    }
-
-    function testCannotBatchBuyMsgValueZero() external {
-        vm.expectRevert(Page.Zero.selector);
-
-        page.batchBuy(ids);
-    }
 
     function testCannotBatchBuyMsgValueInsufficient() external {
         uint48 priceMultiplier = 10;
