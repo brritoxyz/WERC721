@@ -35,6 +35,8 @@ contract PageBase is Test, ERC721TokenReceiver {
         0x70997970C51812dc3A010C7d01b50e0d17dc79C8
     ];
 
+    receive() external payable {}
+
     constructor() {
         book = new Book(TIP_RECIPIENT);
         page = Page(book.createPage(LLAMA));

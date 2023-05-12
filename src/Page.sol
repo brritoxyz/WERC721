@@ -35,7 +35,7 @@ contract Page is
 
     mapping(uint256 => Listing) public listings;
 
-    mapping(address => mapping(uint48 => uint256)) public offers;
+    mapping(address => mapping(uint256 => uint256)) public offers;
 
     event Initialize(address owner, ERC721 collection, address tipRecipient);
     event SetTipRecipient(address tipRecipient);
@@ -78,23 +78,6 @@ contract Page is
         unchecked {
             priceETH = price * VALUE_DENOM;
             sellerProceeds = priceETH - (tip * VALUE_DENOM);
-        }
-    }
-
-    /**
-     * @notice Calculates the ETH offer value based on price and quantity
-     * @param  price       uint256  Offer price (upcasted from uint48)
-     * @param  quantity    uint256  Offer quantity (upcasted from uint48)
-     * @return offerValue  uint256  Offer value in ETH
-     */
-    function _calculateOfferValue(
-        uint256 price,
-        uint256 quantity
-    ) private pure returns (uint256 offerValue) {
-        // Cannot overflow (see below)
-        // (2**48 - 1) * (2**168 - 1) * 1e-8 is always less than (2**256 - 1)
-        unchecked {
-            offerValue = price * quantity * VALUE_DENOM;
         }
     }
 
@@ -476,73 +459,72 @@ contract Page is
     }
 
     /**
-     * @notice Make a global offer
-     * @param  price     uint48   Price (capped to max listing price)
-     * @param  quantity  uint168  Offer quantity
+     * @notice Make/increase a global offer
+     * @param  offer     uint256  Offer in ETH
+     * @param  quantity  uint256  Offer quantity to make
      */
-    function makeOffer(uint48 price, uint168 quantity) external payable {
-        if (price == 0) revert Zero();
-        if (quantity == 0) revert Zero();
-        if (msg.value != _calculateOfferValue(price, quantity))
-            revert Insufficient();
+    function makeOffer(uint256 offer, uint256 quantity) external payable {
+        if (offer == 0) revert Zero();
 
-        // Increase offer quantity, in case offer quantity already exists
-        offers[msg.sender][price] += quantity;
+        // If msg.value and quantity are both zero then the caller will waste
+        // gas since their offer quantity will be increased by zero
+        // Since this is the case, we do not need to validate quantity != 0
+        if (msg.value != offer * quantity) revert Insufficient();
+
+        // Increase offer quantity
+        offers[msg.sender][offer] += quantity;
 
         emit MakeOffer(msg.sender);
     }
 
     /**
-     * @notice Make a global offer
-     * @param  price     uint48   Price (capped to max listing price)
+     * @notice Cancel/reduce a global offer
+     * @param  offer     uint256  Offer in ETH
+     * @param  quantity  uint256  Offer quantity to cancel
      */
-    function cancelOffer(uint48 price) external payable nonReentrant {
-        // Revert if price is zero
-        if (price == 0) revert Zero();
+    function cancelOffer(
+        uint256 offer,
+        uint256 quantity
+    ) external payable nonReentrant {
+        // Revert if offer is zero
+        if (offer == 0) revert Zero();
 
-        uint256 quantity = offers[msg.sender][price];
+        // Deduct quantity from the user's offers - reverts if `quantity`
+        // exceeds the actual amount of offers that the user has made
+        // If quantity is zero then zero offers are deducted, but the
+        // user also receives zero ETH back, resulting in gas wasted
+        offers[msg.sender][offer] -= quantity;
 
-        // Revert if user does not have any offers at the price point
-        if (quantity == 0) revert Zero();
-
-        // Zero out offer quantity before returning funds
-        offers[msg.sender][price] = 0;
-
-        payable(msg.sender).safeTransferETH(
-            _calculateOfferValue(price, quantity)
-        );
+        // Transfer the offer value back to the user
+        payable(msg.sender).safeTransferETH(offer * quantity);
 
         emit CancelOffer(msg.sender);
     }
 
     /**
-     * @notice Take a global offer
-     * @param  ids       uint256[]  Token IDs exchanged between taker and maker
-     * @param  maker     address    Maker address
-     * @param  price     uint48     Price
-     * @param  quantity  uint168    Quantity
+     * @notice Take global offers
+     * @param  ids    uint256[]  Token IDs exchanged between taker and maker
+     * @param  maker  address    Maker address
+     * @param  price  uint48     Price
      */
     function takeOffer(
         uint256[] calldata ids,
         address maker,
-        uint48 price,
-        uint168 quantity
+        uint48 price
     ) external payable nonReentrant {
-        // Revert if the taker tokens does not match the offer quantity
-        if (ids.length != quantity) revert Invalid();
+        // Revert if the taker tokens is zero
+        if (ids.length == 0) revert Invalid();
 
-        // Revert if available quantity is less than the taker-specified quantity
-        if (offers[maker][price] < quantity) revert Zero();
-
-        // Reduce maker's offer quantity by the taken amount before sending them tokens
-        offers[maker][price] -= quantity;
+        // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
+        // Reverts if the offer quantity is insufficient (arithmetic underflow)
+        offers[maker][price] -= ids.length;
 
         uint256 id;
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
-            // Revert if msg.sender is not the owner of the derivative token
+            // Revert if msg.sender/taker is not the owner of the derivative token
             if (ownerOf[id] != msg.sender) revert Unauthorized();
 
             // Set maker as the new owner of the token
@@ -554,12 +536,7 @@ contract Page is
         }
 
         // Send maker's funds to the offer taker
-        payable(msg.sender).safeTransferETH(
-            _calculateOfferValue(price, quantity)
-        );
-
-        // Transfer the tip (if any) to the tip recipient
-        if (msg.value != 0) tipRecipient.safeTransferETH(msg.value);
+        payable(msg.sender).safeTransferETH(price * ids.length);
 
         emit TakeOffer(msg.sender);
     }
