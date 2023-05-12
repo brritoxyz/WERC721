@@ -12,6 +12,10 @@ abstract contract ERC1155NS {
                              ERC1155 STORAGE
     //////////////////////////////////////////////////////////////*/
 
+    uint256 private constant SINGLE_AMOUNT = 1;
+
+    bytes private constant EMPTY_DATA = "";
+
     // Tracks the owner of each non-fungible derivative
     mapping(uint256 => address) public ownerOf;
 
@@ -79,8 +83,8 @@ abstract contract ERC1155NS {
         address from,
         address to,
         uint256 id,
-        uint256 amount,
-        bytes calldata data
+        uint256,
+        bytes calldata
     ) public virtual {
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
@@ -93,7 +97,7 @@ abstract contract ERC1155NS {
         // Set new owner as `to`
         ownerOf[id] = to;
 
-        emit TransferSingle(msg.sender, from, to, id, amount);
+        emit TransferSingle(msg.sender, from, to, id, SINGLE_AMOUNT);
 
         require(
             to.code.length == 0
@@ -102,8 +106,8 @@ abstract contract ERC1155NS {
                     msg.sender,
                     from,
                     id,
-                    amount,
-                    data
+                    SINGLE_AMOUNT,
+                    EMPTY_DATA
                 ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
@@ -113,11 +117,9 @@ abstract contract ERC1155NS {
         address from,
         address to,
         uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
+        uint256[] calldata,
+        bytes calldata
     ) public virtual {
-        require(ids.length == amounts.length, "LENGTH_MISMATCH");
-
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
             "NOT_AUTHORIZED"
@@ -125,9 +127,11 @@ abstract contract ERC1155NS {
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
+        uint256[] memory amounts = new uint256[](ids.length);
 
         for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
+            amounts[i] = SINGLE_AMOUNT;
 
             require(ownerOf[id] == from, "NOT_AUTHORIZED");
 
@@ -150,7 +154,7 @@ abstract contract ERC1155NS {
                     from,
                     ids,
                     amounts,
-                    data
+                    EMPTY_DATA
                 ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
