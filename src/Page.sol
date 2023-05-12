@@ -262,7 +262,7 @@ contract Page is
      * @notice Cancel a listing
      * @param  id  uint256  Token ID
      */
-    function cancel(uint256 id) external {
+    function cancel(uint256 id) external payable {
         _cancel(id);
 
         emit Cancel(id);
@@ -464,15 +464,21 @@ contract Page is
      * @param  quantity  uint256  Offer quantity to make
      */
     function makeOffer(uint256 offer, uint256 quantity) external payable {
-        if (offer == 0) revert Zero();
-
-        // If msg.value and quantity are both zero then the caller will waste
-        // gas since their offer quantity will be increased by zero
-        // Since this is the case, we do not need to validate quantity != 0
-        if (msg.value != offer * quantity) revert Insufficient();
+        // Reverts if msg.value does not equal the necessary amount
+        // If msg.value, and offer and/or quantity are zero then the caller
+        // wastes gas since their offer value will be zero (no one will take
+        // the offer) or their quantity will not increase. Since this is the
+        // assumption, we do not need to validate offer and quantity.
+        if (msg.value != offer * quantity) revert Invalid();
 
         // Increase offer quantity
-        offers[msg.sender][offer] += quantity;
+        // Cannot realistically overflow due to the msg.value check above
+        // Even if it did overflow, the maker would be the one harmed (i.e.
+        // ETH sent more than the offer quantity reflected in the contract),
+        // making this an unlikely attack vector
+        unchecked {
+            offers[msg.sender][offer] += quantity;
+        }
 
         emit MakeOffer(msg.sender);
     }
@@ -485,18 +491,21 @@ contract Page is
     function cancelOffer(
         uint256 offer,
         uint256 quantity
-    ) external payable nonReentrant {
-        // Revert if offer is zero
-        if (offer == 0) revert Zero();
-
+    ) external nonReentrant {
         // Deduct quantity from the user's offers - reverts if `quantity`
         // exceeds the actual amount of offers that the user has made
-        // If quantity is zero then zero offers are deducted, but the
-        // user also receives zero ETH back, resulting in gas wasted
+        // If offer and/or quantity are zero then the amount of ETH returned
+        // will be zero (if no arithmetic underflow), resulting in gas wasted
+        // (making this an unlikely attack vector)
         offers[msg.sender][offer] -= quantity;
 
-        // Transfer the offer value back to the user
-        payable(msg.sender).safeTransferETH(offer * quantity);
+        // Cannot realistically overflow if the above does not underflow
+        // The reason being that the amount returned to the maker/msg.sender
+        // is always less than or equal to the amount they've deposited
+        unchecked {
+            // Transfer the offer value back to the user
+            payable(msg.sender).safeTransferETH(offer * quantity);
+        }
 
         emit CancelOffer(msg.sender);
     }
@@ -505,19 +514,20 @@ contract Page is
      * @notice Take global offers
      * @param  ids    uint256[]  Token IDs exchanged between taker and maker
      * @param  maker  address    Maker address
-     * @param  price  uint48     Price
+     * @param  offer  uint256    Offer in ETH
      */
     function takeOffer(
         uint256[] calldata ids,
         address maker,
-        uint48 price
-    ) external payable nonReentrant {
-        // Revert if the taker tokens is zero
-        if (ids.length == 0) revert Invalid();
-
+        uint256 offer
+    ) external nonReentrant {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
-        // Reverts if the offer quantity is insufficient (arithmetic underflow)
-        offers[maker][price] -= ids.length;
+        // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
+        // is the zero address, or if the offer is zero (arithmetic underflow)
+        // If `ids.length` is zero offer quantity will be deducted, but zero ETH will
+        // also be sent to the taker, resulting in the caller wasting gas and making
+        // this an unlikely attack vector
+        offers[maker][offer] -= ids.length;
 
         uint256 id;
 
@@ -535,8 +545,12 @@ contract Page is
             }
         }
 
-        // Send maker's funds to the offer taker
-        payable(msg.sender).safeTransferETH(price * ids.length);
+        // Will not overflow since the check above verifies that there was a
+        // sufficient offer quantity (and ETH) to cover the transfer
+        unchecked {
+            // Send maker's funds to the offer taker
+            payable(msg.sender).safeTransferETH(offer * ids.length);
+        }
 
         emit TakeOffer(msg.sender);
     }
