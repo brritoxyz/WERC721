@@ -1176,6 +1176,22 @@ contract PageTest is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             makeOffer
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotMakeOfferPriceZero() external {
+        vm.expectRevert(Page.Zero.selector);
+
+        page.makeOffer(0, 1);
+    }
+
+        function testCannotMakeQuantityPriceZero() external {
+        vm.expectRevert(Page.Zero.selector);
+
+        page.makeOffer(0, 1);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                              safeTransferFrom
     //////////////////////////////////////////////////////////////*/
 
