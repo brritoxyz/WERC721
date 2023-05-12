@@ -143,6 +143,9 @@ contract Page is
         // Reverts if msg.sender is not the seller or listing does not exist
         if (listing.seller != msg.sender) revert Unauthorized();
 
+        // Revert if the new price is less than the tip
+        if (newPrice < listing.tip) revert Invalid();
+
         listing.price = newPrice;
     }
 

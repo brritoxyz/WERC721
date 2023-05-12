@@ -116,6 +116,28 @@ contract PageTest is Test, ERC721TokenReceiver {
         return (price * valueDenom, tip * valueDenom);
     }
 
+    function _calculateListingValues(
+        uint256 price,
+        uint256 tip
+    ) private view returns (uint256 priceETH, uint256 sellerProceeds) {
+        priceETH = price * valueDenom;
+        sellerProceeds = priceETH - (tip * valueDenom);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             _calculateListingValues
+    //////////////////////////////////////////////////////////////*/
+
+    function testCalculateListingValues(
+        uint48 price,
+        uint48 tip
+    ) external view {
+        vm.assume(tip <= price);
+
+        // Should never revert
+        _calculateListingValues(price, tip);
+    }
+
     /*//////////////////////////////////////////////////////////////
                              uri
     //////////////////////////////////////////////////////////////*/
@@ -453,14 +475,13 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.list(id, price, tip);
     }
 
-    function testList(uint16 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testList(uint48 price, uint48 tip) external {
+        vm.assume(price != 0);
+        vm.assume(tip <= price);
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100_000 * uint48(priceMultiplier);
-            uint48 tip = 1_000 * uint48(priceMultiplier);
 
             page.deposit(id, recipient);
 
@@ -484,6 +505,7 @@ contract PageTest is Test, ERC721TokenReceiver {
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
             assertEq(tip, listingTip);
+            assertGe(listingPrice, listingTip);
 
             unchecked {
                 ++i;
@@ -522,17 +544,16 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.edit(id, newPrice);
     }
 
-    function testEdit(uint16 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testEdit(uint48 price, uint48 tip, uint48 newPrice) external {
+        vm.assume(price != 0);
+        vm.assume(tip <= price);
+        vm.assume(newPrice != 0);
+        vm.assume(newPrice != price);
+        vm.assume(newPrice >= tip);
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100_000 * uint48(priceMultiplier);
-            uint48 tip = 1_000 * uint48(priceMultiplier);
-            uint48 newPrice = 200 * uint48(priceMultiplier);
-
-            assertTrue(price != newPrice);
 
             page.deposit(id, recipient);
 
@@ -545,6 +566,7 @@ contract PageTest is Test, ERC721TokenReceiver {
 
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
+            assertGe(listingPrice, listingTip);
 
             vm.prank(recipient);
             vm.expectEmit(false, false, false, true, address(page));
@@ -558,6 +580,7 @@ contract PageTest is Test, ERC721TokenReceiver {
             // Verify that the updated listing has the same seller, different price
             assertEq(recipient, seller);
             assertEq(newPrice, listingPrice);
+            assertGe(listingPrice, listingTip);
 
             unchecked {
                 ++i;
@@ -586,14 +609,12 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.cancel(id);
     }
 
-    function testCancel(uint16 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
-
+    function testCancel() external {
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100_000 * uint48(priceMultiplier);
-            uint48 tip = 1_000 * uint48(priceMultiplier);
+            uint48 price = 100_000;
+            uint48 tip = 1_000;
 
             page.deposit(id, recipient);
 
@@ -725,8 +746,9 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.batchList(ids, prices, tips);
     }
 
-    function testBatchList(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testBatchList(uint48 price, uint48 tip) external {
+        vm.assume(price != 0);
+        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
@@ -736,8 +758,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = price;
+            tips[i] = tip;
 
             unchecked {
                 ++i;
@@ -817,8 +839,12 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.batchEdit(ids, newPrices);
     }
 
-    function testBatchEdit(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testBatchEdit(uint48 price, uint48 tip, uint48 newPrice) external {
+        vm.assume(price != 0);
+        vm.assume(tip <= price);
+        vm.assume(newPrice != 0);
+        vm.assume(newPrice != price);
+        vm.assume(newPrice >= tip);
 
         address recipient = accounts[0];
 
@@ -829,9 +855,9 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory newPrices = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
-            newPrices[i] = 200_000 * uint48(priceMultiplier);
+            prices[i] = price;
+            tips[i] = tip;
+            newPrices[i] = newPrice;
 
             unchecked {
                 ++i;
@@ -872,7 +898,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchCancelUnauthorized() external {
-        uint48 priceMultiplier = 10;
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
@@ -881,8 +906,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * priceMultiplier;
-            tips[i] = 1_000 * priceMultiplier;
+            prices[i] = 100_000;
+            tips[i] = 1_000;
 
             unchecked {
                 ++i;
@@ -898,9 +923,7 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.batchCancel(ids);
     }
 
-    function testBatchCancel(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
-
+    function testBatchCancel() external {
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
@@ -909,8 +932,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = 100_000;
+            tips[i] = 1_000;
 
             unchecked {
                 ++i;
@@ -951,7 +974,6 @@ contract PageTest is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchBuyMsgValueInsufficient() external {
-        uint48 priceMultiplier = 10;
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
@@ -960,8 +982,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * priceMultiplier;
-            tips[i] = 1_000 * priceMultiplier;
+            prices[i] = 100_000;
+            tips[i] = 1_000;
 
             unchecked {
                 ++i;
@@ -993,8 +1015,9 @@ contract PageTest is Test, ERC721TokenReceiver {
         page.batchBuy{value: totalSellerProceeds}(ids);
     }
 
-    function testBatchBuy(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testBatchBuy(uint48 price, uint48 tip) external {
+        vm.assume(price != 0);
+        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
@@ -1004,8 +1027,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = price;
+            tips[i] = tip;
 
             unchecked {
                 ++i;
@@ -1063,8 +1086,9 @@ contract PageTest is Test, ERC721TokenReceiver {
         }
     }
 
-    function testBatchBuyPartial(uint8 priceMultiplier) external {
-        vm.assume(priceMultiplier != 0);
+    function testBatchBuyPartial(uint48 price, uint48 tip) external {
+        vm.assume(price != 0);
+        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
@@ -1078,8 +1102,8 @@ contract PageTest is Test, ERC721TokenReceiver {
         uint48[] memory tips = new uint48[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000 * uint48(priceMultiplier);
-            tips[i] = 1_000 * uint48(priceMultiplier);
+            prices[i] = price;
+            tips[i] = tip;
 
             unchecked {
                 ++i;
