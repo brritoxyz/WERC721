@@ -4,26 +4,28 @@ pragma solidity 0.8.20;
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
 import {Owned} from "src/base/Owned.sol";
-import {Page} from "src/Page.sol";
+
+interface IPage {
+    function initialize(address, ERC721, address payable) external;
+}
 
 contract Book is Owned {
     // Paired with the collection address to compute the CREATE2 salt
     bytes12 public constant SALT_FRAGMENT = bytes12("JPAGE||EGAPJ");
 
-    // Page implementation contract address
-    address public immutable pageImplementation;
-
-    // Current page implementation version
-    uint96 public currentVersion;
-
     // Tip recipient used when initializing pages
     address payable public tipRecipient;
 
+    // Current page implementation version
+    uint256 public currentVersion;
+
+    // Versioned Page contract implementation addresses
     mapping(uint256 version => address implementation)
         public pageImplementations;
 
-    // ERC721 collections mapped to their Page contracts
-    mapping(ERC721 => address) public pages;
+    // Page implementation mapped to their ERC721 collections and associated Page contracts
+    mapping(address implementation => mapping(ERC721 collection => address page))
+        public pages;
 
     event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
@@ -34,16 +36,13 @@ contract Book is Owned {
     constructor(address payable _tipRecipient) Owned(msg.sender) {
         if (_tipRecipient == address(0)) revert Zero();
 
-        pageImplementation = address(new Page());
         tipRecipient = _tipRecipient;
-
-        // Set the initial page implementation at the first version
-        pageImplementations[currentVersion] = pageImplementation;
     }
 
     /**
-     * @notice Increment the version and deploy a new implementation to that number
-     * @param  bytecode  bytes  New Page contract init code
+     * @notice Increment the version and deploy a new implementation to that version
+     * @param  bytecode        bytes    New Page contract init code
+     * @return implementation  address  New Page contract implementation address
      */
     function upgradePage(
         bytes memory bytecode
@@ -91,7 +90,7 @@ contract Book is Owned {
     }
 
     /**
-     * @notice Creates a new Page contract (minimal proxy) for the given collection
+     * @notice Creates a new Page contract (minimal proxy) for the given implementation and collection
      * @param  collection  ERC721   NFT collection
      * @return page        address  Page contract address
      */
@@ -99,18 +98,22 @@ contract Book is Owned {
         // Revert if the collection is the zero address
         if (address(collection) == address(0)) revert Zero();
 
-        // Prevent pages from being re-deployed and overwritten
-        if (pages[collection] != address(0)) revert AlreadyExists();
+        address implementation = pageImplementations[currentVersion];
 
+        // Prevent pages from being re-deployed and overwriting existing contracts
+        if (pages[implementation][collection] != address(0))
+            revert AlreadyExists();
+
+        // Create a minimal proxy for the implementation
         page = Clones.cloneDeterministic(
-            pageImplementation,
+            implementation,
             keccak256(abi.encodePacked(collection, SALT_FRAGMENT))
         );
 
-        // Initialize minimal proxy with the owner and collection
-        Page(page).initialize(owner, collection, tipRecipient);
-
         // Update the mapping to point the collection to its page
-        pages[collection] = page;
+        pages[implementation][collection] = page;
+
+        // Initialize the minimal proxy's state variables
+        IPage(page).initialize(owner, collection, tipRecipient);
     }
 }

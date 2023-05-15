@@ -35,6 +35,7 @@ contract BookTest is Test {
     Book private immutable book;
     Page private immutable page;
     address private immutable bookAddr;
+    address private immutable pageImplementation;
 
     event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
@@ -43,20 +44,20 @@ contract BookTest is Test {
     constructor() {
         book = new Book(TIP_RECIPIENT);
         bookAddr = address(book);
+        pageImplementation = book.upgradePage(type(Page).creationCode);
+        page = Page(book.createPage(LLAMA));
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
-            book.pageImplementation(),
+            pageImplementation,
             keccak256(abi.encodePacked(LLAMA, book.SALT_FRAGMENT())),
             address(book)
         );
-        address pageAddress = book.createPage(LLAMA);
-
-        page = Page(pageAddress);
 
         assertEq(address(this), book.owner());
-        assertEq(address(this), page.owner());
-        assertEq(predeterminedPageAddress, pageAddress);
-        assertTrue(book.pageImplementation() != address(0));
+        assertEq(1, book.currentVersion());
+        assertEq(pageImplementation, book.pageImplementations(1));
+        assertEq(predeterminedPageAddress, address(page));
+        assertTrue(pageImplementation != address(0));
 
         vm.expectRevert("Initializable: contract is already initialized");
 
@@ -187,7 +188,7 @@ contract BookTest is Test {
     }
 
     function testCannotCreatePageAlreadyCreated() external {
-        assertEq(address(page), book.pages(LLAMA));
+        assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
         vm.expectRevert(Book.AlreadyExists.selector);
 
@@ -198,10 +199,10 @@ contract BookTest is Test {
         vm.assume(address(collection) != address(0));
         vm.assume(address(collection) != address(LLAMA));
 
-        assertEq(address(0), book.pages(collection));
+        assertEq(address(0), book.pages(pageImplementation, collection));
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
-            book.pageImplementation(),
+            pageImplementation,
             keccak256(abi.encodePacked(collection, book.SALT_FRAGMENT())),
             address(book)
         );
