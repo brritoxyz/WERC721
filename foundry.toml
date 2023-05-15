@@ -8,15 +8,17 @@ bytecode_hash = 'none'
 gas_reports = ["Book", "Page"]
 optimizer = false
 via_ir = false
+fail_on_revert = true
 
 [fuzz]
-runs = 256
+runs = 512
+
+[invariant]
+runs = 512
+depth = 30
 
 [profile.optimized]
 optimizer = true
 optimizer_runs = 4_294_967_295
 via_ir = true
 out = 'optimized-out'
-
-[profile.intense.fuzz]
-runs = 1024

@@ -54,6 +54,7 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         excludeContract(address(collection));
         excludeContract(address(book));
         excludeContract(address(page));
+        excludeContract(address(this));
     }
 
     function assertDepositedState(uint256 id, address pageOwnerOf) internal {
@@ -129,46 +130,55 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
 
         if (ids.length == 0) return;
 
-        uint256 id = ids[ids.length - 1];
-        PageInvariantHandler.State idState = handler.states(id);
+        uint256 id;
+        PageInvariantHandler.State idState;
 
-        // If the token ID is not in an "deposited" state, continue to the next ID
-        if (idState == PageInvariantHandler.State.Deposited) {
-            address pageOwnerOf = address(handler);
+        for (uint256 i; i < ids.length; ) {
+            id = ids[ids.length - 1];
+            idState = handler.states(id);
 
-            assertDepositedState(id, pageOwnerOf);
+            unchecked {
+                ++i;
+            }
 
-            return;
+            // If the token ID is not in an "deposited" state, continue to the next ID
+            if (idState == PageInvariantHandler.State.Deposited) {
+                address pageOwnerOf = address(handler);
+
+                assertDepositedState(id, pageOwnerOf);
+
+                return;
+            }
+
+            if (idState == PageInvariantHandler.State.Withdrawn) {
+                address collectionOwnerOf = address(handler);
+
+                assertWithdrawnState(id, collectionOwnerOf);
+
+                return;
+            }
+
+            if (
+                idState == PageInvariantHandler.State.Listed ||
+                idState == PageInvariantHandler.State.Edited
+            ) {
+                address listingSeller = address(handler);
+
+                assertListedState(id, listingSeller);
+
+                return;
+            }
+
+            if (idState == PageInvariantHandler.State.Canceled) {
+                address pageOwnerOf = address(handler);
+
+                assertCanceledState(id, pageOwnerOf);
+
+                return;
+            }
+
+            // Revert if no state is matched
+            revert("Invalid state");
         }
-
-        if (idState == PageInvariantHandler.State.Withdrawn) {
-            address collectionOwnerOf = address(handler);
-
-            assertWithdrawnState(id, collectionOwnerOf);
-
-            return;
-        }
-
-        if (
-            idState == PageInvariantHandler.State.Listed ||
-            idState == PageInvariantHandler.State.Edited
-        ) {
-            address listingSeller = address(handler);
-
-            assertListedState(id, listingSeller);
-
-            return;
-        }
-
-        if (idState == PageInvariantHandler.State.Canceled) {
-            address pageOwnerOf = address(handler);
-
-            assertCanceledState(id, pageOwnerOf);
-
-            return;
-        }
-
-        // Revert if no state is matched
-        revert("Invalid state");
     }
 }

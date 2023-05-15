@@ -22,6 +22,7 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     ERC721 internal immutable collection;
     Book internal immutable book;
     Page internal immutable page;
+    uint256 internal currentIndex;
     uint256[] internal ids;
 
     mapping(uint256 id => State) public states;
@@ -41,69 +42,82 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
         return ids;
     }
 
-    function mintDeposit(uint256 id) public {
-        // Cannot mint if the ID is already owned
-        if (collection.ownerOf(id) != address(0)) return;
-
-        ICollection(address(collection)).mint(address(this), id);
-        page.deposit(id, address(this));
+    function mintDeposit() public {
+        ICollection(address(collection)).mint(address(this), currentIndex);
+        page.deposit(currentIndex, address(this));
 
         // Add ID to `ids` array since it is new
-        ids.push(id);
+        ids.push(currentIndex);
 
-        states[id] = State.Deposited;
+        states[currentIndex] = State.Deposited;
+
+        ++currentIndex;
     }
 
-    function deposit(uint256 index) public {
+    function deposit() public {
         // Will underflow on next line if `ids` is empty
         if (ids.length == 0) return;
 
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id] != State.Withdrawn) return;
 
         page.deposit(id, address(this));
 
         states[id] = State.Deposited;
     }
 
-    function withdraw(uint256 index) public {
+    function withdraw() public {
         if (ids.length == 0) return;
 
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id] != State.Deposited) return;
 
         page.withdraw(id, address(this));
 
         states[id] = State.Withdrawn;
     }
 
-    function list(uint256 index, uint48 price, uint48 tip) public {
+    function list(uint48 price, uint48 tip) public {
+        price = uint48(bound(price, 1, type(uint48).max));
+        tip = uint48(bound(tip, 0, price));
+
         if (ids.length == 0) return;
 
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id] != State.Deposited) return;
 
         page.list(id, price, tip);
 
         states[id] = State.Listed;
     }
 
-    function edit(uint256 index, uint48 newPrice) public {
+    function edit(uint48 newPrice) public {
+        newPrice = uint48(bound(newPrice, 1, type(uint48).max));
+
         if (ids.length == 0) return;
 
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id] != State.Listed) return;
+
+        (, , uint48 tip) = page.listings(id);
+
+        if (newPrice < tip) newPrice = tip;
 
         page.edit(id, newPrice);
 
         states[id] = State.Edited;
     }
 
-    function cancel(uint256 index) public {
+    function cancel() public {
         if (ids.length == 0) return;
 
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id] != State.Listed) return;
 
         page.cancel(id);
 
