@@ -1,6 +1,6 @@
-name: test
+name: forge-test
 
-on: workflow_dispatch
+on: [push]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -22,13 +22,7 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-        id: build
-
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          FOUNDRY_PROFILE=intense forge test --fork-url https://eth-mainnet.g.alchemy.com/v2/XnkzWqO3JbuJmw5n0rvsc0dftWOerxOk --fork-block-number 17267377 --fail-fast
         id: test

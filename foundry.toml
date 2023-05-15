@@ -19,4 +19,4 @@ via_ir = true
 out = 'optimized-out'
 
 [profile.intense.fuzz]
-runs = 256
+runs = 1024
