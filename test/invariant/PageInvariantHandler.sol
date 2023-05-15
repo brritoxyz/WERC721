@@ -17,7 +17,7 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
     uint256[] private ownedIds;
     uint256[] private depositedIds;
-    uint256 private currentIndex = 0;
+    uint256[] private listedIds;
 
     receive() external payable {}
 
@@ -38,34 +38,57 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
         return depositedIds;
     }
 
+    function getListedIds() external view returns (uint256[] memory) {
+        return listedIds;
+    }
+
+    function mintDeposit(uint256 id) public {
+        ICollection(address(collection)).mint(address(this), id);
+
+        page.deposit(id, address(this));
+
+        depositedIds.push(id);
+    }
+
     function deposit() public {
-        if (ownedIds.length == 0) {
-            ICollection(address(collection)).mint(address(this), currentIndex);
+        uint256 id = ownedIds[ownedIds.length - 1];
 
-            page.deposit(currentIndex, address(this));
+        page.deposit(id, address(this));
 
-            depositedIds.push(currentIndex);
-
-            ++currentIndex;
-        } else {
-            uint256 id = ownedIds[ownedIds.length - 1];
-
-            page.deposit(id, address(this));
-
-            depositedIds.push(id);
-            ownedIds.pop();
-        }
+        ownedIds.pop();
+        depositedIds.push(id);
     }
 
     function withdraw() public {
-        // If we have no deposited NFTs, deposit one
-        if (depositedIds.length == 0) deposit();
-
         uint256 id = depositedIds[depositedIds.length - 1];
 
         page.withdraw(id, address(this));
 
         depositedIds.pop();
         ownedIds.push(id);
+    }
+
+    function list(uint48 price, uint48 tip) public {
+        uint256 id = depositedIds[depositedIds.length - 1];
+
+        page.list(id, price, tip);
+
+        depositedIds.pop();
+        listedIds.push(id);
+    }
+
+    function edit(uint48 newPrice) public {
+        uint256 id = listedIds[listedIds.length - 1];
+
+        page.edit(id, newPrice);
+    }
+
+    function cancel() public {
+        uint256 id = listedIds[listedIds.length - 1];
+
+        page.cancel(id);
+
+        listedIds.pop();
+        depositedIds.push(id);
     }
 }

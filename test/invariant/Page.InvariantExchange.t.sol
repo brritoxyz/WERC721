@@ -43,21 +43,79 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         targetContract(address(handler));
     }
 
-    function invariantOwnershipOfAssets() external {
+    function invariantOwnedNFTs() external {
         uint256[] memory ownedIds = handler.getOwnedIds();
-        uint256[] memory depositedIds = handler.getDepositedIds();
+        uint256 id;
 
-        unchecked {
-            // There MUST NOT be a derivative token if the handler owns the NFT
-            for (uint256 i; i < ownedIds.length; ++i) {
-                assertEq(collection.ownerOf(ownedIds[i]), address(handler));
-                assertEq(page.ownerOf(ownedIds[i]), address(0));
+        // There MUST NOT be a derivative token if the handler owns the NFT
+        for (uint256 i; i < ownedIds.length; ) {
+            id = ownedIds[i];
+            (address seller, uint48 price, uint48 tip) = page.listings(id);
+
+            // Handler has custody of the NFT
+            assertEq(collection.ownerOf(id), address(handler));
+
+            // No derivative should exist
+            assertEq(page.ownerOf(id), address(0));
+
+            // Listing should be empty
+            assertEq(address(0), seller);
+            assertEq(0, price);
+            assertEq(0, tip);
+
+            unchecked {
+                ++i;
             }
+        }
+    }
 
-            // There MUST be a derivative token if the Page contract owns the NFT
-            for (uint256 i; i < depositedIds.length; ++i) {
-                assertEq(collection.ownerOf(depositedIds[i]), address(page));
-                assertEq(page.ownerOf(depositedIds[i]), address(handler));
+    function invariantDepositedNFTs() external {
+        uint256[] memory depositedIds = handler.getDepositedIds();
+        uint256 id;
+
+        // There MUST be a derivative token if the Page contract owns the NFT
+        for (uint256 i; i < depositedIds.length; ) {
+            id = depositedIds[i];
+            (address seller, uint48 price, uint48 tip) = page.listings(id);
+
+            // Page has custody of the NFT
+            assertEq(collection.ownerOf(id), address(page));
+
+            // Handler should have the derivative token
+            assertEq(page.ownerOf(id), address(handler));
+
+            // Listing should be empty
+            assertEq(address(0), seller);
+            assertEq(0, price);
+            assertEq(0, tip);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function invariantListedNFTs() external {
+        uint256[] memory listedIds = handler.getListedIds();
+        uint256 id;
+
+        for (uint256 i; i < listedIds.length; ) {
+            id = listedIds[i];
+            (address seller, uint48 price, uint48 tip) = page.listings(id);
+
+            // Page has custody of the NFT
+            assertEq(collection.ownerOf(id), address(page));
+
+            // Page has custody of the derivative token
+            assertEq(page.ownerOf(id), address(page));
+
+            // Listing should NOT be empty
+            assertEq(address(handler), seller);
+            assertGt(price, 0);
+            assertGe(price, tip);
+
+            unchecked {
+                ++i;
             }
         }
     }

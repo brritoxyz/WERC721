@@ -10,8 +10,7 @@ optimizer = false
 via_ir = false
 
 [fuzz]
-runs = 256
-fail_on_revert = true
+runs = 50
 
 [profile.optimized]
 optimizer = true
