@@ -41,7 +41,7 @@ contract PageBase is Test, ERC721TokenReceiver {
         book = new Book(TIP_RECIPIENT);
 
         // Set the page implementation (since the version and impl. start at zero)
-        book.upgradePage(type(Page).creationCode);
+        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
 
         page = Page(book.createPage(LLAMA));
         valueDenom = page.VALUE_DENOM();

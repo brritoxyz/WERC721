@@ -41,40 +41,43 @@ contract Book is Owned {
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
+     * @param  salt            bytes32  CREATE2 salt
      * @param  bytecode        bytes    New Page contract init code
+     * @return version         uint256  New version
      * @return implementation  address  New Page contract implementation address
      */
     function upgradePage(
+        bytes32 salt,
         bytes memory bytecode
-    ) external payable onlyOwner returns (address implementation) {
+    )
+        external
+        payable
+        onlyOwner
+        returns (uint256 version, address implementation)
+    {
         if (bytecode.length == 0) revert Zero();
 
         // Increment the current version number - will not overflow since the cost to do so
         // is more than anyone can ever afford
         unchecked {
-            ++currentVersion;
+            version = ++currentVersion;
         }
-
-        bytes32 salt = keccak256(
-            abi.encodePacked(address(this), SALT_FRAGMENT)
-        );
 
         assembly {
             implementation := create2(
-                callvalue(), // wei sent with current call
-                // Actual code starts after skipping the first 32 bytes
+                callvalue(),
                 add(bytecode, 0x20),
-                mload(bytecode), // Load the size of code contained in the first 32 bytes
-                salt // Salt from function arguments
+                mload(bytecode),
+                salt
             )
         }
 
         // Revert if the deployment failed (e.g. same bytecode and salt)
         if (implementation == address(0)) revert Zero();
 
-        pageImplementations[currentVersion] = implementation;
+        pageImplementations[version] = implementation;
 
-        emit UpgradePage(currentVersion, implementation);
+        emit UpgradePage(version, implementation);
     }
 
     /**

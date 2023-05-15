@@ -25,6 +25,7 @@ contract BookTest is Test {
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     address payable private constant TIP_RECIPIENT =
         payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
+    bytes32 private constant DEPLOYMENT_SALT = keccak256("DEPLOYMENT_SALT");
 
     address[] private accounts = [
         0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
@@ -44,20 +45,25 @@ contract BookTest is Test {
     constructor() {
         book = new Book(TIP_RECIPIENT);
         bookAddr = address(book);
-        pageImplementation = book.upgradePage(type(Page).creationCode);
+        (uint256 version, address implementation) = book.upgradePage(
+            DEPLOYMENT_SALT,
+            type(Page).creationCode
+        );
         page = Page(book.createPage(LLAMA));
+        pageImplementation = implementation;
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
-            pageImplementation,
+            implementation,
             keccak256(abi.encodePacked(LLAMA, book.SALT_FRAGMENT())),
             address(book)
         );
 
         assertEq(address(this), book.owner());
-        assertEq(1, book.currentVersion());
-        assertEq(pageImplementation, book.pageImplementations(1));
+        assertEq(version, book.currentVersion());
+        assertEq(implementation, book.pageImplementations(1));
         assertEq(predeterminedPageAddress, address(page));
-        assertTrue(pageImplementation != address(0));
+        assertTrue(version != 0);
+        assertTrue(implementation != address(0));
 
         vm.expectRevert("Initializable: contract is already initialized");
 
@@ -73,7 +79,7 @@ contract BookTest is Test {
 
         vm.expectRevert(Book.Zero.selector);
 
-        book.upgradePage(bytecode);
+        book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
 
     function testCannotUpgradePageUnauthorized() external {
@@ -85,24 +91,21 @@ contract BookTest is Test {
         vm.prank(caller);
         vm.expectRevert("UNAUTHORIZED");
 
-        book.upgradePage(bytecode);
+        book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
 
     function testCannotUpgradePageDuplicateDeploymentZero() external {
-        book.upgradePage(type(DummyERC20).creationCode);
+        book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
 
         vm.expectRevert(Book.Zero.selector);
 
-        book.upgradePage(type(DummyERC20).creationCode);
+        book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
     }
 
     function testUpgradePage() external {
         assertEq(address(this), book.owner());
 
         bytes memory bytecode = type(DummyERC20).creationCode;
-        bytes32 salt = keccak256(
-            abi.encodePacked(address(book), book.SALT_FRAGMENT())
-        );
         uint256 currentVersion = book.currentVersion();
         address currentImplementation = book.pageImplementations(
             currentVersion
@@ -115,7 +118,7 @@ contract BookTest is Test {
                         abi.encodePacked(
                             bytes1(0xff),
                             address(book),
-                            salt,
+                            DEPLOYMENT_SALT,
                             keccak256(bytecode)
                         )
                     )
@@ -127,7 +130,9 @@ contract BookTest is Test {
 
         emit UpgradePage(nextVersion, nextImplementation);
 
-        address implementation = book.upgradePage{value: 1 wei}(bytecode);
+        (uint256 version, address implementation) = book.upgradePage{
+            value: 1 wei
+        }(DEPLOYMENT_SALT, bytecode);
 
         assertEq(
             currentImplementation,
@@ -143,8 +148,9 @@ contract BookTest is Test {
         );
         assertGt(currentImplementation.code.length, 0);
         assertGt(implementation.code.length, 0);
-        assertEq(nextVersion, book.currentVersion());
+        assertEq(nextVersion, version);
         assertEq(nextImplementation, implementation);
+        assertEq(version, book.currentVersion());
         assertEq(nextImplementation, book.pageImplementations(nextVersion));
     }
 
