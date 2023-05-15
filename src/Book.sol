@@ -36,6 +36,46 @@ contract Book is Owned {
 
         pageImplementation = address(new Page());
         tipRecipient = _tipRecipient;
+
+        // Set the initial page implementation at the first version
+        pageImplementations[currentVersion] = pageImplementation;
+    }
+
+    /**
+     * @notice Increment the version and deploy a new implementation to that number
+     * @param  bytecode  bytes  New Page contract init code
+     */
+    function upgradePage(
+        bytes memory bytecode
+    ) external payable onlyOwner returns (address implementation) {
+        if (bytecode.length == 0) revert Zero();
+
+        // Increment the current version number - will not overflow since the cost to do so
+        // is more than anyone can ever afford
+        unchecked {
+            ++currentVersion;
+        }
+
+        bytes32 salt = keccak256(
+            abi.encodePacked(address(this), SALT_FRAGMENT)
+        );
+
+        assembly {
+            implementation := create2(
+                callvalue(), // wei sent with current call
+                // Actual code starts after skipping the first 32 bytes
+                add(bytecode, 0x20),
+                mload(bytecode), // Load the size of code contained in the first 32 bytes
+                salt // Salt from function arguments
+            )
+        }
+
+        // Revert if the deployment failed (e.g. same bytecode and salt)
+        if (implementation == address(0)) revert Zero();
+
+        pageImplementations[currentVersion] = implementation;
+
+        emit UpgradePage(currentVersion, implementation);
     }
 
     /**

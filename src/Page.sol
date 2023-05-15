@@ -57,7 +57,7 @@ contract Page is
     error Nonexistent();
     error Insufficient();
 
-    constructor() Owned(msg.sender) {
+    constructor() payable Owned(msg.sender) {
         // Disable initialization on the implementation contract
         _disableInitializers();
     }

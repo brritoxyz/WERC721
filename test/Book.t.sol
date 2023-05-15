@@ -10,7 +10,9 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 
-contract DummyERC20 is ERC20("", "", 18) {}
+contract DummyERC20 is ERC20("", "", 18) {
+    constructor() payable {}
+}
 
 contract DummyERC4626 is ERC4626(new DummyERC20(), "", "") {
     function totalAssets() public view override returns (uint256) {
@@ -34,6 +36,7 @@ contract BookTest is Test {
     Page private immutable page;
     address private immutable bookAddr;
 
+    event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
@@ -58,6 +61,82 @@ contract BookTest is Test {
         vm.expectRevert("Initializable: contract is already initialized");
 
         page.initialize(address(this), LLAMA, TIP_RECIPIENT);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             upgradePage
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotUpgradePageBytecodeLengthZero() external {
+        bytes memory bytecode = bytes("");
+
+        vm.expectRevert(Book.Zero.selector);
+
+        book.upgradePage(bytecode);
+    }
+
+    function testCannotUpgradePageUnauthorized() external {
+        address caller = accounts[0];
+        bytes memory bytecode = type(DummyERC20).creationCode;
+
+        assertTrue(caller != book.owner());
+
+        vm.prank(caller);
+        vm.expectRevert("UNAUTHORIZED");
+
+        book.upgradePage(bytecode);
+    }
+
+    function testUpgradePage() external {
+        assertEq(address(this), book.owner());
+
+        bytes memory bytecode = type(DummyERC20).creationCode;
+        bytes32 salt = keccak256(
+            abi.encodePacked(address(book), book.SALT_FRAGMENT())
+        );
+        uint256 currentVersion = book.currentVersion();
+        address currentImplementation = book.pageImplementations(
+            currentVersion
+        );
+        uint256 nextVersion = currentVersion + 1;
+        address nextImplementation = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xff),
+                            address(book),
+                            salt,
+                            keccak256(bytecode)
+                        )
+                    )
+                )
+            )
+        );
+
+        vm.expectEmit(false, false, false, true, address(book));
+
+        emit UpgradePage(nextVersion, nextImplementation);
+
+        address implementation = book.upgradePage{value: 1 wei}(bytecode);
+
+        assertEq(
+            currentImplementation,
+            book.pageImplementations(currentVersion)
+        );
+        assertTrue(currentVersion != book.currentVersion());
+        assertTrue(
+            currentImplementation != book.pageImplementations(nextVersion)
+        );
+        assertTrue(
+            keccak256(currentImplementation.code) !=
+                keccak256(implementation.code)
+        );
+        assertGt(currentImplementation.code.length, 0);
+        assertGt(implementation.code.length, 0);
+        assertEq(nextVersion, book.currentVersion());
+        assertEq(nextImplementation, implementation);
+        assertEq(nextImplementation, book.pageImplementations(nextVersion));
     }
 
     /*//////////////////////////////////////////////////////////////
