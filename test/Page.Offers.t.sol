@@ -60,6 +60,8 @@ contract PageOffersTest is Test, PageBase {
         uint256 offer,
         uint256 quantity
     ) external {
+        vm.assume(offer != 0);
+        vm.assume(quantity != 0);
         vm.expectRevert(stdError.arithmeticError);
 
         // Reverts because the quantity is greater than the maker's offers

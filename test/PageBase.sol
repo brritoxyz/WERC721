@@ -39,6 +39,10 @@ contract PageBase is Test, ERC721TokenReceiver {
 
     constructor() {
         book = new Book(TIP_RECIPIENT);
+
+        // Set the page implementation (since the version and impl. start at zero)
+        book.upgradePage(type(Page).creationCode);
+
         page = Page(book.createPage(LLAMA));
         valueDenom = page.VALUE_DENOM();
 
@@ -46,9 +50,7 @@ contract PageBase is Test, ERC721TokenReceiver {
         vm.expectRevert("Initializable: contract is already initialized");
 
         page.initialize(address(this), LLAMA, TIP_RECIPIENT);
-    }
 
-    function setUp() external {
         for (uint256 i; i < ids.length; ) {
             address originalOwner = LLAMA.ownerOf(ids[i]);
 

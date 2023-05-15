@@ -88,6 +88,14 @@ contract BookTest is Test {
         book.upgradePage(bytecode);
     }
 
+    function testCannotUpgradePageDuplicateDeploymentZero() external {
+        book.upgradePage(type(DummyERC20).creationCode);
+
+        vm.expectRevert(Book.Zero.selector);
+
+        book.upgradePage(type(DummyERC20).creationCode);
+    }
+
     function testUpgradePage() external {
         assertEq(address(this), book.owner());
 
