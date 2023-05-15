@@ -11,13 +11,22 @@ interface ICollection {
 }
 
 contract PageInvariantHandler is Test, ERC721TokenReceiver {
+    enum State {
+        Owned,
+        Deposited,
+        Listed,
+        ListedWithTip,
+        Edited,
+        EditedWithTip,
+        Canceled
+    }
+
     ERC721 internal immutable collection;
     Book internal immutable book;
     Page internal immutable page;
+    uint256[] internal ids;
 
-    uint256[] private ownedIds;
-    uint256[] private depositedIds;
-    uint256[] private listedIds;
+    mapping(uint256 id => State) public states;
 
     receive() external payable {}
 
@@ -30,65 +39,75 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
         _collection.setApprovalForAll(address(page), true);
     }
 
-    function getOwnedIds() external view returns (uint256[] memory) {
-        return ownedIds;
-    }
-
-    function getDepositedIds() external view returns (uint256[] memory) {
-        return depositedIds;
-    }
-
-    function getListedIds() external view returns (uint256[] memory) {
-        return listedIds;
+    function getIds() external view returns (uint256[] memory) {
+        return ids;
     }
 
     function mintDeposit(uint256 id) public {
         ICollection(address(collection)).mint(address(this), id);
+        page.deposit(id, address(this));
+
+        // Add ID to `ids` array since it is new
+        ids.push(id);
+
+        states[id] = State.Deposited;
+    }
+
+    function deposit(uint256 index) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
 
         page.deposit(id, address(this));
 
-        depositedIds.push(id);
+        states[id] = State.Deposited;
     }
 
-    function deposit() public {
-        uint256 id = ownedIds[ownedIds.length - 1];
-
-        page.deposit(id, address(this));
-
-        ownedIds.pop();
-        depositedIds.push(id);
-    }
-
-    function withdraw() public {
-        uint256 id = depositedIds[depositedIds.length - 1];
+    function withdraw(uint256 index) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
 
         page.withdraw(id, address(this));
 
-        depositedIds.pop();
-        ownedIds.push(id);
+        states[id] = State.Owned;
     }
 
-    function list(uint48 price, uint48 tip) public {
-        uint256 id = depositedIds[depositedIds.length - 1];
+    function list(uint256 index, uint48 price) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
+
+        page.list(id, price, 0);
+
+        states[id] = State.Listed;
+    }
+
+    function list(uint256 index, uint48 price, uint48 tip) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
 
         page.list(id, price, tip);
 
-        depositedIds.pop();
-        listedIds.push(id);
+        states[id] = State.ListedWithTip;
     }
 
-    function edit(uint48 newPrice) public {
-        uint256 id = listedIds[listedIds.length - 1];
+    function edit(uint256 index, uint48 newPrice) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
 
         page.edit(id, newPrice);
+
+        if (states[id] == State.Listed) {
+            states[id] = State.Edited;
+        } else {
+            states[id] = State.EditedWithTip;
+        }
     }
 
-    function cancel() public {
-        uint256 id = listedIds[listedIds.length - 1];
+    function cancel(uint256 index) public {
+        index = bound(index, 0, ids.length - 1);
+        uint256 id = ids[index];
 
         page.cancel(id);
 
-        listedIds.pop();
-        depositedIds.push(id);
+        states[id] = State.Canceled;
     }
 }

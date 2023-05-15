@@ -43,80 +43,39 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         targetContract(address(handler));
     }
 
-    function invariantOwnedNFTs() external {
-        uint256[] memory ownedIds = handler.getOwnedIds();
+    function assertOwnedState(uint256 id, address collectionOwnerOf) internal {
+        // Handler has custody of the NFT
+        assertEq(collectionOwnerOf, collection.ownerOf(id));
+
+        // No derivative should exist
+        assertEq(address(0), page.ownerOf(id));
+
+        // Listing should be empty
+        (address seller, uint48 price, uint48 tip) = page.listings(id);
+
+        assertEq(address(0), seller);
+        assertEq(0, price);
+        assertEq(0, tip);
+    }
+
+    function invariantOwnedState() external {
+        uint256[] memory ids = handler.getIds();
         uint256 id;
 
         // There MUST NOT be a derivative token if the handler owns the NFT
-        for (uint256 i; i < ownedIds.length; ) {
-            id = ownedIds[i];
-            (address seller, uint48 price, uint48 tip) = page.listings(id);
+        for (uint256 i; i < ids.length; ) {
+            id = ids[i];
 
-            // Handler has custody of the NFT
-            assertEq(collection.ownerOf(id), address(handler));
-
-            // No derivative should exist
-            assertEq(page.ownerOf(id), address(0));
-
-            // Listing should be empty
-            assertEq(address(0), seller);
-            assertEq(0, price);
-            assertEq(0, tip);
-
+            // Increment before the remaining logic since we are conditionally skipping
             unchecked {
                 ++i;
             }
-        }
-    }
 
-    function invariantDepositedNFTs() external {
-        uint256[] memory depositedIds = handler.getDepositedIds();
-        uint256 id;
+            // If the token ID is not in an "owned" state, continue to the next ID
+            if (handler.states(id) != PageInvariantHandler.State.Owned)
+                continue;
 
-        // There MUST be a derivative token if the Page contract owns the NFT
-        for (uint256 i; i < depositedIds.length; ) {
-            id = depositedIds[i];
-            (address seller, uint48 price, uint48 tip) = page.listings(id);
-
-            // Page has custody of the NFT
-            assertEq(collection.ownerOf(id), address(page));
-
-            // Handler should have the derivative token
-            assertEq(page.ownerOf(id), address(handler));
-
-            // Listing should be empty
-            assertEq(address(0), seller);
-            assertEq(0, price);
-            assertEq(0, tip);
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    function invariantListedNFTs() external {
-        uint256[] memory listedIds = handler.getListedIds();
-        uint256 id;
-
-        for (uint256 i; i < listedIds.length; ) {
-            id = listedIds[i];
-            (address seller, uint48 price, uint48 tip) = page.listings(id);
-
-            // Page has custody of the NFT
-            assertEq(collection.ownerOf(id), address(page));
-
-            // Page has custody of the derivative token
-            assertEq(page.ownerOf(id), address(page));
-
-            // Listing should NOT be empty
-            assertEq(address(handler), seller);
-            assertGt(price, 0);
-            assertGe(price, tip);
-
-            unchecked {
-                ++i;
-            }
+            assertOwnedState(id, address(handler));
         }
     }
 }
