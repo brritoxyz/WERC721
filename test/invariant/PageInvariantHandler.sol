@@ -12,12 +12,10 @@ interface ICollection {
 
 contract PageInvariantHandler is Test, ERC721TokenReceiver {
     enum State {
-        Owned,
         Deposited,
+        Withdrawn,
         Listed,
-        ListedWithTip,
         Edited,
-        EditedWithTip,
         Canceled
     }
 
@@ -68,16 +66,7 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         page.withdraw(id, address(this));
 
-        states[id] = State.Owned;
-    }
-
-    function list(uint256 index, uint48 price) public {
-        index = bound(index, 0, ids.length - 1);
-        uint256 id = ids[index];
-
-        page.list(id, price, 0);
-
-        states[id] = State.Listed;
+        states[id] = State.Withdrawn;
     }
 
     function list(uint256 index, uint48 price, uint48 tip) public {
@@ -86,7 +75,7 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         page.list(id, price, tip);
 
-        states[id] = State.ListedWithTip;
+        states[id] = State.Listed;
     }
 
     function edit(uint256 index, uint48 newPrice) public {
@@ -95,11 +84,7 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         page.edit(id, newPrice);
 
-        if (states[id] == State.Listed) {
-            states[id] = State.Edited;
-        } else {
-            states[id] = State.EditedWithTip;
-        }
+        states[id] = State.Edited;
     }
 
     function cancel(uint256 index) public {
