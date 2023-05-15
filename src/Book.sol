@@ -13,12 +13,19 @@ contract Book is Owned {
     // Page implementation contract address
     address public immutable pageImplementation;
 
+    // Current page implementation version
+    uint96 public currentVersion;
+
     // Tip recipient used when initializing pages
     address payable public tipRecipient;
+
+    mapping(uint256 version => address implementation)
+        public pageImplementations;
 
     // ERC721 collections mapped to their Page contracts
     mapping(ERC721 => address) public pages;
 
+    event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
 
     error Zero();
