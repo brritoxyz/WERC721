@@ -477,6 +477,22 @@ contract PageExchangeTest is Test, PageBase {
         page.edit(id, newPrice);
     }
 
+    function testCannotEditNewPriceLessThanTip() external {
+        uint256 id = ids[0];
+        uint48 price = 100_000;
+        uint48 tip = 1_000;
+        uint48 newPrice = 200;
+
+        page.deposit(id, address(this));
+        page.list(id, price, tip);
+
+        assertLt(newPrice, tip);
+
+        vm.expectRevert(Page.Invalid.selector);
+
+        page.edit(id, newPrice);
+    }
+
     function testEdit(uint48 price, uint48 tip, uint48 newPrice) external {
         vm.assume(price != 0);
         vm.assume(tip <= price);

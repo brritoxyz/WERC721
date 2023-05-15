@@ -163,6 +163,27 @@ contract PageOffersTest is Test, PageBase {
         page.takeOffer(ids, maker, greaterOrLesser ? offer + 1 : offer - 1);
     }
 
+    function testCannotTakeOfferUnauthorized() external {
+        address maker = accounts[0];
+        uint256 offer = 1 ether;
+        uint256 quantity = 1;
+        uint256 msgValue = offer * quantity;
+
+        vm.prank(maker);
+        vm.deal(maker, msgValue);
+
+        page.makeOffer{value: msgValue}(offer, quantity);
+
+        // Will revert since the owner of this ID is currently the zero address
+        uint256[] memory _ids = new uint256[](1);
+        _ids[0] = ids[0];
+
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        // Any offer that is not equal to the maker's offer will revert
+        page.takeOffer(_ids, maker, offer);
+    }
+
     function testTakeOffer(uint16 offerMultiplier, uint8 quantity) external {
         vm.assume(offerMultiplier != 0);
         vm.assume(quantity != 0);
