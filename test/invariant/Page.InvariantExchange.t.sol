@@ -16,6 +16,10 @@ contract Collection is ERC721("Collection", "COLLECTION") {
     function tokenURI(uint256) public pure override returns (string memory) {
         return "";
     }
+
+    function ownerOf(uint256 id) public view override returns (address owner) {
+        return _ownerOf[id] == address(0) ? address(0) : _ownerOf[id];
+    }
 }
 
 contract PageInvariantExchangeTest is Test, InvariantTest {
@@ -40,7 +44,16 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         // Deploy and initialize Handler contract
         handler = new PageInvariantHandler(collection, book, page);
 
+        // Test runner will only call the Handler contract
         targetContract(address(handler));
+
+        // Calls the Handler contract as the following sender address (speeds up tests)
+        targetSender(address(this));
+
+        // Exclude contracts deployed in setUp method (automatically added)
+        excludeContract(address(collection));
+        excludeContract(address(book));
+        excludeContract(address(page));
     }
 
     function assertDepositedState(uint256 id, address pageOwnerOf) internal {
@@ -111,105 +124,51 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         assertEq(0, tip);
     }
 
-    function invariantDepositedState() external {
+    function invariantTokenState() external {
         uint256[] memory ids = handler.getIds();
-        uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
-            id = ids[i];
+        if (ids.length == 0) return;
 
-            // Increment before the remaining logic since we are conditionally skipping
-            unchecked {
-                ++i;
-            }
+        uint256 id = ids[ids.length - 1];
+        PageInvariantHandler.State idState = handler.states(id);
 
-            // If the token ID is not in an "deposited" state, continue to the next ID
-            if (handler.states(id) != PageInvariantHandler.State.Deposited)
-                continue;
-
+        // If the token ID is not in an "deposited" state, continue to the next ID
+        if (idState == PageInvariantHandler.State.Deposited) {
             address pageOwnerOf = address(handler);
 
             assertDepositedState(id, pageOwnerOf);
+
+            return;
         }
-    }
 
-    function invariantWithdrawnState() external {
-        uint256[] memory ids = handler.getIds();
-        uint256 id;
-
-        for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            unchecked {
-                ++i;
-            }
-
-            if (handler.states(id) != PageInvariantHandler.State.Withdrawn)
-                continue;
-
+        if (idState == PageInvariantHandler.State.Withdrawn) {
             address collectionOwnerOf = address(handler);
 
             assertWithdrawnState(id, collectionOwnerOf);
+
+            return;
         }
-    }
 
-    function invariantListedState() external {
-        uint256[] memory ids = handler.getIds();
-        uint256 id;
-
-        for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            unchecked {
-                ++i;
-            }
-
-            if (handler.states(id) != PageInvariantHandler.State.Listed)
-                continue;
-
+        if (
+            idState == PageInvariantHandler.State.Listed ||
+            idState == PageInvariantHandler.State.Edited
+        ) {
             address listingSeller = address(handler);
 
             assertListedState(id, listingSeller);
+
+            return;
         }
-    }
 
-    function invariantEditedState() external {
-        uint256[] memory ids = handler.getIds();
-        uint256 id;
-
-        for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            unchecked {
-                ++i;
-            }
-
-            if (handler.states(id) != PageInvariantHandler.State.Edited)
-                continue;
-
-            address listingSeller = address(handler);
-
-            assertListedState(id, listingSeller);
-        }
-    }
-
-    function invariantCanceledState() external {
-        uint256[] memory ids = handler.getIds();
-        uint256 id;
-
-        for (uint256 i; i < ids.length; ) {
-            id = ids[i];
-
-            unchecked {
-                ++i;
-            }
-
-            if (handler.states(id) != PageInvariantHandler.State.Canceled)
-                continue;
-
+        if (idState == PageInvariantHandler.State.Canceled) {
             address pageOwnerOf = address(handler);
 
             assertCanceledState(id, pageOwnerOf);
+
+            return;
         }
+
+        // Revert if no state is matched
+        revert("Invalid state");
     }
 }

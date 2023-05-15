@@ -42,6 +42,9 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function mintDeposit(uint256 id) public {
+        // Cannot mint if the ID is already owned
+        if (collection.ownerOf(id) != address(0)) return;
+
         ICollection(address(collection)).mint(address(this), id);
         page.deposit(id, address(this));
 
@@ -52,6 +55,9 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function deposit(uint256 index) public {
+        // Will underflow on next line if `ids` is empty
+        if (ids.length == 0) return;
+
         index = bound(index, 0, ids.length - 1);
         uint256 id = ids[index];
 
@@ -61,6 +67,8 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function withdraw(uint256 index) public {
+        if (ids.length == 0) return;
+
         index = bound(index, 0, ids.length - 1);
         uint256 id = ids[index];
 
@@ -70,6 +78,8 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function list(uint256 index, uint48 price, uint48 tip) public {
+        if (ids.length == 0) return;
+
         index = bound(index, 0, ids.length - 1);
         uint256 id = ids[index];
 
@@ -79,6 +89,8 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function edit(uint256 index, uint48 newPrice) public {
+        if (ids.length == 0) return;
+
         index = bound(index, 0, ids.length - 1);
         uint256 id = ids[index];
 
@@ -88,6 +100,8 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function cancel(uint256 index) public {
+        if (ids.length == 0) return;
+
         index = bound(index, 0, ids.length - 1);
         uint256 id = ids[index];
 
