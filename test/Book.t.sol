@@ -34,6 +34,11 @@ contract BookTest is Test {
 
     event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
+    event CreatePage(
+        address indexed implementation,
+        ERC721 indexed collection,
+        address page
+    );
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
@@ -48,7 +53,9 @@ contract BookTest is Test {
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
             implementation,
-            keccak256(abi.encodePacked(LLAMA, book.SALT_FRAGMENT())),
+            keccak256(
+                abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
+            ),
             address(book)
         );
 
@@ -195,12 +202,36 @@ contract BookTest is Test {
         book.createPage(ERC721(address(0)));
     }
 
-    function testCannotCreatePageAlreadyCreated() external {
+    function testCreatePageRedeployWithoutStorage() external {
         assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
-        vm.expectRevert(Book.AlreadyExists.selector);
+        // Forward timestamp in order to produce a new CREATE2 salt
+        vm.warp(block.timestamp + 1);
 
-        book.createPage(LLAMA);
+        address predeterminedPageAddress = Clones.predictDeterministicAddress(
+            pageImplementation,
+            keccak256(
+                abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
+            ),
+            address(book)
+        );
+
+        vm.expectEmit(true, true, false, true, address(book));
+
+        emit CreatePage(pageImplementation, LLAMA, predeterminedPageAddress);
+
+        address newPage = book.createPage(LLAMA);
+
+        assertTrue(newPage != address(page));
+        assertEq(predeterminedPageAddress, newPage);
+
+        // Previously-stored Page contract should remain unchanged
+        assertEq(address(page), book.pages(pageImplementation, LLAMA));
+
+        // Should be initialized
+        vm.expectRevert("Initializable: contract is already initialized");
+
+        Page(newPage).initialize(address(this), LLAMA, TIP_RECIPIENT);
     }
 
     function testCreatePage(ERC721 collection) external {
@@ -211,9 +242,20 @@ contract BookTest is Test {
 
         address predeterminedPageAddress = Clones.predictDeterministicAddress(
             pageImplementation,
-            keccak256(abi.encodePacked(collection, book.SALT_FRAGMENT())),
+            keccak256(
+                abi.encodePacked(
+                    collection,
+                    book.SALT_FRAGMENT(),
+                    block.timestamp
+                )
+            ),
             address(book)
         );
+
+        vm.expectEmit(true, true, false, true, address(book));
+
+        emit CreatePage(pageImplementation, collection, predeterminedPageAddress);
+
         address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);

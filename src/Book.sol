@@ -29,6 +29,11 @@ contract Book is Owned {
 
     event UpgradePage(uint256 version, address implementation);
     event SetTipRecipient(address tipRecipient);
+    event CreatePage(
+        address indexed implementation,
+        ERC721 indexed collection,
+        address page
+    );
 
     error Zero();
     error AlreadyExists();
@@ -103,20 +108,25 @@ contract Book is Owned {
 
         address implementation = pageImplementations[currentVersion];
 
-        // Prevent pages from being re-deployed and overwriting existing contracts
-        if (pages[implementation][collection] != address(0))
-            revert AlreadyExists();
-
         // Create a minimal proxy for the implementation
         page = Clones.cloneDeterministic(
             implementation,
-            keccak256(abi.encodePacked(collection, SALT_FRAGMENT))
+            keccak256(
+                abi.encodePacked(collection, SALT_FRAGMENT, block.timestamp)
+            )
         );
 
-        // Update the mapping to point the collection to its page
-        pages[implementation][collection] = page;
+        // Only store pages if they don't already exist, otherwise, return the address and emit the
+        // event in order to signify that a new Page contract was deployed. By enabling multiple, "non-canonical"
+        // deployments, we're able to circumvent censorship by collections and other actors
+        if (pages[implementation][collection] == address(0)) {
+            // Update the mapping to point the collection to its page
+            pages[implementation][collection] = page;
+        }
 
         // Initialize the minimal proxy's state variables
         IPage(page).initialize(owner, collection, tipRecipient);
+
+        emit CreatePage(implementation, collection, page);
     }
 }
