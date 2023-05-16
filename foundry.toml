@@ -10,7 +10,7 @@ optimizer = false
 via_ir = false
 
 [fuzz]
-runs = 64
+runs = 256
 
 [invariant]
 runs = 1024

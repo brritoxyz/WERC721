@@ -72,7 +72,7 @@ contract PageTest is Test, PageBase {
         assertEq(to.operator(), address(this));
         assertEq(to.from(), from);
         assertEq(to.id(), id);
-        assertEq(to.mintData(), bytes(""));
+        assertEq(to.mintData(), data);
 
         assertEq(page.balanceOf(address(to), id), 1);
         assertEq(page.balanceOf(from, id), 0);
