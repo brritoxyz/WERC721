@@ -1060,6 +1060,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         uint256 mintAmount = 1;
         uint256 transferAmount = 1;
 
+        if (to == address(this)) to = address(0xABCD);
         if (to == address(0)) to = address(0xBEEF);
         if (uint256(uint160(to)) <= 18 || to.code.length > 0) return;
 
@@ -1083,6 +1084,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
     ) public {
         uint256 mintAmount = 1;
 
+        if (to == address(this)) to = address(0xABCD);
         if (to == address(0)) to = address(0xBEEF);
         if (uint256(uint160(to)) <= 18 || to.code.length > 0) return;
 
@@ -1099,6 +1101,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory transferData
     ) public {
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
+
         uint256[] memory ids = new uint256[](10);
         uint256[] memory mintAmounts = new uint256[](ids.length);
         uint256[] memory transferAmounts = new uint256[](ids.length);
@@ -1142,6 +1147,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory mintData
     ) public {
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
+
         uint256[] memory ids = new uint256[](10);
         uint256[] memory mintAmounts = new uint256[](ids.length);
 
@@ -1284,6 +1292,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory transferData
     ) public {
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
+
         uint256 mintAmount = 1;
         uint256 transferAmount = 1;
 
@@ -1302,6 +1313,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory mintData
     ) public {
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
+
         uint256 mintAmount = 1;
 
         token.mint(from, id, mintAmount, mintData);
@@ -1319,6 +1333,8 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory mintData,
         bytes memory transferData
     ) public {
+        if (to == address(this)) to = address(0xABCD);
+
         uint256 mintAmount = 1;
         uint256 transferAmount = 1;
 
@@ -1344,6 +1360,8 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         uint256 id,
         bytes memory mintData
     ) public {
+        if (to == address(this)) to = address(0xABCD);
+
         uint256 mintAmount = 1;
 
         token.mint(address(this), id, mintAmount, mintData);
@@ -1452,6 +1470,8 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
         address from = address(0xABCD);
 
+        if (to == from) to = address(this);
+
         token.batchMint(from, ids, mintAmounts, mintData);
 
         hevm.prank(from);
@@ -1488,6 +1508,8 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
 
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
 
         token.batchMint(from, ids, mintAmounts, mintData);
 
@@ -1648,6 +1670,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         bytes memory transferData
     ) public {
         address from = address(0xABCD);
+
+        if (to == from) to = address(this);
+
         uint256[] memory ids = new uint256[](10);
         uint256[] memory mintAmounts = new uint256[](ids.length);
         uint256[] memory transferAmounts = new uint256[](ids.length);
