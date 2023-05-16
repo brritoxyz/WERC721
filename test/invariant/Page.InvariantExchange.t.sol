@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import "forge-std/InvariantTest.sol";
-import {ERC721} from "solmate/tokens/ERC721.sol";
+import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {PageInvariantHandler} from "test/invariant/PageInvariantHandler.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
@@ -22,7 +22,7 @@ contract Collection is ERC721("Collection", "COLLECTION") {
     }
 }
 
-contract PageInvariantExchangeTest is Test, InvariantTest {
+contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
     address payable internal constant TIP_RECIPIENT =
         payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
@@ -47,8 +47,24 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         // Test runner will only call the Handler contract
         targetContract(address(handler));
 
-        // Calls the Handler contract as the following sender address (speeds up tests)
-        targetSender(address(this));
+        address[] memory senders = new address[](10);
+        senders[0] = address(this);
+        senders[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+        senders[2] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
+        senders[3] = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
+        senders[4] = 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65;
+        senders[5] = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;
+        senders[6] = 0x976EA74026E726554dB657fA54763abd0C3a0aa9;
+        senders[7] = 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955;
+        senders[8] = 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f;
+        senders[9] = 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
+
+        unchecked {
+            for (uint256 i; i < senders.length; ++i) {
+                // Calls the Handler contract as the following sender address (speeds up tests)
+                targetSender(senders[i]);
+            }
+        }
 
         // Exclude contracts deployed in setUp method (automatically added)
         excludeContract(address(collection));
@@ -131,27 +147,29 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
         if (ids.length == 0) return;
 
         uint256 id;
-        PageInvariantHandler.State idState;
 
         for (uint256 i; i < ids.length; ) {
             id = ids[ids.length - 1];
-            idState = handler.states(id);
+            (
+                address recipient,
+                PageInvariantHandler.TokenState tokenState
+            ) = handler.states(id);
 
             unchecked {
                 ++i;
             }
 
             // If the token ID is not in an "deposited" state, continue to the next ID
-            if (idState == PageInvariantHandler.State.Deposited) {
-                address pageOwnerOf = address(handler);
+            if (tokenState == PageInvariantHandler.TokenState.Deposited) {
+                address pageOwnerOf = recipient;
 
                 assertDepositedState(id, pageOwnerOf);
 
                 return;
             }
 
-            if (idState == PageInvariantHandler.State.Withdrawn) {
-                address collectionOwnerOf = address(handler);
+            if (tokenState == PageInvariantHandler.TokenState.Withdrawn) {
+                address collectionOwnerOf = recipient;
 
                 assertWithdrawnState(id, collectionOwnerOf);
 
@@ -159,18 +177,18 @@ contract PageInvariantExchangeTest is Test, InvariantTest {
             }
 
             if (
-                idState == PageInvariantHandler.State.Listed ||
-                idState == PageInvariantHandler.State.Edited
+                tokenState == PageInvariantHandler.TokenState.Listed ||
+                tokenState == PageInvariantHandler.TokenState.Edited
             ) {
-                address listingSeller = address(handler);
+                address listingSeller = recipient;
 
                 assertListedState(id, listingSeller);
 
                 return;
             }
 
-            if (idState == PageInvariantHandler.State.Canceled) {
-                address pageOwnerOf = address(handler);
+            if (tokenState == PageInvariantHandler.TokenState.Canceled) {
+                address pageOwnerOf = recipient;
 
                 assertCanceledState(id, pageOwnerOf);
 

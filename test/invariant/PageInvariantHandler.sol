@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "forge-std/Test.sol";
+import {CommonBase} from "forge-std/Base.sol";
+import {StdCheats} from "forge-std/StdCheats.sol";
+import {StdUtils} from "forge-std/StdUtils.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
@@ -10,13 +12,23 @@ interface ICollection {
     function mint(address, uint256) external;
 }
 
-contract PageInvariantHandler is Test, ERC721TokenReceiver {
-    enum State {
+contract PageInvariantHandler is
+    CommonBase,
+    StdCheats,
+    StdUtils,
+    ERC721TokenReceiver
+{
+    enum TokenState {
         Deposited,
         Withdrawn,
         Listed,
         Edited,
         Canceled
+    }
+
+    struct State {
+        address recipient;
+        TokenState state;
     }
 
     ERC721 internal immutable collection;
@@ -43,13 +55,20 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
     }
 
     function mintDeposit() public {
-        ICollection(address(collection)).mint(address(this), currentIndex);
-        page.deposit(currentIndex, address(this));
+        ICollection(address(collection)).mint(msg.sender, currentIndex);
+
+        vm.startPrank(msg.sender);
+
+        collection.setApprovalForAll(address(page), true);
+
+        page.deposit(currentIndex, msg.sender);
+
+        vm.stopPrank();
 
         // Add ID to `ids` array since it is new
         ids.push(currentIndex);
 
-        states[currentIndex] = State.Deposited;
+        states[currentIndex] = State(msg.sender, TokenState.Deposited);
 
         ++currentIndex;
     }
@@ -60,11 +79,13 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id] != State.Withdrawn) return;
+        if (states[id].state != TokenState.Withdrawn) return;
 
-        page.deposit(id, address(this));
+        vm.prank(states[id].recipient);
 
-        states[id] = State.Deposited;
+        page.deposit(id, states[id].recipient);
+
+        states[id] = State(states[id].recipient, TokenState.Deposited);
     }
 
     function withdraw() public {
@@ -72,11 +93,13 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id] != State.Deposited) return;
+        if (states[id].state != TokenState.Deposited) return;
 
-        page.withdraw(id, address(this));
+        vm.prank(states[id].recipient);
 
-        states[id] = State.Withdrawn;
+        page.withdraw(id, states[id].recipient);
+
+        states[id] = State(states[id].recipient, TokenState.Withdrawn);
     }
 
     function list(uint48 price, uint48 tip) public {
@@ -87,11 +110,13 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id] != State.Deposited) return;
+        if (states[id].state != TokenState.Deposited) return;
+
+        vm.prank(states[id].recipient);
 
         page.list(id, price, tip);
 
-        states[id] = State.Listed;
+        states[id] = State(states[id].recipient, TokenState.Listed);
     }
 
     function edit(uint48 newPrice) public {
@@ -101,15 +126,17 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id] != State.Listed) return;
+        if (states[id].state != TokenState.Listed) return;
 
         (, , uint48 tip) = page.listings(id);
 
         if (newPrice < tip) newPrice = tip;
 
+        vm.prank(states[id].recipient);
+
         page.edit(id, newPrice);
 
-        states[id] = State.Edited;
+        states[id] = State(states[id].recipient, TokenState.Edited);
     }
 
     function cancel() public {
@@ -117,10 +144,12 @@ contract PageInvariantHandler is Test, ERC721TokenReceiver {
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id] != State.Listed) return;
+        if (states[id].state != TokenState.Listed) return;
+
+        vm.prank(states[id].recipient);
 
         page.cancel(id);
 
-        states[id] = State.Canceled;
+        states[id] = State(states[id].recipient, TokenState.Canceled);
     }
 }

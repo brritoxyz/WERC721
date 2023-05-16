@@ -14,12 +14,6 @@ contract DummyERC20 is ERC20("", "", 18) {
     constructor() payable {}
 }
 
-contract DummyERC4626 is ERC4626(new DummyERC20(), "", "") {
-    function totalAssets() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
-}
-
 contract BookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
