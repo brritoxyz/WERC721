@@ -77,13 +77,8 @@ abstract contract ERC1155NS {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256,
-        bytes calldata
-    ) public virtual {
+    function transferFrom(address from, address to, uint256 id) public virtual {
+        require(to != address(0), "UNSAFE_RECIPIENT");
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
             "NOT_AUTHORIZED"
@@ -99,10 +94,9 @@ abstract contract ERC1155NS {
     function batchTransferFrom(
         address from,
         address to,
-        uint256[] calldata ids,
-        uint256[] calldata,
-        bytes calldata
+        uint256[] calldata ids
     ) public virtual {
+        require(to != address(0), "UNSAFE_RECIPIENT");
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
             "NOT_AUTHORIZED"

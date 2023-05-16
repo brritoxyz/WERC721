@@ -520,7 +520,7 @@ contract Page is
         uint256[] calldata ids,
         address maker,
         uint256 offer
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
         // is the zero address, or if the offer is zero (arithmetic underflow)
@@ -551,6 +551,9 @@ contract Page is
             // Send maker's funds to the offer taker
             payable(msg.sender).safeTransferETH(offer * ids.length);
         }
+
+        // If the offer taker sent a tip, transfer it to the tip recipient
+        if (msg.value != 0) tipRecipient.safeTransferETH(msg.value);
 
         emit TakeOffer(msg.sender);
     }
