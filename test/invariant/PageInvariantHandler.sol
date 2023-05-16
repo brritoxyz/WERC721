@@ -96,7 +96,11 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Withdrawn) return;
+        // Enable invariant tests to revert and only perform assertions
+        // on state for valid token state changes (enables us to catch
+        // incidents where tokens that are not in a correct state that
+        // manage to change the token's state - uncomment if needed)
+        // if (states[id].state != TokenState.Withdrawn) return;
 
         vm.prank(states[id].recipient);
 
@@ -110,7 +114,7 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Deposited) return;
+        // if (states[id].state != TokenState.Deposited) return;
 
         vm.prank(states[id].recipient);
 
@@ -127,7 +131,7 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Deposited) return;
+        // if (states[id].state != TokenState.Deposited) return;
 
         vm.prank(states[id].recipient);
 
@@ -143,7 +147,7 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Listed) return;
+        // if (states[id].state != TokenState.Listed) return;
 
         (, , uint48 tip) = page.listings(id);
 
@@ -161,7 +165,7 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Listed) return;
+        // if (states[id].state != TokenState.Listed) return;
 
         vm.prank(states[id].recipient);
 
@@ -175,7 +179,7 @@ contract PageInvariantHandler is
 
         uint256 id = ids[ids.length - 1];
 
-        if (states[id].state != TokenState.Listed) return;
+        // if (states[id].state != TokenState.Listed) return;
 
         (, uint48 price, uint48 tip) = page.listings(id);
         (uint256 _priceETH, ) = _calculateListingValues(price, tip);

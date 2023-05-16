@@ -13,9 +13,9 @@ via_ir = false
 runs = 512
 
 [invariant]
-runs = 512
+runs = 1024
 depth = 30
-fail_on_revert = true
+fail_on_revert = false
 
 [profile.optimized]
 optimizer = true
