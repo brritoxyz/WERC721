@@ -71,6 +71,17 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         excludeContract(address(book));
         excludeContract(address(page));
         excludeContract(address(this));
+
+        // Specify target selectors to avoid calling handler getter methods
+        bytes4[] memory selectors = new bytes4[](6);
+        selectors[0] = PageInvariantHandler.mintDeposit.selector;
+        selectors[1] = PageInvariantHandler.deposit.selector;
+        selectors[2] = PageInvariantHandler.withdraw.selector;
+        selectors[3] = PageInvariantHandler.list.selector;
+        selectors[4] = PageInvariantHandler.edit.selector;
+        selectors[5] = PageInvariantHandler.cancel.selector;
+
+        targetSelector(InvariantTest.FuzzSelector(address(handler), selectors));
     }
 
     function assertDepositedState(uint256 id, address pageOwnerOf) internal {
