@@ -22,3 +22,11 @@ optimizer = true
 optimizer_runs = 4_294_967_295
 via_ir = true
 out = 'optimized-out'
+
+[profile.optimized.fuzz]
+runs = 32
+
+[profile.optimized.invariant]
+runs = 32
+depth = 15
+fail_on_revert = false
