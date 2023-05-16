@@ -14,8 +14,6 @@ abstract contract ERC1155NS {
 
     uint256 private constant SINGLE_AMOUNT = 1;
 
-    bytes private constant EMPTY_DATA = "";
-
     // Tracks the owner of each non-fungible derivative
     mapping(uint256 => address) public ownerOf;
 
@@ -79,12 +77,61 @@ abstract contract ERC1155NS {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    function safeTransferFrom(
+    function transferFrom(
         address from,
         address to,
         uint256 id,
         uint256,
         bytes calldata
+    ) public virtual {
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
+
+        // Verify that `from` owns the token prior to transfer
+        require(ownerOf[id] == from, "NOT_AUTHORIZED");
+
+        // Set new owner as `to`
+        ownerOf[id] = to;
+    }
+
+    function batchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata,
+        bytes calldata
+    ) public virtual {
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
+
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            id = ids[i];
+
+            require(ownerOf[id] == from, "NOT_AUTHORIZED");
+
+            ownerOf[id] = to;
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256,
+        bytes calldata data
     ) public virtual {
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
@@ -107,7 +154,7 @@ abstract contract ERC1155NS {
                     from,
                     id,
                     SINGLE_AMOUNT,
-                    EMPTY_DATA
+                    data
                 ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
@@ -118,7 +165,7 @@ abstract contract ERC1155NS {
         address to,
         uint256[] calldata ids,
         uint256[] calldata,
-        bytes calldata
+        bytes calldata data
     ) public virtual {
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
@@ -154,7 +201,7 @@ abstract contract ERC1155NS {
                     from,
                     ids,
                     amounts,
-                    EMPTY_DATA
+                    data
                 ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
