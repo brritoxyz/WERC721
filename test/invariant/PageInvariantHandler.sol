@@ -23,7 +23,8 @@ contract PageInvariantHandler is
         Withdrawn,
         Listed,
         Edited,
-        Canceled
+        Canceled,
+        Bought
     }
 
     struct State {
@@ -34,10 +35,14 @@ contract PageInvariantHandler is
     ERC721 internal immutable collection;
     Book internal immutable book;
     Page internal immutable page;
+
+    // Ghost variables
     uint256 internal currentIndex;
     uint256[] internal ids;
+    uint256 internal tipRecipientProceeds;
 
     mapping(uint256 id => State) public states;
+    mapping(address seller => uint256 proceeds) public sellerProceeds;
 
     receive() external payable {}
 
@@ -48,6 +53,18 @@ contract PageInvariantHandler is
 
         // Approve the Page contract to transfer our NFTs
         _collection.setApprovalForAll(address(page), true);
+    }
+
+    function _calculateListingValues(
+        uint256 price,
+        uint256 tip
+    ) private view returns (uint256 _priceETH, uint256 _sellerProceeds) {
+        uint256 valueDenom = page.VALUE_DENOM();
+
+        unchecked {
+            _priceETH = price * valueDenom;
+            _sellerProceeds = _priceETH - (tip * valueDenom);
+        }
     }
 
     function getIds() external view returns (uint256[] memory) {
@@ -151,5 +168,23 @@ contract PageInvariantHandler is
         page.cancel(id);
 
         states[id] = State(states[id].recipient, TokenState.Canceled);
+    }
+
+    function buy() public {
+        if (ids.length == 0) return;
+
+        uint256 id = ids[ids.length - 1];
+
+        if (states[id].state != TokenState.Listed) return;
+
+        (, uint48 price, uint48 tip) = page.listings(id);
+        (uint256 _priceETH, ) = _calculateListingValues(price, tip);
+
+        // Deal enough ETH to fulfill purchase
+        vm.deal(address(this), _priceETH);
+
+        page.buy{value: _priceETH}(id);
+
+        states[id] = State(address(this), TokenState.Bought);
     }
 }

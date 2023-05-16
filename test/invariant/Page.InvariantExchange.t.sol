@@ -30,6 +30,29 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
     Book internal book;
     Page internal page;
     PageInvariantHandler internal handler;
+    address[] internal senders = [
+        address(this),
+        0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
+        0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,
+        0x90F79bf6EB2c4f870365E785982E1f101E93b906,
+        0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65,
+        0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc,
+        0x976EA74026E726554dB657fA54763abd0C3a0aa9,
+        0x14dC79964da2C08b23698B3D3cc7Ca32193d9955,
+        0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f,
+        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720
+    ];
+
+    // Specify target selectors to avoid calling handler getter methods
+    bytes4[] selectors = [
+        PageInvariantHandler.mintDeposit.selector,
+        PageInvariantHandler.deposit.selector,
+        PageInvariantHandler.withdraw.selector,
+        PageInvariantHandler.list.selector,
+        PageInvariantHandler.edit.selector,
+        PageInvariantHandler.cancel.selector,
+        PageInvariantHandler.buy.selector
+    ];
 
     receive() external payable {}
 
@@ -44,21 +67,6 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         // Deploy and initialize Handler contract
         handler = new PageInvariantHandler(collection, book, page);
 
-        // Test runner will only call the Handler contract
-        targetContract(address(handler));
-
-        address[] memory senders = new address[](10);
-        senders[0] = address(this);
-        senders[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-        senders[2] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
-        senders[3] = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
-        senders[4] = 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65;
-        senders[5] = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;
-        senders[6] = 0x976EA74026E726554dB657fA54763abd0C3a0aa9;
-        senders[7] = 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955;
-        senders[8] = 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f;
-        senders[9] = 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-
         unchecked {
             for (uint256 i; i < senders.length; ++i) {
                 // Calls the Handler contract as the following sender address (speeds up tests)
@@ -66,20 +74,13 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
             }
         }
 
+        // Test runner should only call the Handler contract
+        targetContract(address(handler));
+
         // Exclude contracts deployed in setUp method (automatically added)
         excludeContract(address(collection));
         excludeContract(address(book));
         excludeContract(address(page));
-        excludeContract(address(this));
-
-        // Specify target selectors to avoid calling handler getter methods
-        bytes4[] memory selectors = new bytes4[](6);
-        selectors[0] = PageInvariantHandler.mintDeposit.selector;
-        selectors[1] = PageInvariantHandler.deposit.selector;
-        selectors[2] = PageInvariantHandler.withdraw.selector;
-        selectors[3] = PageInvariantHandler.list.selector;
-        selectors[4] = PageInvariantHandler.edit.selector;
-        selectors[5] = PageInvariantHandler.cancel.selector;
 
         targetSelector(InvariantTest.FuzzSelector(address(handler), selectors));
     }
@@ -152,6 +153,21 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(0, tip);
     }
 
+    function assertBoughtState(uint256 id, address pageOwnerOf) internal {
+        // The page has custody of the NFT since it is deposited
+        assertEq(address(page), collection.ownerOf(id));
+
+        // The derivative should be owned by the listing buyer
+        assertEq(pageOwnerOf, page.ownerOf(id));
+
+        // Listing is empty
+        (address seller, uint48 price, uint48 tip) = page.listings(id);
+
+        assertEq(address(0), seller);
+        assertEq(0, price);
+        assertEq(0, tip);
+    }
+
     function invariantTokenState() external {
         uint256[] memory ids = handler.getIds();
 
@@ -202,6 +218,14 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
                 address pageOwnerOf = recipient;
 
                 assertCanceledState(id, pageOwnerOf);
+
+                return;
+            }
+
+            if (tokenState == PageInvariantHandler.TokenState.Bought) {
+                address pageOwnerOf = recipient;
+
+                assertBoughtState(id, pageOwnerOf);
 
                 return;
             }
