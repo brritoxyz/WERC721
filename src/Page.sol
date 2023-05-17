@@ -6,14 +6,14 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {PageERC721} from "src/PageERC721.sol";
+import {PageToken} from "src/PageToken.sol";
 
 contract Page is
     Initializable,
     Owned,
     ReentrancyGuard,
     ERC721TokenReceiver,
-    PageERC721
+    PageToken
 {
     using SafeTransferLib for address payable;
 
@@ -60,6 +60,34 @@ contract Page is
     constructor() payable Owned(msg.sender) {
         // Disable initialization on the implementation contract
         _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the minimal proxy with an owner and collection contract
+     * @dev    There is no param validation to save gas (the Book contract will always input non-zero values)
+     * @param  _owner         address  Contract owner (has permission to changes the tip recipient)
+     * @param  _collection    ERC721   Collection contract
+     * @param  _tipRecipient  address  Tip recipient
+     */
+    function initialize(
+        address _owner,
+        ERC721 _collection,
+        address payable _tipRecipient
+    ) external initializer {
+        // Initialize Owned by setting `owner` to protocol-controlled address
+        // The owner *only* has the ability to set the URI and change the tip recipient
+        owner = _owner;
+
+        // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
+        locked = 1;
+
+        // Initialize this contract with the ERC721 collection contract
+        collection = _collection;
+
+        // Initialize this contract with a tip recipient (can later be modified by the owner if needed)
+        tipRecipient = _tipRecipient;
+
+        emit Initialize(_owner, _collection, _tipRecipient);
     }
 
     /**
@@ -169,31 +197,19 @@ contract Page is
     }
 
     /**
-     * @notice Initializes the minimal proxy with an owner and collection contract
-     * @dev    There is no param validation to save gas (the Book contract will always input non-zero values)
-     * @param  _owner         address  Contract owner (has permission to changes the tip recipient)
-     * @param  _collection    ERC721   Collection contract
-     * @param  _tipRecipient  address  Tip recipient
+     * @notice Retrieves the collection name
+     * @return string  Token name
      */
-    function initialize(
-        address _owner,
-        ERC721 _collection,
-        address payable _tipRecipient
-    ) external initializer {
-        // Initialize Owned by setting `owner` to protocol-controlled address
-        // The owner *only* has the ability to set the URI and change the tip recipient
-        owner = _owner;
+    function name() external view override returns (string memory) {
+        return collection.name();
+    }
 
-        // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
-        locked = 1;
-
-        // Initialize this contract with the ERC721 collection contract
-        collection = _collection;
-
-        // Initialize this contract with a tip recipient (can later be modified by the owner if needed)
-        tipRecipient = _tipRecipient;
-
-        emit Initialize(_owner, _collection, _tipRecipient);
+    /**
+     * @notice Retrieves the collection symbol
+     * @return string  Token symbol
+     */
+    function symbol() external view override returns (string memory) {
+        return collection.symbol();
     }
 
     /**

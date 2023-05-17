@@ -1,33 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.20;
 
-/// @notice Our non-standard ERC-721 contract is the result of extracting only the most essential
-///         functionality from the ERC-721 and ERC-1155 standards. Based on Solmate implementations:
-///         https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol
-///         https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol
-abstract contract PageERC721 {
+/**
+ * @notice This non-standard token contract is the result of extracting only the most essential
+ *         functionality from the ERC-721 and ERC-1155 interfaces. Based on Solmate implementations:
+ *         https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol
+ *         https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol
+ * @dev    The usual events are NOT emitted since this contract is intended to be maximally gas-efficient
+ *         and interacted with by contracts. This decision was made to reduce user gas costs across all
+ *         contract-based NFT marketplaces that integrate (those contracts can emit events if desired)
+ * @author kphed (based of transmissions11's work) - dedicated to Jude 🐾
+ */
+abstract contract PageToken {
     // Tracks the owner of each ERC721 derivative
     mapping(uint256 => address) public ownerOf;
 
     mapping(address => mapping(address => bool)) public isApprovedForAll;
 
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed id
-    );
+    function name() external view virtual returns (string memory);
 
-    event TransferBatch(
-        address indexed from,
-        address indexed to,
-        uint256[] ids
-    );
-
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    function symbol() external view virtual returns (string memory);
 
     function tokenURI(
         uint256 _tokenId
@@ -42,8 +34,34 @@ abstract contract PageERC721 {
 
     function setApprovalForAll(address operator, bool approved) external {
         isApprovedForAll[msg.sender][operator] = approved;
+    }
 
-        emit ApprovalForAll(msg.sender, operator, approved);
+    function transfer(address to, uint256 id) external {
+        require(msg.sender == ownerOf[id], "WRONG_FROM");
+        require(to != address(0), "UNSAFE_RECIPIENT");
+
+        // Set new owner as `to`
+        ownerOf[id] = to;
+    }
+
+    function batchTransfer(address to, uint256[] calldata ids) external {
+        require(to != address(0), "UNSAFE_RECIPIENT");
+
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+
+        for (uint256 i; i < ids.length; ) {
+            id = ids[i];
+
+            require(msg.sender == ownerOf[id], "WRONG_FROM");
+
+            // Set new owner as `to`
+            ownerOf[id] = to;
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     function transferFrom(address from, address to, uint256 id) external {
@@ -56,8 +74,6 @@ abstract contract PageERC721 {
 
         // Set new owner as `to`
         ownerOf[id] = to;
-
-        emit Transfer(from, to, id);
     }
 
     function batchTransferFrom(
@@ -87,8 +103,6 @@ abstract contract PageERC721 {
                 ++i;
             }
         }
-
-        emit TransferBatch(from, to, ids);
     }
 
     function balanceOfBatch(
