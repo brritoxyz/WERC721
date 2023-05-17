@@ -62,8 +62,8 @@ contract Book is Owned {
     {
         if (bytecode.length == 0) revert Zero();
 
-        // Increment the current version number - will not overflow since the cost to do so
-        // is more than anyone can ever afford
+        // Increment the current version number - overflow is unrealistic since the cost
+        // would be exorbitant for the contract owner, even on a L2
         unchecked {
             version = ++currentVersion;
         }

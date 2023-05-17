@@ -184,7 +184,11 @@ contract PageOffersTest is Test, PageBase {
         page.takeOffer(_ids, maker, offer);
     }
 
-    function testTakeOffer(uint16 offerMultiplier, uint8 quantity) external {
+    function testTakeOffer(
+        uint16 offerMultiplier,
+        uint8 quantity,
+        uint8 tipMultiplier
+    ) external {
         vm.assume(offerMultiplier != 0);
         vm.assume(quantity != 0);
         vm.assume(quantity >= ids.length);
@@ -202,8 +206,10 @@ contract PageOffersTest is Test, PageBase {
         address taker = address(this);
         uint256 pageBalanceBefore = address(page).balance;
         uint256 takerBalanceBefore = taker.balance;
+        uint256 tipRecipientBalanceBefore = page.tipRecipient().balance;
         uint256 makerOffersBefore = page.offers(maker, offerETH);
         uint256 takenValueETH = offerETH * ids.length;
+        uint256 tip = uint256(tipMultiplier) * 0.0069 ether;
 
         // Deposit the NFTs into the page contract to get the correct tokens
         page.batchDeposit(ids, taker);
@@ -212,10 +218,11 @@ contract PageOffersTest is Test, PageBase {
 
         emit TakeOffer(taker);
 
-        page.takeOffer(ids, maker, offerETH);
+        page.takeOffer{value: tip}(ids, maker, offerETH);
 
         assertEq(pageBalanceBefore - takenValueETH, address(page).balance);
-        assertEq(takerBalanceBefore + takenValueETH, taker.balance);
+        assertEq(takerBalanceBefore + takenValueETH - tip, taker.balance);
+        assertEq(tipRecipientBalanceBefore + tip, page.tipRecipient().balance);
         assertEq(makerOffersBefore - ids.length, page.offers(maker, offerETH));
 
         for (uint256 i; i < ids.length; ) {
