@@ -6,14 +6,14 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "src/base/Owned.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
-import {ERC1155NS} from "src/base/ERC1155NS.sol";
+import {PageERC721} from "src/PageERC721.sol";
 
 contract Page is
     Initializable,
     Owned,
     ReentrancyGuard,
     ERC721TokenReceiver,
-    ERC1155NS
+    PageERC721
 {
     using SafeTransferLib for address payable;
 
@@ -198,11 +198,13 @@ contract Page is
 
     /**
      * @notice Retrieves the collection token URI for the specified ID
-     * @param  id  uint256  Token ID
-     * @return     string   Token URI
+     * @param  _tokenId  uint256  Token ID
+     * @return           string   JSON file that conforms to the ERC721 Metadata JSON Schema
      */
-    function uri(uint256 id) public view override returns (string memory) {
-        return collection.tokenURI(id);
+    function tokenURI(
+        uint256 _tokenId
+    ) external view override returns (string memory) {
+        return collection.tokenURI(_tokenId);
     }
 
     /**

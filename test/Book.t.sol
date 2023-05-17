@@ -3,10 +3,8 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 

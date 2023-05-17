@@ -2,12 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {ERC1155TokenReceiver} from "src/base/ERC1155NS.sol";
-import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 import {PageBase} from "test/PageBase.sol";
 
@@ -72,18 +67,16 @@ contract PageExchangeTest is Test, PageBase {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             uri
+                             tokenURI
     //////////////////////////////////////////////////////////////*/
 
-    function testURI() external {
+    function testTokenURI() external {
         uint256 id = ids[0];
         string memory collectionURI = LLAMA.tokenURI(id);
 
-        page.uri(id);
-
         assertEq(
             keccak256(abi.encodePacked(collectionURI)),
-            keccak256(abi.encodePacked(page.uri(id)))
+            keccak256(abi.encodePacked(page.tokenURI(id)))
         );
     }
 
