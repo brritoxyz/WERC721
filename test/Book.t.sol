@@ -66,7 +66,7 @@ contract BookTest is Test {
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        page.initialize(address(this), LLAMA, TIP_RECIPIENT);
+        page.initialize(LLAMA, TIP_RECIPIENT);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ contract BookTest is Test {
         // Should be initialized
         vm.expectRevert("Initializable: contract is already initialized");
 
-        Page(newPage).initialize(address(this), LLAMA, TIP_RECIPIENT);
+        Page(newPage).initialize(LLAMA, TIP_RECIPIENT);
     }
 
     function testCreatePage(ERC721 collection) external {
@@ -257,12 +257,11 @@ contract BookTest is Test {
         address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
-        assertEq(address(this), Page(pageAddress).owner());
         assertEq(address(collection), address(Page(pageAddress).collection()));
         assertEq(TIP_RECIPIENT, Page(pageAddress).tipRecipient());
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        Page(pageAddress).initialize(address(this), collection, TIP_RECIPIENT);
+        Page(pageAddress).initialize(collection, TIP_RECIPIENT);
     }
 }

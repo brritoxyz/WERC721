@@ -26,7 +26,6 @@ contract PageExchangeTest is Test, PageBase {
         uint256[] ids,
         uint256[] amounts
     );
-    event Initialize(address owner, ERC721 collection, address tipRecipient);
     event SetTipRecipient(address tipRecipient);
     event List(uint256 id);
     event Edit(uint256 id);
@@ -78,43 +77,6 @@ contract PageExchangeTest is Test, PageBase {
             keccak256(abi.encodePacked(collectionURI)),
             keccak256(abi.encodePacked(page.tokenURI(id)))
         );
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                             setTipRecipient
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSetTipRecipientZero() external {
-        vm.expectRevert(Page.Zero.selector);
-
-        page.setTipRecipient(payable(address(0)));
-    }
-
-    function testCannotSetTipRecipientUnauthorized() external {
-        address caller = accounts[0];
-
-        assertTrue(caller != page.owner());
-
-        vm.prank(caller);
-        vm.expectRevert("UNAUTHORIZED");
-
-        page.setTipRecipient(payable(address(0)));
-    }
-
-    function testSetTipRecipient() external {
-        address caller = address(this);
-        address payable tipRecipient = payable(accounts[0]);
-
-        assertEq(caller, page.owner());
-        assertTrue(tipRecipient != page.tipRecipient());
-
-        vm.expectEmit(false, false, false, true, address(page));
-
-        emit SetTipRecipient(tipRecipient);
-
-        page.setTipRecipient(tipRecipient);
-
-        assertEq(tipRecipient, page.tipRecipient());
     }
 
     /*//////////////////////////////////////////////////////////////

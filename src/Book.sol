@@ -6,7 +6,7 @@ import {Clones} from "openzeppelin/proxy/Clones.sol";
 import {Owned} from "src/base/Owned.sol";
 
 interface IPage {
-    function initialize(address, ERC721, address payable) external;
+    function initialize(ERC721, address payable) external;
 }
 
 contract Book is Owned {
@@ -125,7 +125,7 @@ contract Book is Owned {
         }
 
         // Initialize the minimal proxy's state variables
-        IPage(page).initialize(owner, collection, tipRecipient);
+        IPage(page).initialize(collection, tipRecipient);
 
         emit CreatePage(implementation, collection, page);
     }
