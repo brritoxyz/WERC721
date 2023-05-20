@@ -93,9 +93,10 @@ contract Page is
         uint256 tip
     ) private pure returns (uint256 priceETH, uint256 sellerProceeds) {
         // Price and tip are upcasted to uint256 from uint48 (i.e. their max value is 2**48 - 1)
-        // Knowing that, we can be sure that the below will never overflow since (2**48 - 1) * 1e10 < (2**256 - 1)
         unchecked {
+            // We can be sure that the below will never overflow since (2**48 - 1) * 1e10 < (2**256 - 1)
             priceETH = price * VALUE_DENOM;
+            // Price is always greater than or equal to tip, so the below will never underflow
             sellerProceeds = priceETH - (tip * VALUE_DENOM);
         }
     }
