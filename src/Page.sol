@@ -18,13 +18,13 @@ contract Page is
     struct Listing {
         // Seller address
         address seller;
-        // Adequate for 2.8m ether since the denomination is 0.00000001 ETH
+        // Adequate for 2.8m ether since the denomination is 0.00000001 ETH (1e10)
         uint48 price;
         // Optional tip amount - deducted from the sales proceeds
         uint48 tip;
     }
 
-    // Price and tips are denominated in 0.00000001 ETH
+    // Price and tips are denominated in 0.00000001 ETH (i.e. 1e10)
     uint256 public constant VALUE_DENOM = 0.00000001 ether;
 
     ERC721 public collection;
@@ -93,7 +93,7 @@ contract Page is
         uint256 tip
     ) private pure returns (uint256 priceETH, uint256 sellerProceeds) {
         // Price and tip are upcasted to uint256 from uint48 (i.e. their max value is 2**48 - 1)
-        // Knowing that, we can be sure that the below will never overflow since (2**48 - 1) * 1e-8 < (2**256 - 1)
+        // Knowing that, we can be sure that the below will never overflow since (2**48 - 1) * 1e10 < (2**256 - 1)
         unchecked {
             priceETH = price * VALUE_DENOM;
             sellerProceeds = priceETH - (tip * VALUE_DENOM);
@@ -295,8 +295,12 @@ contract Page is
         // Transfer the tip to the designated recipient, if any. Value
         // sent may contain a buyer tip, which is why we are checking
         // the difference between msg.value and the sales proceeds
-        if (msg.value - sellerProceeds != 0)
-            tipRecipient.safeTransferETH(msg.value - sellerProceeds);
+        // Cannot overflow since msg.value will always be GTE sellerProceeds
+        // See msg.value < priceETH check above
+        unchecked {
+            if (msg.value - sellerProceeds != 0)
+                tipRecipient.safeTransferETH(msg.value - sellerProceeds);
+        }
 
         emit Buy(id);
     }
@@ -449,8 +453,12 @@ contract Page is
         if (msg.value < totalPriceETH) revert Insufficient();
 
         // Transfer the cumulative tips (if any) to the tip recipient
-        if (msg.value - totalSellerProceeds != 0)
-            tipRecipient.safeTransferETH(msg.value - totalSellerProceeds);
+        // Cannot overflow since msg.value will always be GTE totalSellerProceeds
+        // See msg.value < totalPriceETH check above
+        unchecked {
+            if (msg.value - totalSellerProceeds != 0)
+                tipRecipient.safeTransferETH(msg.value - totalSellerProceeds);
+        }
 
         emit BatchBuy(ids);
     }

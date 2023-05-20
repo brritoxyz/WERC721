@@ -10,11 +10,11 @@ optimizer = false
 via_ir = false
 
 [fuzz]
-runs = 256
+runs = 512
 
 [invariant]
-runs = 1024
-depth = 30
+runs = 2048
+depth = 60
 fail_on_revert = false
 
 [profile.optimized]
@@ -24,9 +24,9 @@ via_ir = true
 out = 'optimized-out'
 
 [profile.optimized.fuzz]
-runs = 32
+runs = 64
 
 [profile.optimized.invariant]
-runs = 32
-depth = 15
+runs = 128
+depth = 30
 fail_on_revert = false
