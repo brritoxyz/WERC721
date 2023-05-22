@@ -11,7 +11,7 @@ interface IPage {
 
 contract Book is Owned {
     // Paired with the collection address to compute the CREATE2 salt
-    bytes12 public constant SALT_FRAGMENT = bytes12("JPAGE||EGAPJ");
+    bytes12 public constant SALT_FRAGMENT = "JPAGE||EGAPJ";
 
     // Tip recipient used when initializing pages
     address payable public tipRecipient;

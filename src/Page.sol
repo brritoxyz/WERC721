@@ -125,7 +125,7 @@ contract Page is
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Burn the derivative token before transferring the NFT to the recipient
-        ownerOf[id] = address(0);
+        delete ownerOf[id];
 
         // Transfer the NFT to the recipient - reverts if recipient is zero address
         collection.safeTransferFrom(address(this), recipient, id);

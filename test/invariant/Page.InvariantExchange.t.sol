@@ -104,10 +104,10 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         uint256 id,
         address collectionOwnerOf
     ) internal {
-        // Handler has custody of the NFT when it is withdrawn
+        // Withdrawer has custody of the NFT when it is withdrawn
         assertEq(collectionOwnerOf, collection.ownerOf(id));
 
-        // No derivative should exist
+        // No derivative should exist when the NFT is withdrawn
         assertEq(address(0), page.ownerOf(id));
 
         // Listing should be empty
