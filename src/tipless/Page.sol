@@ -7,7 +7,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 
-contract PageWithoutTip is
+contract Page is
     Initializable,
     ReentrancyGuard,
     ERC721TokenReceiver,
@@ -118,9 +118,9 @@ contract PageWithoutTip is
     /**
      * @notice Edit a listing
      * @param  id        uint256  Token ID
-     * @param  newPrice  uint48   New price
+     * @param  newPrice  uint96   New price
      */
-    function _edit(uint256 id, uint48 newPrice) private {
+    function _edit(uint256 id, uint96 newPrice) private {
         // Revert if the new price is zero
         if (newPrice == 0) revert Zero();
 
@@ -205,9 +205,9 @@ contract PageWithoutTip is
     /**
      * @notice Edit a listing
      * @param  id        uint256  Token ID
-     * @param  newPrice  uint48   New price
+     * @param  newPrice  uint96   New price
      */
-    function edit(uint256 id, uint48 newPrice) external {
+    function edit(uint256 id, uint96 newPrice) external {
         _edit(id, newPrice);
 
         emit Edit(id);
@@ -228,10 +228,10 @@ contract PageWithoutTip is
      * @param  id  uint256  Token ID
      */
     function buy(uint256 id) external payable nonReentrant {
-        // Revert if the buyer did not include any ETH in the call
-        if (msg.value == 0) revert Nonexistent();
-
         Listing memory listing = listings[id];
+
+        // Revert if the listing does not exist (price cannot be zero)
+        if (listing.price == 0) revert Nonexistent();
 
         // Reverts if the msg.value does not cover the listing price
         if (msg.value != listing.price) revert Insufficient();
@@ -310,11 +310,11 @@ contract PageWithoutTip is
     /**
      * @notice Edit a batch of listings
      * @param  ids        uint256[]  Token IDs
-     * @param  newPrices  uint48[]   New prices
+     * @param  newPrices  uint96[]   New prices
      */
     function batchEdit(
         uint256[] calldata ids,
-        uint48[] calldata newPrices
+        uint96[] calldata newPrices
     ) external {
         for (uint256 i; i < ids.length; ) {
             // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
@@ -365,16 +365,13 @@ contract PageWithoutTip is
             // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call)
             if (listing.price == 0) continue;
 
-            // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
-            totalPriceETH += listing.price;
-
             // Delete listing prior to setting the token to the buyer
             delete listings[id];
 
             // Set the new token owner to the buyer
             ownerOf[id] = msg.sender;
 
-            // Transfer the sales proceeds to the seller
+            // Transfer the sales proceeds to the seller -
             payable(listing.seller).safeTransferETH(listing.price);
         }
 
