@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 

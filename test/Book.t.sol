@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
-import {Clones} from "openzeppelin/proxy/Clones.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 
@@ -46,7 +46,7 @@ contract BookTest is Test {
         page = Page(book.createPage(LLAMA));
         pageImplementation = implementation;
 
-        address predeterminedPageAddress = Clones.predictDeterministicAddress(
+        address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             implementation,
             keccak256(
                 abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
@@ -166,7 +166,7 @@ contract BookTest is Test {
         // Forward timestamp in order to produce a new CREATE2 salt
         vm.warp(block.timestamp + 1);
 
-        address predeterminedPageAddress = Clones.predictDeterministicAddress(
+        address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             pageImplementation,
             keccak256(
                 abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
@@ -198,7 +198,7 @@ contract BookTest is Test {
 
         assertEq(address(0), book.pages(pageImplementation, collection));
 
-        address predeterminedPageAddress = Clones.predictDeterministicAddress(
+        address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             pageImplementation,
             keccak256(
                 abi.encodePacked(

@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Ownable} from "openzeppelin/access/Ownable.sol";
-import {Clones} from "openzeppelin/proxy/Clones.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 
 interface IPage {
     function initialize(ERC721) external;
@@ -87,7 +87,7 @@ contract Book is Ownable {
         address implementation = pageImplementations[currentVersion];
 
         // Create a minimal proxy for the implementation
-        page = Clones.cloneDeterministic(
+        page = LibClone.cloneDeterministic(
             implementation,
             keccak256(
                 abi.encodePacked(collection, SALT_FRAGMENT, block.timestamp)
