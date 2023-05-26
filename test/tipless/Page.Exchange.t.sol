@@ -798,7 +798,7 @@ contract PageExchangeTest is Test, PageBase {
         assertEq(address(page).balance, 1 ether);
 
         vm.deal(address(this), totalSellerProceeds);
-        vm.expectRevert(Page.Insufficient.selector);
+        vm.expectRevert(stdError.arithmeticError);
 
         // Send an insufficient amount of ETH
         page.batchBuy{value: totalSellerProceeds - 1}(ids);

@@ -260,7 +260,7 @@ contract Page is
      * @notice Cancel a listing
      * @param  id  uint256  Token ID
      */
-    function cancel(uint256 id) external payable {
+    function cancel(uint256 id) external {
         _cancel(id);
 
         emit Cancel(id);

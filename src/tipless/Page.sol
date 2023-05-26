@@ -57,7 +57,7 @@ contract Page is
      * @param  _collection  ERC721  Collection contract
      */
     function initialize(ERC721 _collection) external initializer {
-        // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
+        // Initialize ReentrancyGuard by setting `_status` to the "not entered" state
         _status = _NOT_ENTERED;
 
         // Initialize this contract with the ERC721 collection contract
@@ -217,7 +217,7 @@ contract Page is
      * @notice Cancel a listing
      * @param  id  uint256  Token ID
      */
-    function cancel(uint256 id) external payable {
+    function cancel(uint256 id) external {
         _cancel(id);
 
         emit Cancel(id);
@@ -350,7 +350,10 @@ contract Page is
      */
     function batchBuy(uint256[] calldata ids) external payable nonReentrant {
         uint256 id;
-        uint256 totalPriceETH;
+
+        // Used for checking that msg.value is enough to cover the purchase price - buyer must send GTE the total ETH of all listings
+        // Any leftover ETH is returned at the end *after* the listing sale prices have been deducted from `availableETH`
+        uint256 availableETH = msg.value;
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
@@ -362,8 +365,11 @@ contract Page is
 
             Listing memory listing = listings[id];
 
-            // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call)
+            // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call executes)
             if (listing.price == 0) continue;
+
+            // Deduct the listing price from the available ETH sent by the buyer (reverts with arithmetic underflow if insufficient)
+            availableETH -= listing.price;
 
             // Delete listing prior to setting the token to the buyer
             delete listings[id];
@@ -371,18 +377,15 @@ contract Page is
             // Set the new token owner to the buyer
             ownerOf[id] = msg.sender;
 
-            // Transfer the sales proceeds to the seller -
+            // Transfer the sales proceeds to the seller - reverts if the contract does not have enough ETH due to msg.value
+            // not being sufficient to cover the purchase. If the contract does have enough ETH - due to offer makers depositing
+            // ETH (even if the caller did not include a sufficient amount) - then the post-loop check will revert
             payable(listing.seller).safeTransferETH(listing.price);
         }
 
-        // Revert if msg.value does not cover the *total* listing price in ETH
-        if (msg.value < totalPriceETH) revert Insufficient();
-
-        // If there is ETH remaining after the purchases, return it to the buyer
-        if (msg.value > totalPriceETH) {
-            unchecked {
-                payable(msg.sender).safeTransferETH(msg.value - totalPriceETH);
-            }
+        // If there is available ETH remaining after the purchases (i.e. too much ETH was sent), return it to the buyer
+        if (availableETH != 0) {
+            payable(msg.sender).safeTransferETH(availableETH);
         }
 
         emit BatchBuy(ids);
@@ -450,7 +453,7 @@ contract Page is
         uint256[] calldata ids,
         address maker,
         uint256 offer
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
         // is the zero address, or if the offer is zero (arithmetic underflow)
