@@ -2,9 +2,9 @@
 pragma solidity 0.8.20;
 
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
+import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "src/base/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 
 contract Page is
@@ -54,12 +54,10 @@ contract Page is
 
     /**
      * @notice Initializes the minimal proxy
+     * @notice Initializes ReentrancyGuard by setting `_status` to `_NOT_ENTERED` (see `nonReentrant`)
      * @param  _collection  ERC721  Collection contract
      */
-    function initialize(ERC721 _collection) external initializer {
-        // Initialize ReentrancyGuard by setting `_status` to the "not entered" state
-        _status = _NOT_ENTERED;
-
+    function initialize(ERC721 _collection) external initializer nonReentrant {
         // Initialize this contract with the ERC721 collection contract
         collection = _collection;
 
