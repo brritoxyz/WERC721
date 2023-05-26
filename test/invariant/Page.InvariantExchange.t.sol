@@ -58,7 +58,7 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
 
     function setUp() public {
         collection = new Collection();
-        book = new Book(TIP_RECIPIENT);
+        book = new Book();
 
         book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
 
@@ -93,11 +93,10 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(pageOwnerOf, page.ownerOf(id));
 
         // Listing should be empty
-        (address seller, uint48 price, uint48 tip) = page.listings(id);
+        (address seller, uint96 price) = page.listings(id);
 
         assertEq(address(0), seller);
         assertEq(0, price);
-        assertEq(0, tip);
     }
 
     function assertWithdrawnState(
@@ -111,11 +110,10 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(address(0), page.ownerOf(id));
 
         // Listing should be empty
-        (address seller, uint48 price, uint48 tip) = page.listings(id);
+        (address seller, uint96 price) = page.listings(id);
 
         assertEq(address(0), seller);
         assertEq(0, price);
-        assertEq(0, tip);
     }
 
     function assertListedState(uint256 id, address listingSeller) internal {
@@ -126,16 +124,13 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(address(page), page.ownerOf(id));
 
         // Listing is not empty
-        (address seller, uint48 price, uint48 tip) = page.listings(id);
+        (address seller, uint96 price) = page.listings(id);
 
         assertTrue(listingSeller != address(0));
         assertEq(listingSeller, seller);
 
         // The listing price cannot be zero
         assertGt(price, 0);
-
-        // The listing price must always be greater than or equal to the tip
-        assertGe(price, tip);
     }
 
     function assertCanceledState(uint256 id, address pageOwnerOf) internal {
@@ -146,11 +141,10 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(pageOwnerOf, page.ownerOf(id));
 
         // Listing is empty
-        (address seller, uint48 price, uint48 tip) = page.listings(id);
+        (address seller, uint96 price) = page.listings(id);
 
         assertEq(address(0), seller);
         assertEq(0, price);
-        assertEq(0, tip);
     }
 
     function assertBoughtState(uint256 id, address pageOwnerOf) internal {
@@ -161,11 +155,10 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         assertEq(pageOwnerOf, page.ownerOf(id));
 
         // Listing is empty
-        (address seller, uint48 price, uint48 tip) = page.listings(id);
+        (address seller, uint96 price) = page.listings(id);
 
         assertEq(address(0), seller);
         assertEq(0, price);
-        assertEq(0, tip);
     }
 
     function invariantTokenState() external {

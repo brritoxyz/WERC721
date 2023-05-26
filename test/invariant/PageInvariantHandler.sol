@@ -55,18 +55,6 @@ contract PageInvariantHandler is
         _collection.setApprovalForAll(address(page), true);
     }
 
-    function _calculateListingValues(
-        uint256 price,
-        uint256 tip
-    ) private view returns (uint256 _priceETH, uint256 _sellerProceeds) {
-        uint256 valueDenom = page.VALUE_DENOM();
-
-        unchecked {
-            _priceETH = price * valueDenom;
-            _sellerProceeds = _priceETH - (tip * valueDenom);
-        }
-    }
-
     function getIds() external view returns (uint256[] memory) {
         return ids;
     }
@@ -123,9 +111,8 @@ contract PageInvariantHandler is
         states[id] = State(states[id].recipient, TokenState.Withdrawn);
     }
 
-    function list(uint48 price, uint48 tip) public {
-        price = uint48(bound(price, 1, type(uint48).max));
-        tip = uint48(bound(tip, 0, price));
+    function list(uint96 price) public {
+        price = uint96(bound(price, 1, type(uint96).max));
 
         if (ids.length == 0) return;
 
@@ -135,23 +122,19 @@ contract PageInvariantHandler is
 
         vm.prank(states[id].recipient);
 
-        page.list(id, price, tip);
+        page.list(id, price);
 
         states[id] = State(states[id].recipient, TokenState.Listed);
     }
 
-    function edit(uint48 newPrice) public {
-        newPrice = uint48(bound(newPrice, 1, type(uint48).max));
+    function edit(uint96 newPrice) public {
+        newPrice = uint96(bound(newPrice, 1, type(uint96).max));
 
         if (ids.length == 0) return;
 
         uint256 id = ids[ids.length - 1];
 
         // if (states[id].state != TokenState.Listed) return;
-
-        (, , uint48 tip) = page.listings(id);
-
-        if (newPrice < tip) newPrice = tip;
 
         vm.prank(states[id].recipient);
 
@@ -181,13 +164,12 @@ contract PageInvariantHandler is
 
         // if (states[id].state != TokenState.Listed) return;
 
-        (, uint48 price, uint48 tip) = page.listings(id);
-        (uint256 _priceETH, ) = _calculateListingValues(price, tip);
+        (, uint96 price) = page.listings(id);
 
         // Deal enough ETH to fulfill purchase
-        vm.deal(address(this), _priceETH);
+        vm.deal(address(this), price);
 
-        page.buy{value: _priceETH}(id);
+        page.buy{value: price}(id);
 
         states[id] = State(address(this), TokenState.Bought);
     }

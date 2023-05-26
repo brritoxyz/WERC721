@@ -11,7 +11,7 @@ contract DeploymentScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        Book book = new Book(payable(vm.envAddress("TIP_RECIPIENT")));
+        Book book = new Book();
 
         // Page implementation version is currentVersion (i.e. 0) + 1
         // Since this is the first implementation, the version is 1

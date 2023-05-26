@@ -20,7 +20,7 @@ contract ERC721Test is DSTestPlus {
 
     function setUp() public {
         token = new MockERC721("Token", "TKN");
-        book = new Book(payable(BEEF));
+        book = new Book();
 
         book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
 

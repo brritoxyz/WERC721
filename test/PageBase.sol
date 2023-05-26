@@ -10,12 +10,9 @@ contract PageBase is Test, ERC721TokenReceiver {
     ERC721 internal constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 internal constant ONE = 1;
-    address payable internal constant TIP_RECIPIENT =
-        payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
     Book internal immutable book;
     Page internal immutable page;
-    uint256 internal immutable valueDenom;
 
     uint256[] internal ids = [1, 39, 111];
     address[] internal accounts = [
@@ -38,18 +35,17 @@ contract PageBase is Test, ERC721TokenReceiver {
     receive() external payable {}
 
     constructor() {
-        book = new Book(TIP_RECIPIENT);
+        book = new Book();
 
         // Set the page implementation (since the version and impl. start at zero)
         book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
 
         page = Page(book.createPage(LLAMA));
-        valueDenom = page.VALUE_DENOM();
 
         // Verify that page cannot be initialized again
         vm.expectRevert("Initializable: contract is already initialized");
 
-        page.initialize(LLAMA, TIP_RECIPIENT);
+        page.initialize(LLAMA);
 
         for (uint256 i; i < ids.length; ) {
             address originalOwner = LLAMA.ownerOf(ids[i]);

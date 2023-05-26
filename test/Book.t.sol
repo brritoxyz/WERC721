@@ -15,8 +15,6 @@ contract DummyERC20 is ERC20("", "", 18) {
 contract BookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
-    address payable private constant TIP_RECIPIENT =
-        payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
     bytes32 private constant DEPLOYMENT_SALT = keccak256("DEPLOYMENT_SALT");
 
     address[] private accounts = [
@@ -31,7 +29,6 @@ contract BookTest is Test {
     address private immutable pageImplementation;
 
     event UpgradePage(uint256 version, address implementation);
-    event SetTipRecipient(address tipRecipient);
     event CreatePage(
         address indexed implementation,
         ERC721 indexed collection,
@@ -40,7 +37,7 @@ contract BookTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
-        book = new Book(TIP_RECIPIENT);
+        book = new Book();
         bookAddr = address(book);
         (uint256 version, address implementation) = book.upgradePage(
             DEPLOYMENT_SALT,
@@ -66,7 +63,7 @@ contract BookTest is Test {
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        page.initialize(LLAMA, TIP_RECIPIENT);
+        page.initialize(LLAMA);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -154,43 +151,6 @@ contract BookTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             setTipRecipient
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotSetTipRecipientZero() external {
-        vm.expectRevert(Book.Zero.selector);
-
-        book.setTipRecipient(payable(address(0)));
-    }
-
-    function testCannotSetTipRecipientUnauthorized() external {
-        address caller = accounts[0];
-
-        assertTrue(caller != book.owner());
-
-        vm.prank(caller);
-        vm.expectRevert("Ownable: caller is not the owner");
-
-        book.setTipRecipient(payable(address(0)));
-    }
-
-    function testSetTipRecipient() external {
-        address caller = address(this);
-        address payable tipRecipient = payable(accounts[0]);
-
-        assertEq(caller, book.owner());
-        assertTrue(tipRecipient != book.tipRecipient());
-
-        vm.expectEmit(false, false, false, true, address(book));
-
-        emit SetTipRecipient(tipRecipient);
-
-        book.setTipRecipient(tipRecipient);
-
-        assertEq(tipRecipient, book.tipRecipient());
-    }
-
-    /*//////////////////////////////////////////////////////////////
                              createPage
     //////////////////////////////////////////////////////////////*/
 
@@ -229,7 +189,7 @@ contract BookTest is Test {
         // Should be initialized
         vm.expectRevert("Initializable: contract is already initialized");
 
-        Page(newPage).initialize(LLAMA, TIP_RECIPIENT);
+        Page(newPage).initialize(LLAMA);
     }
 
     function testCreatePage(ERC721 collection) external {
@@ -252,16 +212,19 @@ contract BookTest is Test {
 
         vm.expectEmit(true, true, false, true, address(book));
 
-        emit CreatePage(pageImplementation, collection, predeterminedPageAddress);
+        emit CreatePage(
+            pageImplementation,
+            collection,
+            predeterminedPageAddress
+        );
 
         address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(collection), address(Page(pageAddress).collection()));
-        assertEq(TIP_RECIPIENT, Page(pageAddress).tipRecipient());
 
         vm.expectRevert("Initializable: contract is already initialized");
 
-        Page(pageAddress).initialize(collection, TIP_RECIPIENT);
+        Page(pageAddress).initialize(collection);
     }
 }

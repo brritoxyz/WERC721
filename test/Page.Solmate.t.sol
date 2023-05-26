@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {PageBase} from "test/PageBase.sol";
+import {PageBase} from "test//PageBase.sol";
 
 contract PageSolmateTest is Test, PageBase {
     function testCannotTransferFromNotAuthorized() public {

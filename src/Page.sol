@@ -18,25 +18,17 @@ contract Page is
     struct Listing {
         // Seller address
         address seller;
-        // Adequate for 2.8m ether since the denomination is 0.00000001 ETH (1e10)
-        uint48 price;
-        // Optional tip amount - deducted from the sales proceeds
-        uint48 tip;
+        // Adequate for 79m ether
+        uint96 price;
     }
 
-    // Price and tips are denominated in 0.00000001 ETH (i.e. 1e10)
-    uint256 public constant VALUE_DENOM = 0.00000001 ether;
-
     ERC721 public collection;
-
-    address payable public tipRecipient;
 
     mapping(uint256 => Listing) public listings;
 
     mapping(address => mapping(uint256 => uint256)) public offers;
 
-    event Initialize(ERC721 collection, address tipRecipient);
-    event SetTipRecipient(address tipRecipient);
+    event Initialize(ERC721 collection);
     event List(uint256 id);
     event Edit(uint256 id);
     event Cancel(uint256 id);
@@ -62,43 +54,16 @@ contract Page is
 
     /**
      * @notice Initializes the minimal proxy
-     * @param  _collection    ERC721   Collection contract
-     * @param  _tipRecipient  address  Tip recipient
+     * @param  _collection  ERC721  Collection contract
      */
-    function initialize(
-        ERC721 _collection,
-        address payable _tipRecipient
-    ) external initializer {
-        // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
+    function initialize(ERC721 _collection) external initializer {
+        // Initialize ReentrancyGuard by setting `_status` to the "not entered" state
         _status = _NOT_ENTERED;
 
         // Initialize this contract with the ERC721 collection contract
         collection = _collection;
 
-        // Initialize this contract with a tip recipient
-        tipRecipient = _tipRecipient;
-
-        emit Initialize(_collection, _tipRecipient);
-    }
-
-    /**
-     * @notice Calculates the listing-related values in the specified ETH denomination
-     * @param  price           uint256  Listing price
-     * @param  tip             uint256  Listing tip
-     * @return priceETH        uint256  Listing price in ETH
-     * @return sellerProceeds  uint256  Proceeds received by the seller in ETH (listing price - listing tip)
-     */
-    function _calculateListingValues(
-        uint256 price,
-        uint256 tip
-    ) private pure returns (uint256 priceETH, uint256 sellerProceeds) {
-        // Price and tip are upcasted to uint256 from uint48 (i.e. their max value is 2**48 - 1)
-        unchecked {
-            // We can be sure that the below will never overflow since (2**48 - 1) * 1e10 < (2**256 - 1)
-            priceETH = price * VALUE_DENOM;
-            // Price is always greater than or equal to tip, so the below will never underflow
-            sellerProceeds = priceETH - (tip * VALUE_DENOM);
-        }
+        emit Initialize(_collection);
     }
 
     /**
@@ -134,32 +99,28 @@ contract Page is
     /**
      * @notice Create a listing
      * @param  id     uint256  Token ID
-     * @param  price  uint48   Price
-     * @param  tip    uint48   Tip amount
+     * @param  price  uint96   Price
      */
-    function _list(uint256 id, uint48 price, uint48 tip) private {
+    function _list(uint256 id, uint96 price) private {
         // Reverts if msg.sender does not have the token
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Revert if the price is zero
         if (price == 0) revert Zero();
 
-        // Revert if the tip is greater than the price
-        if (price < tip) revert Invalid();
-
         // Update token owner to this contract to prevent double-listing
         ownerOf[id] = address(this);
 
         // Set the listing
-        listings[id] = Listing(msg.sender, price, tip);
+        listings[id] = Listing(msg.sender, price);
     }
 
     /**
      * @notice Edit a listing
      * @param  id        uint256  Token ID
-     * @param  newPrice  uint48   New price
+     * @param  newPrice  uint96   New price
      */
-    function _edit(uint256 id, uint48 newPrice) private {
+    function _edit(uint256 id, uint96 newPrice) private {
         // Revert if the new price is zero
         if (newPrice == 0) revert Zero();
 
@@ -167,9 +128,6 @@ contract Page is
 
         // Reverts if msg.sender is not the seller or listing does not exist
         if (listing.seller != msg.sender) revert Unauthorized();
-
-        // Revert if the new price is less than the tip
-        if (newPrice < listing.tip) revert Invalid();
 
         listing.price = newPrice;
     }
@@ -236,11 +194,10 @@ contract Page is
     /**
      * @notice Create a listing
      * @param  id     uint256  Token ID
-     * @param  price  uint48   Price
-     * @param  tip    uint48   Tip amount
+     * @param  price  uint96   Price
      */
-    function list(uint256 id, uint48 price, uint48 tip) external {
-        _list(id, price, tip);
+    function list(uint256 id, uint96 price) external {
+        _list(id, price);
 
         emit List(id);
     }
@@ -248,9 +205,9 @@ contract Page is
     /**
      * @notice Edit a listing
      * @param  id        uint256  Token ID
-     * @param  newPrice  uint48   New price
+     * @param  newPrice  uint96   New price
      */
-    function edit(uint256 id, uint48 newPrice) external {
+    function edit(uint256 id, uint96 newPrice) external {
         _edit(id, newPrice);
 
         emit Edit(id);
@@ -273,16 +230,11 @@ contract Page is
     function buy(uint256 id) external payable nonReentrant {
         Listing memory listing = listings[id];
 
-        // Revert if the listing does not exist (listing price cannot be zero)
+        // Revert if the listing does not exist (price cannot be zero)
         if (listing.price == 0) revert Nonexistent();
 
-        (uint256 priceETH, uint256 sellerProceeds) = _calculateListingValues(
-            listing.price,
-            listing.tip
-        );
-
-        // Reverts if the msg.value does not cover the listing price in ETH
-        if (msg.value < priceETH) revert Insufficient();
+        // Reverts if the msg.value does not cover the listing price
+        if (msg.value != listing.price) revert Insufficient();
 
         // Delete listing prior to setting the token to the buyer
         delete listings[id];
@@ -291,17 +243,7 @@ contract Page is
         ownerOf[id] = msg.sender;
 
         // Transfer the sales proceeds to the seller
-        payable(listing.seller).safeTransferETH(sellerProceeds);
-
-        // Transfer the tip to the designated recipient, if any. Value
-        // sent may contain a buyer tip, which is why we are checking
-        // the difference between msg.value and the sales proceeds
-        // Cannot overflow since msg.value will always be GTE sellerProceeds
-        // See msg.value < priceETH check above
-        unchecked {
-            if (msg.value - sellerProceeds != 0)
-                tipRecipient.safeTransferETH(msg.value - sellerProceeds);
-        }
+        payable(listing.seller).safeTransferETH(msg.value);
 
         emit Buy(id);
     }
@@ -346,18 +288,16 @@ contract Page is
     /**
      * @notice Create a batch of listings
      * @param  ids     uint256[]  Token IDs
-     * @param  prices  uint48[]   Prices
-     * @param  tips    uint48[]   Tip amounts
+     * @param  prices  uint96[]   Prices
      */
     function batchList(
         uint256[] calldata ids,
-        uint48[] calldata prices,
-        uint48[] calldata tips
+        uint96[] calldata prices
     ) external {
         for (uint256 i; i < ids.length; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
             // not equal in length to the `ids` array (indexOOB error)
-            _list(ids[i], prices[i], tips[i]);
+            _list(ids[i], prices[i]);
 
             unchecked {
                 ++i;
@@ -370,11 +310,11 @@ contract Page is
     /**
      * @notice Edit a batch of listings
      * @param  ids        uint256[]  Token IDs
-     * @param  newPrices  uint48[]   New prices
+     * @param  newPrices  uint96[]   New prices
      */
     function batchEdit(
         uint256[] calldata ids,
-        uint48[] calldata newPrices
+        uint96[] calldata newPrices
     ) external {
         for (uint256 i; i < ids.length; ) {
             // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
@@ -410,8 +350,10 @@ contract Page is
      */
     function batchBuy(uint256[] calldata ids) external payable nonReentrant {
         uint256 id;
-        uint256 totalPriceETH;
-        uint256 totalSellerProceeds;
+
+        // Used for checking that msg.value is enough to cover the purchase price - buyer must send GTE the total ETH of all listings
+        // Any leftover ETH is returned at the end *after* the listing sale prices have been deducted from `availableETH`
+        uint256 availableETH = msg.value;
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
@@ -423,22 +365,11 @@ contract Page is
 
             Listing memory listing = listings[id];
 
-            // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call)
+            // Continue to the next id if the listing does not exist (e.g. listing canceled or purchased before this call executes)
             if (listing.price == 0) continue;
 
-            (
-                uint256 priceETH,
-                uint256 sellerProceeds
-            ) = _calculateListingValues(listing.price, listing.tip);
-
-            // Accrue totalPriceETH, which will be used to determine if sufficient value was sent at the end
-            totalPriceETH += priceETH;
-
-            // Since seller proceeds is a subset of totalPriceETH, won't overflow without totalPriceETH doing so and reverting first
-            unchecked {
-                // Accrue totalSellerProceeds, which will enable us to calculate and transfer the tip in a single call
-                totalSellerProceeds += sellerProceeds;
-            }
+            // Deduct the listing price from the available ETH sent by the buyer (reverts with arithmetic underflow if insufficient)
+            availableETH -= listing.price;
 
             // Delete listing prior to setting the token to the buyer
             delete listings[id];
@@ -446,19 +377,15 @@ contract Page is
             // Set the new token owner to the buyer
             ownerOf[id] = msg.sender;
 
-            // Transfer the sales proceeds to the seller
-            payable(listing.seller).safeTransferETH(sellerProceeds);
+            // Transfer the sales proceeds to the seller - reverts if the contract does not have enough ETH due to msg.value
+            // not being sufficient to cover the purchase. If the contract does have enough ETH - due to offer makers depositing
+            // ETH (even if the caller did not include a sufficient amount) - then the post-loop check will revert
+            payable(listing.seller).safeTransferETH(listing.price);
         }
 
-        // Revert if msg.value does not cover the *total* listing price in ETH
-        if (msg.value < totalPriceETH) revert Insufficient();
-
-        // Transfer the cumulative tips (if any) to the tip recipient
-        // Cannot overflow since msg.value will always be GTE totalSellerProceeds
-        // See msg.value < totalPriceETH check above
-        unchecked {
-            if (msg.value - totalSellerProceeds != 0)
-                tipRecipient.safeTransferETH(msg.value - totalSellerProceeds);
+        // If there is available ETH remaining after the purchases (i.e. too much ETH was sent), return it to the buyer
+        if (availableETH != 0) {
+            payable(msg.sender).safeTransferETH(availableETH);
         }
 
         emit BatchBuy(ids);
@@ -526,7 +453,7 @@ contract Page is
         uint256[] calldata ids,
         address maker,
         uint256 offer
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
         // is the zero address, or if the offer is zero (arithmetic underflow)
@@ -557,9 +484,6 @@ contract Page is
             // Send maker's funds to the offer taker
             payable(msg.sender).safeTransferETH(offer * ids.length);
         }
-
-        // If the offer taker sent a tip, transfer it to the tip recipient
-        if (msg.value != 0) tipRecipient.safeTransferETH(msg.value);
 
         emit TakeOffer(msg.sender);
     }

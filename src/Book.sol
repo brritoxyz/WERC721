@@ -6,15 +6,12 @@ import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
 
 interface IPage {
-    function initialize(ERC721, address payable) external;
+    function initialize(ERC721) external;
 }
 
 contract Book is Ownable {
     // Paired with the collection address to compute the CREATE2 salt
     bytes12 public constant SALT_FRAGMENT = "JPAGE||EGAPJ";
-
-    // Tip recipient used when initializing pages
-    address payable public tipRecipient;
 
     // Current page implementation version
     uint256 public currentVersion;
@@ -28,7 +25,6 @@ contract Book is Ownable {
         public pages;
 
     event UpgradePage(uint256 version, address implementation);
-    event SetTipRecipient(address tipRecipient);
     event CreatePage(
         address indexed implementation,
         ERC721 indexed collection,
@@ -37,12 +33,6 @@ contract Book is Ownable {
 
     error Zero();
     error AlreadyExists();
-
-    constructor(address payable _tipRecipient) {
-        if (_tipRecipient == address(0)) revert Zero();
-
-        tipRecipient = _tipRecipient;
-    }
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
@@ -86,18 +76,6 @@ contract Book is Ownable {
     }
 
     /**
-     * @notice Sets the tip recipient
-     * @param  _tipRecipient  address  Tip recipient (receives optional tips)
-     */
-    function setTipRecipient(address payable _tipRecipient) external onlyOwner {
-        if (_tipRecipient == address(0)) revert Zero();
-
-        tipRecipient = _tipRecipient;
-
-        emit SetTipRecipient(_tipRecipient);
-    }
-
-    /**
      * @notice Creates a new Page contract (minimal proxy) for the given implementation and collection
      * @param  collection  ERC721   NFT collection
      * @return page        address  Page contract address
@@ -125,7 +103,7 @@ contract Book is Ownable {
         }
 
         // Initialize the minimal proxy's state variables
-        IPage(page).initialize(collection, tipRecipient);
+        IPage(page).initialize(collection);
 
         emit CreatePage(implementation, collection, page);
     }

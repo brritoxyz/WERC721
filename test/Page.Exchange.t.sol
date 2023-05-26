@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Page} from "src/Page.sol";
-import {PageBase} from "test/PageBase.sol";
+import {PageBase} from "test//PageBase.sol";
 
 contract PageExchangeTest is Test, PageBase {
     event Transfer(
@@ -35,35 +35,6 @@ contract PageExchangeTest is Test, PageBase {
     event BatchEdit(uint256[] ids);
     event BatchCancel(uint256[] ids);
     event BatchBuy(uint256[] ids);
-
-    function _calculateTransferValues(
-        uint256 price,
-        uint256 tip
-    ) private view returns (uint256 priceETH, uint256 tipETH) {
-        return (price * valueDenom, tip * valueDenom);
-    }
-
-    function _calculateListingValues(
-        uint256 price,
-        uint256 tip
-    ) private view returns (uint256 priceETH, uint256 sellerProceeds) {
-        priceETH = price * valueDenom;
-        sellerProceeds = priceETH - (tip * valueDenom);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                             _calculateListingValues
-    //////////////////////////////////////////////////////////////*/
-
-    function testCalculateListingValues(
-        uint48 price,
-        uint48 tip
-    ) external view {
-        vm.assume(tip <= price);
-
-        // Should never revert
-        _calculateListingValues(price, tip);
-    }
 
     /*//////////////////////////////////////////////////////////////
                              tokenURI
@@ -311,8 +282,7 @@ contract PageExchangeTest is Test, PageBase {
     function testCannotListUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100_000;
-        uint48 tip = 1_000;
+        uint96 price = 1 ether;
 
         // Mint a derivative token for a recipient and attempt to list on their behalf
         page.deposit(id, recipient);
@@ -322,33 +292,13 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.expectRevert(Page.Unauthorized.selector);
 
-        page.list(id, price, tip);
-    }
-
-    function testCannotListPriceLessThanTipInvalid() external {
-        uint256 id = ids[0];
-        address recipient = accounts[0];
-        uint48 price = 100_000;
-
-        // Price cannot be less than tip
-        uint48 tip = price + 1;
-
-        assertLt(price, tip);
-
-        // Mint a derivative token for a recipient and attempt to list on their behalf
-        page.deposit(id, recipient);
-
-        vm.prank(recipient);
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.list(id, price, tip);
+        page.list(id, price);
     }
 
     function testCannotListPriceZero() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 0;
-        uint48 tip = 1_000;
+        uint96 price = 0;
 
         // Mint a derivative token for a recipient and attempt to list on their behalf
         page.deposit(id, recipient);
@@ -360,12 +310,11 @@ contract PageExchangeTest is Test, PageBase {
         vm.prank(recipient);
         vm.expectRevert(Page.Zero.selector);
 
-        page.list(id, price, tip);
+        page.list(id, price);
     }
 
-    function testList(uint48 price, uint48 tip) external {
+    function testList(uint96 price) external {
         vm.assume(price != 0);
-        vm.assume(tip <= price);
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
@@ -382,18 +331,15 @@ contract PageExchangeTest is Test, PageBase {
 
             emit List(id);
 
-            page.list(id, price, tip);
+            page.list(id, price);
 
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
+            (address seller, uint96 listingPrice) = page.listings(id);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
             assertEq(1, page.balanceOf(address(page), id));
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
-            assertEq(tip, listingTip);
-            assertGe(listingPrice, listingTip);
 
             unchecked {
                 ++i;
@@ -407,7 +353,7 @@ contract PageExchangeTest is Test, PageBase {
 
     function testCannotEditPriceZero() external {
         uint256 id = ids[0];
-        uint48 price = 0;
+        uint96 price = 0;
 
         vm.expectRevert(Page.Zero.selector);
 
@@ -417,43 +363,24 @@ contract PageExchangeTest is Test, PageBase {
     function testCannotEditUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100_000;
-        uint48 tip = 1_000;
-        uint48 newPrice = 200;
+        uint96 price = 1 ether;
+        uint96 newPrice = 2 ether;
 
         page.deposit(id, recipient);
 
         vm.prank(recipient);
 
-        page.list(id, price, tip);
+        page.list(id, price);
 
         vm.expectRevert(Page.Unauthorized.selector);
 
         page.edit(id, newPrice);
     }
 
-    function testCannotEditNewPriceLessThanTip() external {
-        uint256 id = ids[0];
-        uint48 price = 100_000;
-        uint48 tip = 1_000;
-        uint48 newPrice = 200;
-
-        page.deposit(id, address(this));
-        page.list(id, price, tip);
-
-        assertLt(newPrice, tip);
-
-        vm.expectRevert(Page.Invalid.selector);
-
-        page.edit(id, newPrice);
-    }
-
-    function testEdit(uint48 price, uint48 tip, uint48 newPrice) external {
+    function testEdit(uint96 price, uint96 newPrice) external {
         vm.assume(price != 0);
-        vm.assume(tip <= price);
         vm.assume(newPrice != 0);
         vm.assume(newPrice != price);
-        vm.assume(newPrice >= tip);
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
@@ -463,14 +390,12 @@ contract PageExchangeTest is Test, PageBase {
 
             vm.prank(recipient);
 
-            page.list(id, price, tip);
+            page.list(id, price);
 
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
+            (address seller, uint96 listingPrice) = page.listings(id);
 
             assertEq(recipient, seller);
             assertEq(price, listingPrice);
-            assertGe(listingPrice, listingTip);
 
             vm.prank(recipient);
             vm.expectEmit(false, false, false, true, address(page));
@@ -479,12 +404,11 @@ contract PageExchangeTest is Test, PageBase {
 
             page.edit(id, newPrice);
 
-            (seller, listingPrice, listingTip) = page.listings(id);
+            (seller, listingPrice) = page.listings(id);
 
             // Verify that the updated listing has the same seller, different price
             assertEq(recipient, seller);
             assertEq(newPrice, listingPrice);
-            assertGe(listingPrice, listingTip);
 
             unchecked {
                 ++i;
@@ -499,14 +423,13 @@ contract PageExchangeTest is Test, PageBase {
     function testCannotCancelUnauthorized() external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100_000;
-        uint48 tip = 1_000;
+        uint96 price = 1 ether;
 
         page.deposit(id, recipient);
 
         vm.prank(recipient);
 
-        page.list(id, price, tip);
+        page.list(id, price);
 
         vm.expectRevert(Page.Unauthorized.selector);
 
@@ -517,14 +440,13 @@ contract PageExchangeTest is Test, PageBase {
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
-            uint48 price = 100_000;
-            uint48 tip = 1_000;
+            uint96 price = 1 ether;
 
             page.deposit(id, recipient);
 
             vm.prank(recipient);
 
-            page.list(id, price, tip);
+            page.list(id, price);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(1, page.balanceOf(address(page), id));
@@ -554,8 +476,7 @@ contract PageExchangeTest is Test, PageBase {
     function testCannotBuyMsgValueInsufficient(bool shouldList) external {
         uint256 id = ids[0];
         address recipient = accounts[0];
-        uint48 price = 100_000;
-        uint48 tip = 1_000;
+        uint96 price = 1 ether;
 
         // Reverts with `Insufficient` if msg.value is insufficient or if not listed
         if (shouldList) {
@@ -563,7 +484,7 @@ contract PageExchangeTest is Test, PageBase {
 
             vm.prank(recipient);
 
-            page.list(id, price, tip);
+            page.list(id, price);
 
             vm.expectRevert(Page.Insufficient.selector);
         } else {
@@ -574,55 +495,45 @@ contract PageExchangeTest is Test, PageBase {
         page.buy{value: price - 1}(id);
     }
 
-    function testBuy(uint48 price, uint48 tip) external {
+    function testBuy(uint96 price) external {
         vm.assume(price != 0);
-        vm.assume(tip < price);
 
         uint256 id;
         address recipient;
-        uint256 priceETH;
-        uint256 tipETH;
         address seller;
-        uint48 listingPrice;
-        uint48 listingTip;
+        uint96 listingPrice;
 
         for (uint256 i; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
-            // Retrieve the ETH amounts for determining the sufficient msg.value
-            // and to also check that the proper amounts were received by all parties
-            (priceETH, tipETH) = _calculateTransferValues(price, tip);
-
             page.deposit(id, recipient);
 
             vm.prank(recipient);
 
-            page.list(id, price, tip);
+            page.list(id, price);
 
-            (seller, listingPrice, listingTip) = page.listings(id);
+            (seller, listingPrice) = page.listings(id);
+
+            assertEq(price, listingPrice);
+
             uint256 sellerBalanceBefore = recipient.balance;
-            uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
 
+            vm.deal(address(this), listingPrice);
             vm.expectEmit(false, false, false, true, address(page));
 
             emit Buy(id);
 
-            page.buy{value: priceETH}(id);
+            page.buy{value: listingPrice}(id);
 
-            (seller, listingPrice, listingTip) = page.listings(id);
+            (seller, listingPrice) = page.listings(id);
 
             assertEq(address(0), seller);
             assertEq(0, listingPrice);
-            assertEq(0, listingTip);
             assertEq(address(this), page.ownerOf(id));
             assertEq(0, page.balanceOf(address(page), id));
             assertEq(1, page.balanceOf(address(this), id));
-            assertEq(
-                sellerBalanceBefore + priceETH - tipETH,
-                recipient.balance
-            );
-            assertEq(tipRecipientBalanceBefore + tipETH, TIP_RECIPIENT.balance);
+            assertEq(sellerBalanceBefore + price, recipient.balance);
 
             unchecked {
                 ++i;
@@ -635,35 +546,26 @@ contract PageExchangeTest is Test, PageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchListMismatchedArrayInvalid() external {
-        uint48[] memory prices = new uint48[](0);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](0);
+
+        assertTrue(ids.length != prices.length);
 
         vm.expectRevert(stdError.indexOOBError);
 
-        page.batchList(ids, prices, tips);
-
-        prices = new uint48[](ids.length);
-        tips = new uint48[](0);
-
-        vm.expectRevert(stdError.indexOOBError);
-
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
     }
 
-    function testBatchList(uint48 price, uint48 tip) external {
+    function testBatchList(uint96 price) external {
         vm.assume(price != 0);
-        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             prices[i] = price;
-            tips[i] = tip;
 
             unchecked {
                 ++i;
@@ -675,19 +577,17 @@ contract PageExchangeTest is Test, PageBase {
 
         emit BatchList(ids);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
+            (address seller, uint96 listingPrice) = page.listings(id);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
             assertEq(1, page.balanceOf(address(page), id));
             assertEq(recipient, seller);
             assertEq(prices[i], listingPrice);
-            assertEq(tips[i], listingTip);
 
             unchecked {
                 ++i;
@@ -700,7 +600,7 @@ contract PageExchangeTest is Test, PageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchEditMismatchedArrayInvalid() external {
-        uint48[] memory newPrices = new uint48[](0);
+        uint96[] memory newPrices = new uint96[](0);
 
         vm.expectRevert(stdError.indexOOBError);
 
@@ -708,7 +608,7 @@ contract PageExchangeTest is Test, PageBase {
     }
 
     function testCannotBatchEditNewPriceZero() external {
-        uint48[] memory newPrices = new uint48[](ids.length);
+        uint96[] memory newPrices = new uint96[](ids.length);
 
         vm.expectRevert(Page.Zero.selector);
 
@@ -720,14 +620,12 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
-        uint48[] memory newPrices = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
+        uint96[] memory newPrices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000;
-            tips[i] = 1_000;
-            newPrices[i] = 200_000;
+            prices[i] = 1 ether;
+            newPrices[i] = 2 ether;
 
             unchecked {
                 ++i;
@@ -736,31 +634,27 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         vm.expectRevert(Page.Unauthorized.selector);
 
         page.batchEdit(ids, newPrices);
     }
 
-    function testBatchEdit(uint48 price, uint48 tip, uint48 newPrice) external {
+    function testBatchEdit(uint96 price, uint96 newPrice) external {
         vm.assume(price != 0);
-        vm.assume(tip <= price);
         vm.assume(newPrice != 0);
         vm.assume(newPrice != price);
-        vm.assume(newPrice >= tip);
 
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
-        uint48[] memory newPrices = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
+        uint96[] memory newPrices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             prices[i] = price;
-            tips[i] = tip;
             newPrices[i] = newPrice;
 
             unchecked {
@@ -770,7 +664,7 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         vm.prank(recipient);
         vm.expectEmit(false, false, false, true, address(page));
@@ -781,15 +675,13 @@ contract PageExchangeTest is Test, PageBase {
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
+            (address seller, uint96 listingPrice) = page.listings(id);
 
             assertEq(address(page), page.ownerOf(id));
             assertEq(0, page.balanceOf(recipient, id));
             assertEq(1, page.balanceOf(address(page), id));
             assertEq(recipient, seller);
             assertEq(newPrices[i], listingPrice);
-            assertEq(tips[i], listingTip);
 
             unchecked {
                 ++i;
@@ -806,12 +698,10 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000;
-            tips[i] = 1_000;
+            prices[i] = 1 ether;
 
             unchecked {
                 ++i;
@@ -820,7 +710,7 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         vm.expectRevert(Page.Unauthorized.selector);
 
@@ -832,12 +722,10 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000;
-            tips[i] = 1_000;
+            prices[i] = 1 ether;
 
             unchecked {
                 ++i;
@@ -846,7 +734,7 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         vm.prank(recipient);
         vm.expectEmit(false, false, false, true, address(page));
@@ -857,15 +745,13 @@ contract PageExchangeTest is Test, PageBase {
 
         for (uint256 i; i < ids.length; ) {
             uint256 id = ids[i];
-            (address seller, uint48 listingPrice, uint48 listingTip) = page
-                .listings(id);
+            (address seller, uint96 listingPrice) = page.listings(id);
 
             assertEq(recipient, page.ownerOf(id));
             assertEq(1, page.balanceOf(recipient, id));
             assertEq(0, page.balanceOf(address(page), id));
             assertEq(address(0), seller);
             assertEq(0, listingPrice);
-            assertEq(0, listingTip);
 
             unchecked {
                 ++i;
@@ -882,12 +768,10 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
-            prices[i] = 100_000;
-            tips[i] = 1_000;
+            prices[i] = 1 ether;
 
             unchecked {
                 ++i;
@@ -896,43 +780,44 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         uint256 totalSellerProceeds;
 
         for (uint256 i; i < ids.length; ) {
-            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
-                prices[i],
-                tips[i]
-            );
-            totalSellerProceeds += (priceETH - tipETH);
+            totalSellerProceeds += prices[i];
 
             unchecked {
                 ++i;
             }
         }
 
-        vm.deal(address(this), totalSellerProceeds);
-        vm.expectRevert(Page.Insufficient.selector);
+        // Deal ETH to the Page contract to mock ETH from offers
+        vm.deal(address(page), 1 ether);
 
-        // Send enough ETH to cover seller proceeds but not tips
-        page.batchBuy{value: totalSellerProceeds}(ids);
+        assertEq(address(page).balance, 1 ether);
+
+        vm.deal(address(this), totalSellerProceeds);
+        vm.expectRevert(stdError.arithmeticError);
+
+        // Send an insufficient amount of ETH
+        page.batchBuy{value: totalSellerProceeds - 1}(ids);
+
+        // Balance should be unchanged
+        assertEq(address(page).balance, 1 ether);
     }
 
-    function testBatchBuy(uint48 price, uint48 tip) external {
+    function testBatchBuy(uint96 price) external {
         vm.assume(price != 0);
-        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             prices[i] = price;
-            tips[i] = tip;
 
             unchecked {
                 ++i;
@@ -941,20 +826,13 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         uint256 totalPriceETH;
-        uint256 totalTipETH;
-        uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
         uint256 sellerBalanceBefore = recipient.balance;
 
         for (uint256 i; i < ids.length; ) {
-            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
-                prices[i],
-                tips[i]
-            );
-            totalPriceETH += priceETH;
-            totalTipETH += tipETH;
+            totalPriceETH += prices[i];
 
             unchecked {
                 ++i;
@@ -970,11 +848,7 @@ contract PageExchangeTest is Test, PageBase {
         page.batchBuy{value: totalPriceETH}(ids);
 
         assertEq(
-            tipRecipientBalanceBefore + totalTipETH,
-            TIP_RECIPIENT.balance
-        );
-        assertEq(
-            sellerBalanceBefore + (totalPriceETH - totalTipETH),
+            sellerBalanceBefore + totalPriceETH,
             recipient.balance
         );
 
@@ -990,9 +864,8 @@ contract PageExchangeTest is Test, PageBase {
         }
     }
 
-    function testBatchBuyPartial(uint48 price, uint48 tip) external {
+    function testBatchBuyPartial(uint96 price) external {
         vm.assume(price != 0);
-        vm.assume(tip < price);
 
         address recipient = accounts[0];
 
@@ -1002,12 +875,10 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchDeposit(ids, recipient);
 
-        uint48[] memory prices = new uint48[](ids.length);
-        uint48[] memory tips = new uint48[](ids.length);
+        uint96[] memory prices = new uint96[](ids.length);
 
         for (uint256 i; i < ids.length; ) {
             prices[i] = price;
-            tips[i] = tip;
 
             unchecked {
                 ++i;
@@ -1016,11 +887,9 @@ contract PageExchangeTest is Test, PageBase {
 
         vm.prank(recipient);
 
-        page.batchList(ids, prices, tips);
+        page.batchList(ids, prices);
 
         uint256 totalPriceETH;
-        uint256 totalTipETH;
-        uint256 tipRecipientBalanceBefore = TIP_RECIPIENT.balance;
         uint256 sellerBalanceBefore = recipient.balance;
 
         for (uint256 i; i < ids.length; ) {
@@ -1029,12 +898,7 @@ contract PageExchangeTest is Test, PageBase {
                 continue;
             }
 
-            (uint256 priceETH, uint256 tipETH) = _calculateTransferValues(
-                prices[i],
-                tips[i]
-            );
-            totalPriceETH += priceETH;
-            totalTipETH += tipETH;
+            totalPriceETH += prices[i];
 
             unchecked {
                 ++i;
@@ -1054,11 +918,7 @@ contract PageExchangeTest is Test, PageBase {
         page.batchBuy{value: totalPriceETH}(ids);
 
         assertEq(
-            tipRecipientBalanceBefore + totalTipETH,
-            TIP_RECIPIENT.balance
-        );
-        assertEq(
-            sellerBalanceBefore + (totalPriceETH - totalTipETH),
+            sellerBalanceBefore + totalPriceETH,
             recipient.balance
         );
 
