@@ -2,14 +2,14 @@
 pragma solidity 0.8.20;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
+import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
-import {Owned} from "src/base/Owned.sol";
 
 interface IPage {
     function initialize(ERC721, address payable) external;
 }
 
-contract Book is Owned {
+contract Book is Ownable {
     // Paired with the collection address to compute the CREATE2 salt
     bytes12 public constant SALT_FRAGMENT = "JPAGE||EGAPJ";
 
@@ -38,7 +38,7 @@ contract Book is Owned {
     error Zero();
     error AlreadyExists();
 
-    constructor(address payable _tipRecipient) Owned(msg.sender) {
+    constructor(address payable _tipRecipient) {
         if (_tipRecipient == address(0)) revert Zero();
 
         tipRecipient = _tipRecipient;

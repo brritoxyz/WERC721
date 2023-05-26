@@ -88,7 +88,7 @@ contract BookTest is Test {
         assertTrue(caller != book.owner());
 
         vm.prank(caller);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
 
         book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
@@ -169,7 +169,7 @@ contract BookTest is Test {
         assertTrue(caller != book.owner());
 
         vm.prank(caller);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
 
         book.setTipRecipient(payable(address(0)));
     }
