@@ -485,4 +485,22 @@ contract Page is
 
         emit TakeOffer(msg.sender);
     }
+
+    /**
+     * @notice Receives and executes a batch of function calls on this contract
+     * @notice Non-payable to avoid reuse of msg.value across calls (thank you Solady)
+     * @notice See: https://www.paradigm.xyz/2021/08/two-rights-might-make-a-wrong
+     * @param  data  bytes[]  Encoded function selectors with optional data
+     */
+    function multicall(bytes[] calldata data) external {
+        for (uint256 i; i < data.length; ) {
+            (bool success, ) = address(this).delegatecall(data[i]);
+
+            require(success, "Call failed");
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }
