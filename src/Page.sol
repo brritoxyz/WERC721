@@ -70,7 +70,7 @@ contract Page is
         address payable _tipRecipient
     ) external initializer {
         // Initialize ReentrancyGuard by setting `locked` to unlocked (i.e. 1)
-        locked = 1;
+        _status = _NOT_ENTERED;
 
         // Initialize this contract with the ERC721 collection contract
         collection = _collection;
