@@ -41,7 +41,7 @@ contract PageExchangeTest is Test, PageBase {
         data[0] = abi.encodeWithSelector(Page.deposit.selector, id, recipient);
         data[1] = abi.encodeWithSelector(Page.list.selector, id, price);
 
-        page.multicall(data);
+        page.multicall(data, false);
 
         assertEq(address(page), LLAMA.ownerOf(id));
         assertEq(address(page), page.ownerOf(id));

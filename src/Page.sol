@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
-import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PageToken} from "src/PageToken.sol";
 
-contract Page is
-    Initializable,
-    ReentrancyGuard,
-    ERC721TokenReceiver,
-    PageToken
-{
+interface IERC721 {
+    function transferFrom(address from, address to, uint256 id) external;
+
+    function safeTransferFrom(address from, address to, uint256 id) external;
+
+    function name() external view returns (string memory);
+
+    function symbol() external view returns (string memory);
+
+    function tokenURI(uint256 id) external view returns (string memory);
+}
+
+contract Page is Clone, PageToken {
     using SafeTransferLib for address payable;
 
     struct Listing {
@@ -22,13 +27,14 @@ contract Page is
         uint96 price;
     }
 
-    ERC721 public collection;
+    bool private _initialized;
+
+    uint256 private _locked;
 
     mapping(uint256 => Listing) public listings;
 
     mapping(address => mapping(uint256 => uint256)) public offers;
 
-    event Initialize(ERC721 collection);
     event List(uint256 id);
     event Edit(uint256 id);
     event Cancel(uint256 id);
@@ -41,27 +47,45 @@ contract Page is
     event CancelOffer(address maker);
     event TakeOffer(address taker);
 
-    error Zero();
     error Invalid();
     error Unauthorized();
-    error Nonexistent();
     error Insufficient();
 
     constructor() payable {
-        // Disable initialization on the implementation contract
-        _disableInitializers();
+        // Prevent the implementation from being initialized
+        _initialized = true;
+    }
+
+    modifier nonReentrant() {
+        require(_locked == 1, "REENTRANCY");
+
+        _locked = 2;
+
+        _;
+
+        _locked = 1;
     }
 
     /**
-     * @notice Initializes the minimal proxy
-     * @notice Initializes ReentrancyGuard by setting `_status` to `_NOT_ENTERED` (see `nonReentrant`)
-     * @param  _collection  ERC721  Collection contract
+     * @notice Initializes the minimal proxy contract storage
      */
-    function initialize(ERC721 _collection) external initializer nonReentrant {
-        // Initialize this contract with the ERC721 collection contract
-        collection = _collection;
+    function initialize() external {
+        if (_initialized) revert();
 
-        emit Initialize(_collection);
+        // Prevent initialize from being called again
+        _initialized = true;
+
+        // Initialize `locked` with the value of 1 (i.e. unlocked)
+        _locked = 1;
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external virtual returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     /**
@@ -72,7 +96,7 @@ contract Page is
     function _deposit(uint256 id, address recipient) private {
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
-        collection.transferFrom(msg.sender, address(this), id);
+        IERC721(_getArgAddress(0)).transferFrom(msg.sender, address(this), id);
 
         // Mint the derivative token for the specified recipient (same ID)
         ownerOf[id] = recipient;
@@ -91,7 +115,11 @@ contract Page is
         delete ownerOf[id];
 
         // Transfer the NFT to the recipient - reverts if recipient is zero address
-        collection.safeTransferFrom(address(this), recipient, id);
+        IERC721(_getArgAddress(0)).safeTransferFrom(
+            address(this),
+            recipient,
+            id
+        );
     }
 
     /**
@@ -104,7 +132,7 @@ contract Page is
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
         // Revert if the price is zero
-        if (price == 0) revert Zero();
+        if (price == 0) revert Invalid();
 
         // Update token owner to this contract to prevent double-listing
         ownerOf[id] = address(this);
@@ -120,7 +148,7 @@ contract Page is
      */
     function _edit(uint256 id, uint96 newPrice) private {
         // Revert if the new price is zero
-        if (newPrice == 0) revert Zero();
+        if (newPrice == 0) revert Invalid();
 
         Listing storage listing = listings[id];
 
@@ -144,12 +172,16 @@ contract Page is
         ownerOf[id] = msg.sender;
     }
 
+    function collection() external pure returns (address) {
+        return _getArgAddress(0);
+    }
+
     /**
      * @notice Retrieves the collection name
      * @return string  Token name
      */
     function name() external view override returns (string memory) {
-        return collection.name();
+        return IERC721(_getArgAddress(0)).name();
     }
 
     /**
@@ -157,18 +189,18 @@ contract Page is
      * @return string  Token symbol
      */
     function symbol() external view override returns (string memory) {
-        return collection.symbol();
+        return IERC721(_getArgAddress(0)).symbol();
     }
 
     /**
      * @notice Retrieves the collection token URI for the specified ID
-     * @param  _tokenId  uint256  Token ID
+     * @param  tokenId  uint256  Token ID
      * @return           string   JSON file that conforms to the ERC721 Metadata JSON Schema
      */
     function tokenURI(
-        uint256 _tokenId
+        uint256 tokenId
     ) external view override returns (string memory) {
-        return collection.tokenURI(_tokenId);
+        return IERC721(_getArgAddress(0)).tokenURI(tokenId);
     }
 
     /**
@@ -229,7 +261,7 @@ contract Page is
         Listing memory listing = listings[id];
 
         // Revert if the listing does not exist (price cannot be zero)
-        if (listing.price == 0) revert Nonexistent();
+        if (listing.price == 0) revert Invalid();
 
         // Reverts if the msg.value does not cover the listing price
         if (msg.value != listing.price) revert Insufficient();
@@ -490,13 +522,19 @@ contract Page is
      * @notice Receives and executes a batch of function calls on this contract
      * @notice Non-payable to avoid reuse of msg.value across calls (thank you Solady)
      * @notice See: https://www.paradigm.xyz/2021/08/two-rights-might-make-a-wrong
-     * @param  data  bytes[]  Encoded function selectors with optional data
+     * @param  data       bytes[]  Encoded function selectors with optional data
+     * @param  allOrNone  bool     All calls succeed or revert
      */
-    function multicall(bytes[] calldata data) external {
-        for (uint256 i; i < data.length; ) {
-            (bool success, ) = address(this).delegatecall(data[i]);
+    function multicall(bytes[] calldata data, bool allOrNone) external {
+        bool success;
 
-            require(success, "Call failed");
+        for (uint256 i; i < data.length; ) {
+            (success, ) = address(this).delegatecall(data[i]);
+
+            if (!success) {
+                // Only revert if allOrNone is truthy
+                if (allOrNone) revert();
+            }
 
             unchecked {
                 ++i;

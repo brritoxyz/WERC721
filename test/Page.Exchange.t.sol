@@ -308,7 +308,7 @@ contract PageExchangeTest is Test, PageBase {
 
         // Call `list` as the recipient to ensure that they are authorized to sell
         vm.prank(recipient);
-        vm.expectRevert(Page.Zero.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.list(id, price);
     }
@@ -355,7 +355,7 @@ contract PageExchangeTest is Test, PageBase {
         uint256 id = ids[0];
         uint96 price = 0;
 
-        vm.expectRevert(Page.Zero.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.edit(id, price);
     }
@@ -488,7 +488,7 @@ contract PageExchangeTest is Test, PageBase {
 
             vm.expectRevert(Page.Insufficient.selector);
         } else {
-            vm.expectRevert(Page.Nonexistent.selector);
+            vm.expectRevert(Page.Invalid.selector);
         }
 
         // Attempt to buy with msg.value less than price
@@ -610,7 +610,7 @@ contract PageExchangeTest is Test, PageBase {
     function testCannotBatchEditNewPriceZero() external {
         uint96[] memory newPrices = new uint96[](ids.length);
 
-        vm.expectRevert(Page.Zero.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.batchEdit(ids, newPrices);
     }

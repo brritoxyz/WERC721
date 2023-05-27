@@ -6,7 +6,7 @@ import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
 interface IPage {
-    function initialize(ERC721) external;
+    function initialize() external;
 }
 
 contract Book is Ownable {
@@ -89,6 +89,7 @@ contract Book is Ownable {
         // Create a minimal proxy for the implementation
         page = LibClone.cloneDeterministic(
             implementation,
+            abi.encodePacked(address(collection)),
             keccak256(
                 abi.encodePacked(collection, SALT_FRAGMENT, block.timestamp)
             )
@@ -103,7 +104,7 @@ contract Book is Ownable {
         }
 
         // Initialize the minimal proxy's state variables
-        IPage(page).initialize(collection);
+        IPage(page).initialize();
 
         emit CreatePage(implementation, collection, page);
     }

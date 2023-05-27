@@ -43,9 +43,9 @@ contract PageBase is Test, ERC721TokenReceiver {
         page = Page(book.createPage(LLAMA));
 
         // Verify that page cannot be initialized again
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert();
 
-        page.initialize(LLAMA);
+        page.initialize();
 
         for (uint256 i; i < ids.length; ) {
             address originalOwner = LLAMA.ownerOf(ids[i]);

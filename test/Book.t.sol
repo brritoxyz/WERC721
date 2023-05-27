@@ -48,6 +48,7 @@ contract BookTest is Test {
 
         address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             implementation,
+            abi.encodePacked(address(LLAMA)),
             keccak256(
                 abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
             ),
@@ -61,9 +62,9 @@ contract BookTest is Test {
         assertTrue(version != 0);
         assertTrue(implementation != address(0));
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert();
 
-        page.initialize(LLAMA);
+        page.initialize();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -168,6 +169,7 @@ contract BookTest is Test {
 
         address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             pageImplementation,
+            abi.encodePacked(address(LLAMA)),
             keccak256(
                 abi.encodePacked(LLAMA, book.SALT_FRAGMENT(), block.timestamp)
             ),
@@ -187,9 +189,9 @@ contract BookTest is Test {
         assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
         // Should be initialized
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert();
 
-        Page(newPage).initialize(LLAMA);
+        Page(newPage).initialize();
     }
 
     function testCreatePage(ERC721 collection) external {
@@ -200,6 +202,7 @@ contract BookTest is Test {
 
         address predeterminedPageAddress = LibClone.predictDeterministicAddress(
             pageImplementation,
+            abi.encodePacked(address(collection)),
             keccak256(
                 abi.encodePacked(
                     collection,
@@ -221,10 +224,10 @@ contract BookTest is Test {
         address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
-        assertEq(address(collection), address(Page(pageAddress).collection()));
+        assertEq(address(collection), Page(pageAddress).collection());
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert();
 
-        Page(pageAddress).initialize(collection);
+        Page(pageAddress).initialize();
     }
 }
