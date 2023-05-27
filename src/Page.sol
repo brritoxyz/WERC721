@@ -22,7 +22,7 @@ contract Page is Clone, PageToken {
 
     struct Listing {
         // Seller address
-        address seller;
+        address payable seller;
         // Adequate for 79m ether
         uint96 price;
     }
@@ -50,6 +50,7 @@ contract Page is Clone, PageToken {
     error Invalid();
     error Unauthorized();
     error Insufficient();
+    error MulticallError(uint256 callIndex);
 
     constructor() payable {
         // Prevent the implementation from being initialized
@@ -77,15 +78,6 @@ contract Page is Clone, PageToken {
 
         // Initialize `locked` with the value of 1 (i.e. unlocked)
         _locked = 1;
-    }
-
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external virtual returns (bytes4) {
-        return this.onERC721Received.selector;
     }
 
     /**
@@ -138,7 +130,7 @@ contract Page is Clone, PageToken {
         ownerOf[id] = address(this);
 
         // Set the listing
-        listings[id] = Listing(msg.sender, price);
+        listings[id] = Listing(payable(msg.sender), price);
     }
 
     /**
@@ -273,7 +265,7 @@ contract Page is Clone, PageToken {
         ownerOf[id] = msg.sender;
 
         // Transfer the sales proceeds to the seller
-        payable(listing.seller).safeTransferETH(msg.value);
+        listing.seller.safeTransferETH(msg.value);
 
         emit Buy(id);
     }
@@ -410,7 +402,7 @@ contract Page is Clone, PageToken {
             // Transfer the sales proceeds to the seller - reverts if the contract does not have enough ETH due to msg.value
             // not being sufficient to cover the purchase. If the contract does have enough ETH - due to offer makers depositing
             // ETH (even if the caller did not include a sufficient amount) - then the post-loop check will revert
-            payable(listing.seller).safeTransferETH(listing.price);
+            listing.seller.safeTransferETH(listing.price);
         }
 
         // If there is available ETH remaining after the purchases (i.e. too much ETH was sent), return it to the buyer
@@ -523,22 +515,33 @@ contract Page is Clone, PageToken {
      * @notice Non-payable to avoid reuse of msg.value across calls (thank you Solady)
      * @notice See: https://www.paradigm.xyz/2021/08/two-rights-might-make-a-wrong
      * @param  data       bytes[]  Encoded function selectors with optional data
-     * @param  allOrNone  bool     All calls succeed or revert
      */
-    function multicall(bytes[] calldata data, bool allOrNone) external {
-        bool success;
+    function multicall(
+        bytes[] calldata data
+    ) external returns (bytes[] memory results) {
+        results = new bytes[](data.length);
 
         for (uint256 i; i < data.length; ) {
-            (success, ) = address(this).delegatecall(data[i]);
+            (bool success, bytes memory result) = address(this).delegatecall(
+                data[i]
+            );
 
-            if (!success) {
-                // Only revert if allOrNone is truthy
-                if (allOrNone) revert();
-            }
+            if (!success) revert MulticallError(i);
+
+            results[i] = result;
 
             unchecked {
                 ++i;
             }
         }
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }
