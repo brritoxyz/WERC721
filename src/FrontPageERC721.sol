@@ -10,8 +10,6 @@ contract FrontPageERC721 is Ownable, ERC721 {
 
     string public baseURI;
 
-    error Unauthorized();
-
     constructor(
         string memory _name,
         string memory _symbol,
@@ -34,15 +32,13 @@ contract FrontPageERC721 is Ownable, ERC721 {
 
     function mint(address to, uint256 id) external {
         // Users must redeem through the FrontPage contract, the only authorized caller of this method
-        // The FrontPage contract burns the token ID prior to minting the NFT, preventing reuse
+        // since FrontPage contract "burns" the FP token ID prior to minting the NFT, preventing reuse
         if (msg.sender != frontPage) revert Unauthorized();
 
         _mint(to, id);
     }
 
     function batchMint(address to, uint256[] calldata ids) external {
-        // Users must redeem through the FrontPage contract, the only authorized caller of this method
-        // The FrontPage contract burns the token ID prior to minting the NFT, preventing reuse
         if (msg.sender != frontPage) revert Unauthorized();
 
         for (uint256 i; i < ids.length; ) {

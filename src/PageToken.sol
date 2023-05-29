@@ -9,7 +9,7 @@ pragma solidity 0.8.20;
  * @dev    The usual events are NOT emitted since this contract is intended to be maximally gas-efficient
  *         and interacted with by contracts. This decision was made to reduce user gas costs across all
  *         contract-based NFT marketplaces that integrate (those contracts can emit events if desired)
- * @author kphed (based of transmissions11's work) - dedicated to Jude 🐾
+ * @author kphed (based on transmissions11's work) - dedicated to Jude 🐾
  */
 abstract contract PageToken {
     // Tracks the owner of each ERC721 derivative

@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {ERC721} from "solmate/tokens/ERC721.sol";
 import {FrontPageERC721} from "src/FrontPageERC721.sol";
 import {PageToken} from "src/PageToken.sol";
 
 contract FrontPage is PageToken {
+    using SafeTransferLib for address payable;
+
     // NFT collection deployed by this contract
     FrontPageERC721 public immutable collection;
 
@@ -12,25 +18,25 @@ contract FrontPage is PageToken {
     address payable public immutable creator;
 
     // Maximum NFT supply
-    uint16 public immutable maxSupply;
+    uint256 public immutable maxSupply;
 
     // NFT mint price
-    uint240 public immutable mintPrice;
+    uint256 public immutable mintPrice;
 
-    // Total NFT supply and the next NFT ID to be minted (IDs begin at 0)
-    uint256 public totalSupply;
+    // Next NFT ID to be minted
+    uint256 public nextId = 1;
 
     error Zero();
     error Soldout();
-    error InsufficientFunds();
+    error InvalidMsgValue();
     error Unauthorized();
 
     constructor(
         string memory _name,
         string memory _symbol,
         address payable _creator,
-        uint16 _maxSupply,
-        uint240 _mintPrice
+        uint256 _maxSupply,
+        uint256 _mintPrice
     ) {
         if (_creator == address(0)) revert Zero();
         if (_maxSupply == 0) revert Zero();
@@ -58,20 +64,32 @@ contract FrontPage is PageToken {
     }
 
     /**
+     * @notice Withdraw mint proceeds to the designated recipient (i.e. creator)
+     */
+    function withdraw() external {
+        creator.safeTransferETH(address(this).balance);
+    }
+
+    /**
      * @notice Mint the FrontPage token representing the redeemable NFT
      */
     function mint() external payable {
-        // Revert if the max NFT supply has already been minted
-        if (totalSupply == uint256(maxSupply)) revert Soldout();
+        uint256 _nextId = nextId;
 
-        // Revert if the value sent is less than the mint price
-        if (msg.value != uint256(mintPrice)) revert InsufficientFunds();
+        // Revert if the max NFT supply has already been minted
+        if (_nextId > maxSupply) revert Soldout();
+
+        // Revert if the value sent does not equal the mint price
+        if (msg.value != mintPrice) revert InvalidMsgValue();
 
         // Set the owner of the token ID to the minter
-        ownerOf[totalSupply] = msg.sender;
+        ownerOf[_nextId] = msg.sender;
 
-        // Increment totalSupply and the next NFT ID to be minted
-        ++totalSupply;
+        // Will not overflow since nextId is less than or equal to maxSupply
+        unchecked {
+            // Increment nextId to the next NFT ID to be minted
+            ++nextId;
+        }
     }
 
     /**
@@ -79,28 +97,21 @@ contract FrontPage is PageToken {
      * @param  quantity  uint256  Number of FPTs to mint
      */
     function batchMint(uint256 quantity) external payable {
-        // Revert if the mint quantity is zero
-        if (quantity == 0) revert Zero();
+        // Revert if the value sent does not equal the mint price
+        if (msg.value != mintPrice * quantity) revert InvalidMsgValue();
 
-        // Revert if the value sent is less than the mint price for the quantity
-        if (msg.value != uint256(mintPrice) * quantity)
-            revert InsufficientFunds();
+        unchecked {
+            // Update nextId to reflect the additional tokens to be minted
+            // Virtually impossible to overflow due to the msg.value check above
+            uint256 _nextId = (nextId += quantity);
 
-        // Initial value of the loop iterator variable and next token ID
-        uint256 i = totalSupply;
+            // Revert if the max NFT supply has been or will be exceeded post-mint
+            if (_nextId > maxSupply) revert Soldout();
 
-        // Update totalSupply to reflect the additional tokens to be minted
-        uint256 totalSupplyAfter = (totalSupply += quantity);
-
-        // Revert if the max NFT supply has been or will be exceeded post-mint
-        if (totalSupplyAfter > uint256(maxSupply)) revert Soldout();
-
-        for (i; i < totalSupplyAfter; ) {
-            // Set the owner of the token ID to the minter
-            ownerOf[i] = msg.sender;
-
-            unchecked {
-                ++i;
+            // If quantity is zero, the loop logic will never be executed
+            for (uint256 i = quantity; i > 0; --i) {
+                // Set the owner of the token ID to the minter
+                ownerOf[_nextId - i] = msg.sender;
             }
         }
     }

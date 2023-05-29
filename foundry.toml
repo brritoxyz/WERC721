@@ -5,7 +5,7 @@ out = 'out'
 libs = ['lib']
 verbosity = 3
 bytecode_hash = 'none'
-gas_reports = ["Book", "Page"]
+gas_reports = ["Book", "Page", "FrontPage", "FrontPageERC721"]
 optimizer = false
 via_ir = false
 
