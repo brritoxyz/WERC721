@@ -6,13 +6,21 @@ import {ERC721} from "solmate/tokens/ERC721.sol";
 import {LibString} from "solady/utils/LibString.sol";
 
 contract FrontPageERC721 is Ownable, ERC721 {
+    address public immutable frontPage;
+
     string public baseURI;
+
+    error Unauthorized();
 
     constructor(
         string memory _name,
         string memory _symbol,
         address _owner
     ) ERC721(_name, _symbol) {
+        // Set the FrontPage contract (i.e. the deployer of this contract)
+        frontPage = msg.sender;
+
+        // Enable the creator to update the baseURI
         _initializeOwner(_owner);
     }
 
@@ -22,5 +30,13 @@ contract FrontPageERC721 is Ownable, ERC721 {
 
     function tokenURI(uint256 id) public view override returns (string memory) {
         return string(abi.encodePacked(baseURI, LibString.toString(id)));
+    }
+
+    function mint(address to, uint256 id) external {
+        // Users must redeem through the FrontPage contract, the only authorized caller of this method
+        // The FrontPage contract burns the token ID prior to minting the NFT, preventing reuse
+        if (msg.sender != frontPage) revert Unauthorized();
+
+        _mint(to, id);
     }
 }
