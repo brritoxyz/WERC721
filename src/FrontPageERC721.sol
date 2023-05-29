@@ -10,9 +10,10 @@ contract FrontPageERC721 is Ownable, ERC721 {
 
     constructor(
         string memory _name,
-        string memory _symbol
+        string memory _symbol,
+        address _owner
     ) ERC721(_name, _symbol) {
-        _initializeOwner(msg.sender);
+        _initializeOwner(_owner);
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {
