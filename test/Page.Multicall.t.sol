@@ -7,12 +7,24 @@ import {Page} from "src/Page.sol";
 import {PageBase} from "test//PageBase.sol";
 
 contract PageExchangeTest is Test, PageBase {
-    event Transfer(address indexed from, address indexed to, uint256 indexed id);
+    event Transfer(
+        address indexed from,
+        address indexed to,
+        uint256 indexed id
+    );
     event TransferSingle(
-        address indexed operator, address indexed from, address indexed to, uint256 id, uint256 amount
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256 id,
+        uint256 amount
     );
     event TransferBatch(
-        address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] amounts
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] amounts
     );
     event SetTipRecipient(address tipRecipient);
     event List(uint256 id);
@@ -28,7 +40,7 @@ contract PageExchangeTest is Test, PageBase {
                              multicall
     //////////////////////////////////////////////////////////////*/
 
-    function testDepositList() external {
+    function testMulticall() external {
         uint256 id = ids[0];
         address recipient = address(this);
         uint96 price = 1 ether;
@@ -37,9 +49,19 @@ contract PageExchangeTest is Test, PageBase {
         assertEq(address(0), page.ownerOf(id));
         assertEq(0, page.balanceOf(recipient, id));
 
-        bytes[] memory data = new bytes[](2);
+        bytes[] memory data = new bytes[](4);
         data[0] = abi.encodeWithSelector(Page.deposit.selector, id, recipient);
-        data[1] = abi.encodeWithSelector(Page.list.selector, id, price);
+        data[1] = abi.encodeWithSelector(
+            Page.deposit.selector,
+            ids[1],
+            recipient
+        );
+        data[2] = abi.encodeWithSelector(Page.list.selector, id, price);
+        data[3] = abi.encodeWithSelector(
+            Page.withdraw.selector,
+            ids[1],
+            recipient
+        );
 
         page.multicall(data);
 
