@@ -6,8 +6,8 @@ import {FrontPageBase} from "test/FrontPageBase.sol";
 import {FrontPage} from "src/FrontPage.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
-    event Mint(uint256 id);
-    event BatchMint(uint256 startingId, uint256 quantity);
+    event Mint();
+    event BatchMint();
 
     /*//////////////////////////////////////////////////////////////
                              mint
@@ -43,7 +43,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         vm.expectEmit(false, false, false, true, address(page));
 
-        emit Mint(nextId);
+        emit Mint();
 
         page.mint{value: value}();
 
@@ -97,7 +97,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchMint(startingId, quantity);
+        emit BatchMint();
 
         page.batchMint{value: value}(quantity);
 
@@ -127,7 +127,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         vm.expectEmit(false, false, false, true, address(page));
 
-        emit BatchMint(startingId, quantity);
+        emit BatchMint();
 
         page.batchMint{value: value}(quantity);
 

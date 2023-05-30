@@ -22,10 +22,10 @@ contract FrontPage is PageToken {
     address payable public immutable creator;
 
     // Maximum NFT supply
-    uint256 public immutable maxSupply;
+    uint128 public immutable maxSupply;
 
     // NFT mint price
-    uint256 public immutable mintPrice;
+    uint128 public immutable mintPrice;
 
     // Non-reentrancy lock
     uint256 private _locked = 1;
@@ -37,12 +37,12 @@ contract FrontPage is PageToken {
 
     mapping(address => mapping(uint256 => uint256)) public offers;
 
-    event Mint(uint256 id);
+    event Mint();
     event List(uint256 id);
     event Edit(uint256 id);
     event Cancel(uint256 id);
     event Buy(uint256 id);
-    event BatchMint(uint256 startingId, uint256 quantity);
+    event BatchMint();
     event BatchList(uint256[] ids);
     event BatchEdit(uint256[] ids);
     event BatchCancel(uint256[] ids);
@@ -72,8 +72,8 @@ contract FrontPage is PageToken {
         collection = new FrontPageERC721(_name, _symbol, _creator, _maxSupply);
 
         creator = _creator;
-        maxSupply = _maxSupply;
-        mintPrice = _mintPrice;
+        maxSupply = uint128(_maxSupply);
+        mintPrice = uint128(_mintPrice);
     }
 
     modifier nonReentrant() {
@@ -128,7 +128,7 @@ contract FrontPage is PageToken {
             ++nextId;
         }
 
-        emit Mint(_nextId);
+        emit Mint();
     }
 
     /**
@@ -137,7 +137,8 @@ contract FrontPage is PageToken {
      */
     function batchMint(uint256 quantity) external payable {
         // Revert if the value sent does not equal the mint price
-        if (msg.value != mintPrice * quantity) revert InvalidMsgValue();
+        if (msg.value != uint256(mintPrice) * quantity)
+            revert InvalidMsgValue();
 
         unchecked {
             // Update nextId to reflect the additional tokens to be minted
@@ -148,13 +149,14 @@ contract FrontPage is PageToken {
             if (_nextId > maxSupply) revert Soldout();
 
             // If quantity is zero, the loop logic will never be executed
-            for (uint256 i = quantity; i > 0; --i) {
-                // Set the owner of the token ID to the minter
-                ownerOf[_nextId - i] = msg.sender;
-            }
+            while (quantity != 0) {
+                ownerOf[_nextId - quantity] = msg.sender;
 
-            emit BatchMint(_nextId - quantity, quantity);
+                --quantity;
+            }
         }
+
+        emit BatchMint();
     }
 
     /**
@@ -177,8 +179,9 @@ contract FrontPage is PageToken {
      */
     function batchRedeem(uint256[] calldata ids) external {
         uint256 id;
+        uint256 i = ids.length - 1;
 
-        for (uint256 i; i < ids.length; ) {
+        while (i != 0) {
             id = ids[i];
 
             if (ownerOf[id] != msg.sender) revert Unauthorized();
@@ -187,9 +190,12 @@ contract FrontPage is PageToken {
             delete ownerOf[id];
 
             unchecked {
-                ++i;
+                --i;
             }
         }
+
+        delete ownerOf[ids[0]];
+
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
         collection.batchMint(msg.sender, ids);
