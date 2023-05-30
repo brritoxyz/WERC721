@@ -37,10 +37,12 @@ contract FrontPage is PageToken {
 
     mapping(address => mapping(uint256 => uint256)) public offers;
 
+    event Mint(uint256 id);
     event List(uint256 id);
     event Edit(uint256 id);
     event Cancel(uint256 id);
     event Buy(uint256 id);
+    event BatchMint(uint256 startingId, uint256 quantity);
     event BatchList(uint256[] ids);
     event BatchEdit(uint256[] ids);
     event BatchCancel(uint256[] ids);
@@ -125,6 +127,8 @@ contract FrontPage is PageToken {
             // Increment nextId to the next NFT ID to be minted
             ++nextId;
         }
+
+        emit Mint(_nextId);
     }
 
     /**
@@ -148,6 +152,8 @@ contract FrontPage is PageToken {
                 // Set the owner of the token ID to the minter
                 ownerOf[_nextId - i] = msg.sender;
             }
+
+            emit BatchMint(_nextId - quantity, quantity);
         }
     }
 

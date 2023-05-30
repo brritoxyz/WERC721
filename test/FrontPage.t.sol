@@ -6,6 +6,9 @@ import {FrontPageBase} from "test/FrontPageBase.sol";
 import {FrontPage} from "src/FrontPage.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
+    event Mint(uint256 id);
+    event BatchMint(uint256 startingId, uint256 quantity);
+
     /*//////////////////////////////////////////////////////////////
                              mint
     //////////////////////////////////////////////////////////////*/
@@ -37,6 +40,10 @@ contract FrontPageTest is Test, FrontPageBase {
         assertEq(address(0), page.ownerOf(nextId));
 
         uint256 value = MINT_PRICE;
+
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit Mint(nextId);
 
         page.mint{value: value}();
 
@@ -88,6 +95,10 @@ contract FrontPageTest is Test, FrontPageBase {
 
         uint256 value = quantity * uint256(MINT_PRICE);
 
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchMint(startingId, quantity);
+
         page.batchMint{value: value}(quantity);
 
         for (uint256 i; i < quantity; ) {
@@ -113,6 +124,10 @@ contract FrontPageTest is Test, FrontPageBase {
         assertLe(page.nextId() + quantity, page.maxSupply());
 
         uint256 value = quantity * uint256(MINT_PRICE);
+
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchMint(startingId, quantity);
 
         page.batchMint{value: value}(quantity);
 
