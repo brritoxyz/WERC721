@@ -11,7 +11,7 @@ contract FrontPageTest is Test, FrontPageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotMintSoldout() external {
-        vm.store(address(page), bytes32(uint256(2)), bytes32(MAX_SUPPLY + 1));
+        vm.store(address(page), bytes32(uint256(3)), bytes32(MAX_SUPPLY + 1));
 
         assertGt(page.nextId(), page.maxSupply());
 
@@ -62,7 +62,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
     function testCannotBatchMintSoldout(uint48 quantity) external {
         vm.assume(quantity != 0);
-        vm.store(address(page), bytes32(uint256(2)), bytes32(MAX_SUPPLY));
+        vm.store(address(page), bytes32(uint256(3)), bytes32(MAX_SUPPLY));
 
         uint256 value = uint256(quantity) * uint256(MINT_PRICE);
 
