@@ -42,7 +42,7 @@ contract FrontPage is PageToken {
         if (_maxSupply == 0) revert Zero();
 
         // Deploy the associated NFT collection
-        collection = new FrontPageERC721(_name, _symbol, _creator);
+        collection = new FrontPageERC721(_name, _symbol, _creator, _maxSupply);
 
         creator = _creator;
         maxSupply = _maxSupply;
@@ -123,9 +123,8 @@ contract FrontPage is PageToken {
     function redeem(uint256 id) external {
         if (ownerOf[id] != msg.sender) revert Unauthorized();
 
-        // Transfer the FrontPage token to self, burning it without affecting
-        // the total supply (to reduce gas)
-        ownerOf[id] = address(this);
+        // Burn the token to prevent the double-spending
+        delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
         collection.mint(msg.sender, id);
@@ -143,9 +142,8 @@ contract FrontPage is PageToken {
 
             if (ownerOf[id] != msg.sender) revert Unauthorized();
 
-            // Transfer the FrontPage token to self, burning it without affecting
-            // the total supply (to reduce gas)
-            ownerOf[id] = address(this);
+            // Burn the token to prevent the double-spending
+            delete ownerOf[id];
 
             unchecked {
                 ++i;

@@ -124,4 +124,83 @@ contract FrontPageTest is Test, FrontPageBase {
             }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             redeem
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotRedeemUnauthorized() external {
+        uint256 id = 1;
+
+        assertEq(address(0), page.ownerOf(id));
+
+        vm.expectRevert(FrontPage.Unauthorized.selector);
+
+        page.redeem(id);
+    }
+
+    function testRedeem() external {
+        uint256 id = page.nextId();
+
+        assertEq(address(0), page.ownerOf(id));
+
+        page.mint{value: MINT_PRICE}();
+
+        assertEq(address(this), page.ownerOf(id));
+
+        vm.expectRevert("NOT_MINTED");
+
+        collection.ownerOf(id);
+
+        page.redeem(1);
+
+        assertEq(address(0), page.ownerOf(id));
+        assertEq(address(this), collection.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchRedeem
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchRedeemUnauthorized() external {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = page.nextId();
+
+        assertEq(address(0), page.ownerOf(ids[0]));
+
+        vm.expectRevert(FrontPage.Unauthorized.selector);
+
+        page.batchRedeem(ids);
+    }
+
+    function testBatchRedeem() external {
+        uint256[] memory ids = new uint256[](5);
+
+        page.batchMint{value: MINT_PRICE * ids.length}(ids.length);
+
+        for (uint256 i; i < ids.length; ) {
+            ids[i] = i + 1;
+
+            assertEq(address(this), page.ownerOf(ids[i]));
+
+            vm.expectRevert("NOT_MINTED");
+
+            collection.ownerOf(ids[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        page.batchRedeem(ids);
+
+        for (uint256 i; i < ids.length; ) {
+            assertEq(address(0), page.ownerOf(ids[i]));
+            assertEq(address(this), collection.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }

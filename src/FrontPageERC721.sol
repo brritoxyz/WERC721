@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import {Ownable} from "solady/auth/Ownable.sol";
-import {ERC721} from "solmate/tokens/ERC721.sol";
 import {LibString} from "solady/utils/LibString.sol";
+import {ERC721} from "src/ERC721.sol";
 
 contract FrontPageERC721 is Ownable, ERC721 {
     address public immutable frontPage;
@@ -13,8 +13,9 @@ contract FrontPageERC721 is Ownable, ERC721 {
     constructor(
         string memory _name,
         string memory _symbol,
-        address _owner
-    ) ERC721(_name, _symbol) {
+        address _owner,
+        uint256 _maxSupply
+    ) ERC721(_name, _symbol, _maxSupply) {
         // Set the FrontPage contract (i.e. the deployer of this contract)
         frontPage = msg.sender;
 
@@ -32,7 +33,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
 
     function mint(address to, uint256 id) external {
         // Users must redeem through the FrontPage contract, the only authorized caller of this method
-        // since FrontPage contract "burns" the FP token ID prior to minting the NFT, preventing reuse
+        // since FrontPage burns the FP token ID prior to minting the NFT, preventing reuse
         if (msg.sender != frontPage) revert Unauthorized();
 
         _mint(to, id);
