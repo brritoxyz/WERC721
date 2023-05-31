@@ -179,9 +179,8 @@ contract FrontPage is PageToken {
      */
     function batchRedeem(uint256[] calldata ids) external {
         uint256 id;
-        uint256 i = ids.length - 1;
 
-        while (i != 0) {
+        for (uint256 i; i < ids.length; ) {
             id = ids[i];
 
             if (ownerOf[id] != msg.sender) revert Unauthorized();
@@ -190,12 +189,9 @@ contract FrontPage is PageToken {
             delete ownerOf[id];
 
             unchecked {
-                --i;
+                ++i;
             }
         }
-
-        delete ownerOf[ids[0]];
-
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
         collection.batchMint(msg.sender, ids);
