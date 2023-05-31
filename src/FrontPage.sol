@@ -72,8 +72,8 @@ contract FrontPage is PageToken {
         collection = new FrontPageERC721(_name, _symbol, _creator, _maxSupply);
 
         creator = _creator;
-        maxSupply = uint128(_maxSupply);
-        mintPrice = uint128(_mintPrice);
+        maxSupply = _maxSupply;
+        mintPrice = _mintPrice;
     }
 
     modifier nonReentrant() {
@@ -137,8 +137,7 @@ contract FrontPage is PageToken {
      */
     function batchMint(uint256 quantity) external payable {
         // Revert if the value sent does not equal the mint price
-        if (msg.value != uint256(mintPrice) * quantity)
-            revert InvalidMsgValue();
+        if (msg.value != mintPrice * quantity) revert InvalidMsgValue();
 
         unchecked {
             // Update nextId to reflect the additional tokens to be minted
@@ -439,10 +438,7 @@ contract FrontPage is PageToken {
      * @param  offer     uint256  Offer in ETH
      * @param  quantity  uint256  Offer quantity to cancel
      */
-    function cancelOffer(
-        uint256 offer,
-        uint256 quantity
-    ) external {
+    function cancelOffer(uint256 offer, uint256 quantity) external {
         // Deduct quantity from the user's offers - reverts if `quantity`
         // exceeds the actual amount of offers that the user has made
         // If offer and/or quantity are zero then the amount of ETH returned
