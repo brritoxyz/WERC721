@@ -22,10 +22,10 @@ contract FrontPage is PageToken {
     address payable public immutable creator;
 
     // Maximum NFT supply
-    uint128 public immutable maxSupply;
+    uint256 public immutable maxSupply;
 
     // NFT mint price
-    uint128 public immutable mintPrice;
+    uint256 public immutable mintPrice;
 
     // Non-reentrancy lock
     uint256 private _locked = 1;
@@ -149,10 +149,9 @@ contract FrontPage is PageToken {
             if (_nextId > maxSupply) revert Soldout();
 
             // If quantity is zero, the loop logic will never be executed
-            while (quantity != 0) {
-                ownerOf[_nextId - quantity] = msg.sender;
-
-                --quantity;
+            for (uint256 i = quantity; i > 0; --i) {
+                // Set the owner of the token ID to the minter
+                ownerOf[_nextId - i] = msg.sender;
             }
         }
 
@@ -283,7 +282,7 @@ contract FrontPage is PageToken {
      * @notice Fulfill a listing
      * @param  id  uint256  Token ID
      */
-    function buy(uint256 id) external payable nonReentrant {
+    function buy(uint256 id) external payable {
         Listing memory listing = listings[id];
 
         // Revert if the listing does not exist (price cannot be zero)
@@ -443,7 +442,7 @@ contract FrontPage is PageToken {
     function cancelOffer(
         uint256 offer,
         uint256 quantity
-    ) external nonReentrant {
+    ) external {
         // Deduct quantity from the user's offers - reverts if `quantity`
         // exceeds the actual amount of offers that the user has made
         // If offer and/or quantity are zero then the amount of ETH returned
@@ -472,7 +471,7 @@ contract FrontPage is PageToken {
         uint256[] calldata ids,
         address maker,
         uint256 offer
-    ) external nonReentrant {
+    ) external {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
         // is the zero address, or if the offer is zero (arithmetic underflow)

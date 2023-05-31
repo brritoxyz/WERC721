@@ -86,12 +86,12 @@ contract Page is Clone, PageToken {
      * @param  recipient  address  Derivative token recipient
      */
     function _deposit(uint256 id, address recipient) private {
+        // Mint the derivative token for the specified recipient (same ID)
+        ownerOf[id] = recipient;
+
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
         IERC721(_getArgAddress(0)).transferFrom(msg.sender, address(this), id);
-
-        // Mint the derivative token for the specified recipient (same ID)
-        ownerOf[id] = recipient;
     }
 
     /**
@@ -200,7 +200,7 @@ contract Page is Clone, PageToken {
      * @param  id         uint256  Token ID
      * @param  recipient  address  Derivative token recipient
      */
-    function deposit(uint256 id, address recipient) external nonReentrant {
+    function deposit(uint256 id, address recipient) external {
         _deposit(id, recipient);
     }
 
@@ -209,7 +209,7 @@ contract Page is Clone, PageToken {
      * @param  id         uint256  Token ID
      * @param  recipient  address  NFT recipient
      */
-    function withdraw(uint256 id, address recipient) external nonReentrant {
+    function withdraw(uint256 id, address recipient) external {
         _withdraw(id, recipient);
     }
 
@@ -249,7 +249,7 @@ contract Page is Clone, PageToken {
      * @notice Fulfill a listing
      * @param  id  uint256  Token ID
      */
-    function buy(uint256 id) external payable nonReentrant {
+    function buy(uint256 id) external payable {
         Listing memory listing = listings[id];
 
         // Revert if the listing does not exist (price cannot be zero)
@@ -275,10 +275,7 @@ contract Page is Clone, PageToken {
      * @param  ids        uint256[]  Token IDs
      * @param  recipient  address    Derivative token recipient
      */
-    function batchDeposit(
-        uint256[] calldata ids,
-        address recipient
-    ) external nonReentrant {
+    function batchDeposit(uint256[] calldata ids, address recipient) external {
         // If ids.length is zero then the loop body never runs and caller wastes gas
         for (uint256 i; i < ids.length; ) {
             _deposit(ids[i], recipient);
@@ -294,10 +291,7 @@ contract Page is Clone, PageToken {
      * @param  ids        uint256[]  Token IDs
      * @param  recipient  address    NFT recipient
      */
-    function batchWithdraw(
-        uint256[] calldata ids,
-        address recipient
-    ) external nonReentrant {
+    function batchWithdraw(uint256[] calldata ids, address recipient) external {
         for (uint256 i; i < ids.length; ) {
             _withdraw(ids[i], recipient);
 
@@ -443,10 +437,7 @@ contract Page is Clone, PageToken {
      * @param  offer     uint256  Offer in ETH
      * @param  quantity  uint256  Offer quantity to cancel
      */
-    function cancelOffer(
-        uint256 offer,
-        uint256 quantity
-    ) external nonReentrant {
+    function cancelOffer(uint256 offer, uint256 quantity) external {
         // Deduct quantity from the user's offers - reverts if `quantity`
         // exceeds the actual amount of offers that the user has made
         // If offer and/or quantity are zero then the amount of ETH returned
@@ -475,7 +466,7 @@ contract Page is Clone, PageToken {
         uint256[] calldata ids,
         address maker,
         uint256 offer
-    ) external nonReentrant {
+    ) external {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
         // is the zero address, or if the offer is zero (arithmetic underflow)
