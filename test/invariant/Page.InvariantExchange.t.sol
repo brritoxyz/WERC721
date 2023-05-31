@@ -68,7 +68,7 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         handler = new PageInvariantHandler(collection, book, page);
 
         unchecked {
-            for (uint256 i; i < senders.length; ++i) {
+            for (uint256 i = 0; i < senders.length; ++i) {
                 // Calls the Handler contract as the following sender address (speeds up tests)
                 targetSender(senders[i]);
             }
@@ -168,7 +168,7 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
 
         uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[ids.length - 1];
             (
                 address recipient,

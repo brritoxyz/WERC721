@@ -57,7 +57,7 @@ abstract contract ERC721 {
         require(owner != address(0), "ZERO_ADDRESS");
 
         unchecked {
-            for (uint256 i; i < maxSupply; ++i) {
+            for (uint256 i = 0; i < maxSupply; ++i) {
                 if (_ownerOf[i] == owner) ++balance;
             }
         }
@@ -246,7 +246,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
     function batchMint(address to, uint256[] calldata ids) external {
         if (msg.sender != frontPage) revert Unauthorized();
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             _mint(to, ids[i]);
 
             unchecked {

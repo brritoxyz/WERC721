@@ -178,7 +178,7 @@ contract FrontPage is PageToken {
     function batchRedeem(uint256[] calldata ids) external {
         uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
 
             if (ownerOf[id] != msg.sender) revert Unauthorized();
@@ -311,7 +311,7 @@ contract FrontPage is PageToken {
         uint256[] calldata ids,
         uint96[] calldata prices
     ) external {
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
             // not equal in length to the `ids` array (indexOOB error)
             _list(ids[i], prices[i]);
@@ -333,7 +333,7 @@ contract FrontPage is PageToken {
         uint256[] calldata ids,
         uint96[] calldata newPrices
     ) external {
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
             _edit(ids[i], newPrices[i]);
 
@@ -350,7 +350,7 @@ contract FrontPage is PageToken {
      * @param  ids  uint256[]  Token IDs
      */
     function batchCancel(uint256[] calldata ids) external {
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             _cancel(ids[i]);
 
             unchecked {
@@ -372,7 +372,7 @@ contract FrontPage is PageToken {
         // Any leftover ETH is returned at the end *after* the listing sale prices have been deducted from `availableETH`
         uint256 availableETH = msg.value;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
 
             // Increment iterator variable since we are conditionally skipping (i.e. listing does not exist)
@@ -478,7 +478,7 @@ contract FrontPage is PageToken {
 
         uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
 
             // Revert if msg.sender/taker is not the owner of the derivative token
@@ -513,7 +513,7 @@ contract FrontPage is PageToken {
     ) external returns (bytes[] memory results) {
         results = new bytes[](data.length);
 
-        for (uint256 i; i < data.length; ) {
+        for (uint256 i = 0; i < data.length; ) {
             (bool success, bytes memory result) = address(this).delegatecall(
                 data[i]
             );

@@ -83,7 +83,7 @@ contract FrontPageTest is Test, FrontPageBase {
         uint256 quantity = 5;
         uint256 startingId = page.nextId();
 
-        for (uint256 i; i < quantity; ) {
+        for (uint256 i = 0; i < quantity; ) {
             assertEq(address(0), page.ownerOf(startingId + i));
 
             unchecked {
@@ -101,7 +101,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         page.batchMint{value: value}(quantity);
 
-        for (uint256 i; i < quantity; ) {
+        for (uint256 i = 0; i < quantity; ) {
             assertEq(address(this), page.ownerOf(startingId + i));
 
             unchecked {
@@ -113,7 +113,7 @@ contract FrontPageTest is Test, FrontPageBase {
     function testBatchMintFuzz(uint8 quantity) external {
         uint256 startingId = page.nextId();
 
-        for (uint256 i; i < quantity; ) {
+        for (uint256 i = 0; i < quantity; ) {
             assertEq(address(0), page.ownerOf(startingId + i));
 
             unchecked {
@@ -131,7 +131,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         page.batchMint{value: value}(quantity);
 
-        for (uint256 i; i < quantity; ) {
+        for (uint256 i = 0; i < quantity; ) {
             assertEq(address(this), page.ownerOf(startingId + i));
 
             unchecked {
@@ -193,7 +193,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         page.batchMint{value: MINT_PRICE * ids.length}(ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             ids[i] = i + 1;
 
             assertEq(address(this), page.ownerOf(ids[i]));
@@ -209,7 +209,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         page.batchRedeem(ids);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             assertEq(address(0), page.ownerOf(ids[i]));
             assertEq(address(this), collection.ownerOf(ids[i]));
 

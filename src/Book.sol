@@ -103,9 +103,9 @@ contract Book is Ownable {
             pages[implementation][collection] = page;
         }
 
+        emit CreatePage(implementation, collection, page);
+
         // Initialize the minimal proxy's state variables
         IPage(page).initialize();
-
-        emit CreatePage(implementation, collection, page);
     }
 }

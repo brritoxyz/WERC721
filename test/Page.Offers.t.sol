@@ -218,7 +218,7 @@ contract PageOffersTest is Test, PageBase {
         assertEq(takerBalanceBefore + takenValueETH, taker.balance);
         assertEq(makerOffersBefore - ids.length, page.offers(maker, offerETH));
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             assertEq(maker, page.ownerOf(ids[i]));
             assertEq(1, page.balanceOf(maker, ids[i]));
             assertEq(0, page.balanceOf(taker, ids[i]));

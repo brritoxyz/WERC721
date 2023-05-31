@@ -47,7 +47,7 @@ contract PageBase is Test, ERC721TokenReceiver {
 
         page.initialize();
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             address originalOwner = LLAMA.ownerOf(ids[i]);
 
             vm.prank(originalOwner);

@@ -50,7 +50,7 @@ abstract contract PageToken {
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
 
             require(msg.sender == ownerOf[id], "WRONG_FROM");
@@ -90,7 +90,7 @@ abstract contract PageToken {
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
 
             require(from == ownerOf[id], "WRONG_FROM");
@@ -111,7 +111,7 @@ abstract contract PageToken {
     ) external view returns (uint256[] memory balances) {
         balances = new uint256[](owners.length);
 
-        for (uint256 i; i < owners.length; ) {
+        for (uint256 i = 0; i < owners.length; ) {
             // Reverts with index OOB error if arrays are mismatched
             balances[i] = ownerOf[ids[i]] == owners[i] ? 1 : 0;
 

@@ -58,7 +58,7 @@ contract PageExchangeTest is Test, PageBase {
         uint256 id;
         address recipient;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -93,7 +93,7 @@ contract PageExchangeTest is Test, PageBase {
         // For batching the balance check
         address[] memory batchBalanceRecipient = new address[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             batchBalanceRecipient[i] = recipient;
             amounts[i] = ONE;
 
@@ -109,7 +109,7 @@ contract PageExchangeTest is Test, PageBase {
             ids
         );
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(1, balances[i]);
@@ -153,7 +153,7 @@ contract PageExchangeTest is Test, PageBase {
         address recipient;
 
         // Deposit the NFTs and mint derivative tokens for recipients
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -171,7 +171,7 @@ contract PageExchangeTest is Test, PageBase {
         address owner;
 
         // Withdraw the NFTs by redeeming the derivative tokens as their owners
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
             owner = accounts[i];
 
@@ -226,7 +226,7 @@ contract PageExchangeTest is Test, PageBase {
         // For batching the balance check
         address[] memory batchBalanceRecipient = new address[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             batchBalanceRecipient[i] = recipient;
             amounts[i] = ONE;
 
@@ -242,7 +242,7 @@ contract PageExchangeTest is Test, PageBase {
             ids
         );
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(1, balances[i]);
@@ -262,7 +262,7 @@ contract PageExchangeTest is Test, PageBase {
 
         balances = page.balanceOfBatch(batchBalanceRecipient, ids);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
 
             assertEq(0, balances[i]);
@@ -316,7 +316,7 @@ contract PageExchangeTest is Test, PageBase {
     function testList(uint96 price) external {
         vm.assume(price != 0);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
 
@@ -382,7 +382,7 @@ contract PageExchangeTest is Test, PageBase {
         vm.assume(newPrice != 0);
         vm.assume(newPrice != price);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
 
@@ -437,7 +437,7 @@ contract PageExchangeTest is Test, PageBase {
     }
 
     function testCancel() external {
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             address recipient = accounts[i];
             uint96 price = 1 ether;
@@ -503,7 +503,7 @@ contract PageExchangeTest is Test, PageBase {
         address seller;
         uint96 listingPrice;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             id = ids[i];
             recipient = accounts[i];
 
@@ -564,7 +564,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = price;
 
             unchecked {
@@ -579,7 +579,7 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchList(ids, prices);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint96 listingPrice) = page.listings(id);
 
@@ -623,7 +623,7 @@ contract PageExchangeTest is Test, PageBase {
         uint96[] memory prices = new uint96[](ids.length);
         uint96[] memory newPrices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = 1 ether;
             newPrices[i] = 2 ether;
 
@@ -653,7 +653,7 @@ contract PageExchangeTest is Test, PageBase {
         uint96[] memory prices = new uint96[](ids.length);
         uint96[] memory newPrices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = price;
             newPrices[i] = newPrice;
 
@@ -673,7 +673,7 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchEdit(ids, newPrices);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint96 listingPrice) = page.listings(id);
 
@@ -700,7 +700,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = 1 ether;
 
             unchecked {
@@ -724,7 +724,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = 1 ether;
 
             unchecked {
@@ -743,7 +743,7 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchCancel(ids);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             uint256 id = ids[i];
             (address seller, uint96 listingPrice) = page.listings(id);
 
@@ -770,7 +770,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = 1 ether;
 
             unchecked {
@@ -784,7 +784,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint256 totalSellerProceeds;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             totalSellerProceeds += prices[i];
 
             unchecked {
@@ -816,7 +816,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = price;
 
             unchecked {
@@ -831,7 +831,7 @@ contract PageExchangeTest is Test, PageBase {
         uint256 totalPriceETH;
         uint256 sellerBalanceBefore = recipient.balance;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             totalPriceETH += prices[i];
 
             unchecked {
@@ -852,7 +852,7 @@ contract PageExchangeTest is Test, PageBase {
             recipient.balance
         );
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             assertEq(address(this), page.ownerOf(ids[i]));
             assertEq(1, page.balanceOf(address(this), ids[i]));
             assertEq(0, page.balanceOf(address(page), ids[i]));
@@ -877,7 +877,7 @@ contract PageExchangeTest is Test, PageBase {
 
         uint96[] memory prices = new uint96[](ids.length);
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             prices[i] = price;
 
             unchecked {
@@ -892,7 +892,7 @@ contract PageExchangeTest is Test, PageBase {
         uint256 totalPriceETH;
         uint256 sellerBalanceBefore = recipient.balance;
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             if (i == cancelIndex) {
                 ++i;
                 continue;
@@ -922,7 +922,7 @@ contract PageExchangeTest is Test, PageBase {
             recipient.balance
         );
 
-        for (uint256 i; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length; ) {
             if (i == cancelIndex) {
                 ++i;
                 continue;

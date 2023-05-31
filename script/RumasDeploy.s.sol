@@ -13,8 +13,8 @@ contract RumasDeployScript is Script {
         string memory name = "JPAGE Rumas";
         string memory symbol = "RUMAS";
         address payable creator = payable(vm.envAddress("CREATOR"));
-        uint256 maxSupply = 100_000;
-        uint256 mintPrice = 0.03 ether;
+        uint256 maxSupply = 12_345;
+        uint256 mintPrice = 0.069 ether;
 
         FrontPage page = new FrontPage(
             name,
