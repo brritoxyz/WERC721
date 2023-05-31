@@ -47,8 +47,6 @@ abstract contract ERC721 {
 
     mapping(uint256 => address) internal _ownerOf;
 
-    mapping(address => uint256) internal _balanceOf;
-
     function ownerOf(uint256 id) public view virtual returns (address owner) {
         require((owner = _ownerOf[id]) != address(0), "NOT_MINTED");
     }
@@ -195,58 +193,6 @@ abstract contract ERC721 {
         _ownerOf[id] = to;
 
         emit Transfer(address(0), to, id);
-    }
-
-    function _burn(uint256 id) internal virtual {
-        address owner = _ownerOf[id];
-
-        require(owner != address(0), "NOT_MINTED");
-
-        delete _ownerOf[id];
-
-        delete getApproved[id];
-
-        emit Transfer(owner, address(0), id);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        INTERNAL SAFE MINT LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function _safeMint(address to, uint256 id) internal virtual {
-        _mint(to, id);
-
-        require(
-            to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(
-                    msg.sender,
-                    address(0),
-                    id,
-                    ""
-                ) ==
-                ERC721TokenReceiver.onERC721Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
-    }
-
-    function _safeMint(
-        address to,
-        uint256 id,
-        bytes memory data
-    ) internal virtual {
-        _mint(to, id);
-
-        require(
-            to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(
-                    msg.sender,
-                    address(0),
-                    id,
-                    data
-                ) ==
-                ERC721TokenReceiver.onERC721Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
     }
 }
 
