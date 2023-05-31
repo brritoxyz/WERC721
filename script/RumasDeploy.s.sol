@@ -5,16 +5,16 @@ import "forge-std/Script.sol";
 
 import {FrontPage} from "src/FrontPage.sol";
 
-contract RumaDeployScript is Script {
+contract RumasDeployScript is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        string memory name = "Ruma NFTs";
-        string memory symbol = "RUMA";
+        string memory name = "JPAGE Rumas";
+        string memory symbol = "RUMAS";
         address payable creator = payable(vm.envAddress("CREATOR"));
-        uint256 maxSupply = 10_000;
-        uint256 mintPrice = 0.069 ether;
+        uint256 maxSupply = 100_000;
+        uint256 mintPrice = 0.03 ether;
 
         FrontPage page = new FrontPage(
             name,
