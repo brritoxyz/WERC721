@@ -32,6 +32,9 @@ contract Book is Ownable {
     error Zero();
     error AlreadyExists();
 
+    // Removes opcodes for checking whether msg.value is non-zero during deployment
+    constructor() payable {}
+
     /**
      * @notice Increment the version and deploy a new implementation to that version
      * @param  salt            bytes32  CREATE2 salt
@@ -78,7 +81,7 @@ contract Book is Ownable {
      * @param  collection  ERC721   NFT collection
      * @return page        address  Page contract address
      */
-    function createPage(ERC721 collection) external returns (address page) {
+    function createPage(ERC721 collection) external payable returns (address page) {
         // Revert if the collection is the zero address
         if (address(collection) == address(0)) revert Zero();
 

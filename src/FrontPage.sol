@@ -64,7 +64,7 @@ contract FrontPage is PageToken {
         address payable _creator,
         uint256 _maxSupply,
         uint256 _mintPrice
-    ) {
+    ) payable {
         if (_creator == address(0)) revert Zero();
         if (_maxSupply == 0) revert Zero();
 
@@ -103,7 +103,7 @@ contract FrontPage is PageToken {
     /**
      * @notice Withdraw mint proceeds to the designated recipient (i.e. creator)
      */
-    function withdraw() external {
+    function withdraw() external payable {
         creator.safeTransferETH(address(this).balance);
     }
 

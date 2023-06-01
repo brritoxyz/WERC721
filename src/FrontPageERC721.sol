@@ -219,7 +219,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
         string memory _symbol,
         address _owner,
         uint256 _maxSupply
-    ) ERC721(_name, _symbol, _maxSupply) {
+    ) payable ERC721(_name, _symbol, _maxSupply) {
         // Set the FrontPage contract (i.e. the deployer of this contract)
         frontPage = msg.sender;
 
@@ -227,7 +227,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
         _initializeOwner(_owner);
     }
 
-    function setBaseURI(string memory baseURI_) external onlyOwner {
+    function setBaseURI(string memory baseURI_) external payable onlyOwner {
         baseURI = baseURI_;
     }
 
@@ -235,7 +235,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
         return string(abi.encodePacked(baseURI, LibString.toString(id)));
     }
 
-    function mint(address to, uint256 id) external {
+    function mint(address to, uint256 id) external payable {
         // Users must redeem through the FrontPage contract, the only authorized caller of this method
         // since FrontPage burns the FP token ID prior to minting the NFT, preventing reuse
         if (msg.sender != frontPage) revert Unauthorized();
@@ -243,7 +243,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
         _mint(to, id);
     }
 
-    function batchMint(address to, uint256[] calldata ids) external {
+    function batchMint(address to, uint256[] calldata ids) external payable {
         if (msg.sender != frontPage) revert Unauthorized();
 
         for (uint256 i = 0; i < ids.length; ) {
