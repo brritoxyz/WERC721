@@ -2,12 +2,37 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {FrontPageBase} from "test/FrontPageBase.sol";
 import {FrontPage} from "src/FrontPage.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
     event Mint();
     event BatchMint();
+
+    /*//////////////////////////////////////////////////////////////
+                             setBaseURI
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetBaseURIUnauthorized() external {
+        assertTrue(collection.owner() != address(0));
+
+        vm.prank(address(0));
+        vm.expectRevert(Ownable.Unauthorized.selector);
+
+        collection.setBaseURI("");
+    }
+
+    function testSetBaseURI() external {
+        string memory baseURI = "https://example.com/";
+
+        assertEq(address(this), collection.owner());
+        assertEq("", collection.baseURI());
+
+        collection.setBaseURI(baseURI);
+
+        assertEq(baseURI, collection.baseURI());
+    }
 
     /*//////////////////////////////////////////////////////////////
                              mint

@@ -79,7 +79,7 @@ abstract contract ERC721 {
         string memory _name,
         string memory _symbol,
         uint256 _maxSupply
-    ) {
+    ) payable {
         name = _name;
         symbol = _symbol;
         maxSupply = _maxSupply;
@@ -227,7 +227,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
         _initializeOwner(_owner);
     }
 
-    function setBaseURI(string memory baseURI_) external payable onlyOwner {
+    function setBaseURI(string calldata baseURI_) external payable onlyOwner {
         baseURI = baseURI_;
     }
 
