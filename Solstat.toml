@@ -1,0 +1,7 @@
+path = './src'
+optimizations = ["address_balance", "address_zero", "assign_update_array_value", "cache_array_length", "constant_variables",
+"bool_equals_bool", "immutable_variables", "increment_decrement", "memory_to_calldata", "multiple_require", "pack_storage_variables", "pack_struct_variables",
+"payable_function", "private_constant", "safe_math_pre_080", "safe_math_post_080", "shift_math", "solidity_keccak256", "solidity_math",
+"sstore", "string_errors", "optimal_comparison", "short_revert_string"]
+vulnerabilities = []
+qa = ["constructor_order", "private_vars_leading_underscore", "private_func_leading_underscore"]

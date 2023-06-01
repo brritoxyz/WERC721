@@ -17,12 +17,10 @@ contract Book is Ownable {
     uint256 public currentVersion;
 
     // Versioned Page contract implementation addresses
-    mapping(uint256 version => address implementation)
-        public pageImplementations;
+    mapping(uint256 => address) public pageImplementations;
 
     // Page implementation mapped to their ERC721 collections and associated Page contracts
-    mapping(address implementation => mapping(ERC721 collection => address page))
-        public pages;
+    mapping(address => mapping(ERC721 => address)) public pages;
 
     event UpgradePage(uint256 version, address implementation);
     event CreatePage(
