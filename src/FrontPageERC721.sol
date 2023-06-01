@@ -246,7 +246,9 @@ contract FrontPageERC721 is Ownable, ERC721 {
     function batchMint(address to, uint256[] calldata ids) external payable {
         if (msg.sender != frontPage) revert Unauthorized();
 
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             _mint(to, ids[i]);
 
             unchecked {

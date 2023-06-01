@@ -177,8 +177,9 @@ contract FrontPage is PageToken {
      */
     function batchRedeem(uint256[] calldata ids) external {
         uint256 id;
+        uint256 idsLength = ids.length;
 
-        for (uint256 i = 0; i < ids.length; ) {
+        for (uint256 i = 0; i < idsLength; ) {
             id = ids[i];
 
             if (ownerOf[id] != msg.sender) revert Unauthorized();
@@ -311,7 +312,9 @@ contract FrontPage is PageToken {
         uint256[] calldata ids,
         uint96[] calldata prices
     ) external {
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             // Set each listing - reverts if the `prices` or `tips` arrays are
             // not equal in length to the `ids` array (indexOOB error)
             _list(ids[i], prices[i]);
@@ -333,7 +336,9 @@ contract FrontPage is PageToken {
         uint256[] calldata ids,
         uint96[] calldata newPrices
     ) external {
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             // Reverts with indexOOB if `newPrices`'s length is not equal to `ids`'s
             _edit(ids[i], newPrices[i]);
 
@@ -350,7 +355,9 @@ contract FrontPage is PageToken {
      * @param  ids  uint256[]  Token IDs
      */
     function batchCancel(uint256[] calldata ids) external {
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             _cancel(ids[i]);
 
             unchecked {
@@ -367,12 +374,13 @@ contract FrontPage is PageToken {
      */
     function batchBuy(uint256[] calldata ids) external payable nonReentrant {
         uint256 id;
+        uint256 idsLength = ids.length;
 
         // Used for checking that msg.value is enough to cover the purchase price - buyer must send GTE the total ETH of all listings
         // Any leftover ETH is returned at the end *after* the listing sale prices have been deducted from `availableETH`
         uint256 availableETH = msg.value;
 
-        for (uint256 i = 0; i < ids.length; ) {
+        for (uint256 i = 0; i < idsLength; ) {
             id = ids[i];
 
             // Increment iterator variable since we are conditionally skipping (i.e. listing does not exist)
@@ -470,15 +478,16 @@ contract FrontPage is PageToken {
     ) external {
         // Reduce maker's offer quantity by the taken amount (i.e. token quantity)
         // Reverts if the taker quantity exceeds the maker offer quantity, if the maker
-        // is the zero address, or if the offer is zero (arithmetic underflow)
-        // If `ids.length` is zero offer quantity will be deducted, but zero ETH will
-        // also be sent to the taker, resulting in the caller wasting gas and making
-        // this an unlikely attack vector
-        offers[maker][offer] -= ids.length;
+        // is the zero address, or if the offer is zero with arithmetic underflow err
+        // If `ids.length` is 0, then the offer quantity will be deducted by zero, the
+        // loop will not execute, and zero ETH will be sent to the taker, resulting in
+        // the caller wasting gas and making this an infeasible attack vector
+        uint256 idsLength = ids.length;
+        offers[maker][offer] -= idsLength;
 
         uint256 id;
 
-        for (uint256 i = 0; i < ids.length; ) {
+        for (uint256 i = 0; i < idsLength; ) {
             id = ids[i];
 
             // Revert if msg.sender/taker is not the owner of the derivative token
@@ -496,7 +505,7 @@ contract FrontPage is PageToken {
         // sufficient offer quantity (and ETH) to cover the transfer
         unchecked {
             // Send maker's funds to the offer taker
-            payable(msg.sender).safeTransferETH(offer * ids.length);
+            payable(msg.sender).safeTransferETH(offer * idsLength);
         }
 
         emit TakeOffer(msg.sender);
@@ -511,9 +520,10 @@ contract FrontPage is PageToken {
     function multicall(
         bytes[] calldata data
     ) external returns (bytes[] memory results) {
-        results = new bytes[](data.length);
+        uint256 dataLength = data.length;
+        results = new bytes[](dataLength);
 
-        for (uint256 i = 0; i < data.length; ) {
+        for (uint256 i = 0; i < dataLength; ) {
             (bool success, bytes memory result) = address(this).delegatecall(
                 data[i]
             );
