@@ -4,10 +4,7 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 verbosity = 3
-bytecode_hash = 'none'
 gas_reports = ["Book", "Page", "FrontPage", "FrontPageERC721"]
-optimizer = false
-via_ir = false
 
 [fuzz]
 runs = 512
@@ -18,10 +15,10 @@ depth = 60
 fail_on_revert = false
 
 [profile.optimized]
-optimizer = true
-optimizer_runs = 4_294_967_295
 via_ir = true
+optimizer_runs = 4_294_967_295
 out = 'optimized-out'
+bytecode_hash = 'none'
 
 [profile.optimized.fuzz]
 runs = 64
