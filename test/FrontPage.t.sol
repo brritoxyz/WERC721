@@ -97,7 +97,7 @@ contract FrontPageTest is Test, FrontPageBase {
         page.mint();
     }
 
-    function testCannotMintInvalidMsgValue(uint256 msgValue) external {
+    function testCannotMintInvalidMsgValue(uint96 msgValue) external {
         vm.assume(msgValue != MINT_PRICE);
         vm.deal(address(this), msgValue);
         vm.expectRevert(FrontPage.InvalidMsgValue.selector);
@@ -219,7 +219,7 @@ contract FrontPageTest is Test, FrontPageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotRedeemUnauthorized() external {
-        uint256 id = 1;
+        uint256 id = page.nextId();
 
         assertEq(address(0), page.ownerOf(id));
 
@@ -241,7 +241,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         collection.ownerOf(id);
 
-        page.redeem(1);
+        page.redeem(id);
 
         assertEq(address(0), page.ownerOf(id));
         assertEq(address(this), collection.ownerOf(id));

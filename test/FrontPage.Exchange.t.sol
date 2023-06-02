@@ -9,9 +9,6 @@ import {FrontPageBase} from "test/FrontPageBase.sol";
 contract FrontPageExchangeTest is Test, FrontPageBase {
     uint256 internal constant ONE = 1;
 
-    // Minted token IDs for testing
-    uint256[] internal ids = [1, 2, 3];
-
     event Transfer(
         address indexed from,
         address indexed to,
@@ -40,19 +37,6 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
     event BatchEdit(uint256[] ids);
     event BatchCancel(uint256[] ids);
     event BatchBuy(uint256[] ids);
-
-    function setUp() external {
-        // Mint token IDs
-        page.batchMint{value: ids.length * MINT_PRICE}(ids.length);
-
-        for (uint256 i = 0; i < ids.length; ) {
-            assertEq(address(this), page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
 
     /*//////////////////////////////////////////////////////////////
                              list

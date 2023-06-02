@@ -23,6 +23,9 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
         0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
     ];
 
+    // Minted token IDs for testing
+    uint256[] internal ids = [1, 2, 3];
+
     receive() external payable {}
 
     constructor() {
@@ -43,5 +46,21 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
         assertEq(collection.name(), name);
         assertEq(collection.symbol(), symbol);
         assertEq(collection.owner(), creator);
+
+        // Mint token IDs
+        uint256 quantity = ids.length;
+        uint256 msgValue = quantity * MINT_PRICE;
+
+        vm.deal(address(this), msgValue);
+
+        page.batchMint{value: msgValue}(quantity);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            assertEq(address(this), page.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
