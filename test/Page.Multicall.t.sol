@@ -7,38 +7,35 @@ import {Page} from "src/Page.sol";
 import {PageBase} from "test//PageBase.sol";
 
 contract PageExchangeTest is Test, PageBase {
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed id
-    );
-    event TransferSingle(
-        address indexed operator,
-        address indexed from,
-        address indexed to,
-        uint256 id,
-        uint256 amount
-    );
-    event TransferBatch(
-        address indexed operator,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] amounts
-    );
-    event SetTipRecipient(address tipRecipient);
-    event List(uint256 id);
-    event Edit(uint256 id);
-    event Cancel(uint256 id);
-    event Buy(uint256 id);
-    event BatchList(uint256[] ids);
-    event BatchEdit(uint256[] ids);
-    event BatchCancel(uint256[] ids);
-    event BatchBuy(uint256[] ids);
-
     /*//////////////////////////////////////////////////////////////
                              multicall
     //////////////////////////////////////////////////////////////*/
+
+    function testCannotMulticallInvalid() external {
+        uint256 depositId = ids[0];
+        address recipient = address(this);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(
+            Page.deposit.selector,
+            depositId,
+            recipient
+        );
+
+        // Attempt to call `deposit` with the same ID, which will revert
+        data[1] = abi.encodeWithSelector(
+            Page.deposit.selector,
+            depositId,
+            recipient
+        );
+
+        // Custom error will include the reverted call index
+        vm.expectRevert(
+            abi.encodeWithSelector(Page.MulticallError.selector, 1)
+        );
+
+        page.multicall(data);
+    }
 
     function testMulticall() external {
         uint256 id = ids[0];

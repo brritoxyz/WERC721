@@ -847,10 +847,7 @@ contract PageExchangeTest is Test, PageBase {
         // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);
 
-        assertEq(
-            sellerBalanceBefore + totalPriceETH,
-            recipient.balance
-        );
+        assertEq(sellerBalanceBefore + totalPriceETH, recipient.balance);
 
         for (uint256 i = 0; i < ids.length; ) {
             assertEq(address(this), page.ownerOf(ids[i]));
@@ -889,27 +886,21 @@ contract PageExchangeTest is Test, PageBase {
 
         page.batchList(ids, prices);
 
-        uint256 totalPriceETH;
+        uint256 totalPriceETH = price * ids.length;
+
+        // Since 1 listing will be canceled, the expected refund is its price
+        uint256 expectedETHRefund = price;
+
         uint256 sellerBalanceBefore = recipient.balance;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            if (i == cancelIndex) {
-                ++i;
-                continue;
-            }
-
-            totalPriceETH += prices[i];
-
-            unchecked {
-                ++i;
-            }
-        }
 
         vm.prank(recipient);
 
         page.cancel(ids[cancelIndex]);
 
         vm.deal(address(this), totalPriceETH);
+
+        uint256 buyerBalanceBefore = address(this).balance;
+
         vm.expectEmit(false, false, false, true, address(page));
 
         emit BatchBuy(ids);
@@ -918,8 +909,12 @@ contract PageExchangeTest is Test, PageBase {
         page.batchBuy{value: totalPriceETH}(ids);
 
         assertEq(
-            sellerBalanceBefore + totalPriceETH,
+            sellerBalanceBefore + totalPriceETH - expectedETHRefund,
             recipient.balance
+        );
+        assertEq(
+            buyerBalanceBefore - totalPriceETH + expectedETHRefund,
+            address(this).balance
         );
 
         for (uint256 i = 0; i < ids.length; ) {

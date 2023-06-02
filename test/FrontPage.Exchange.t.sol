@@ -585,21 +585,12 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
 
         page.batchList(ids, prices);
 
-        uint256 totalPriceETH;
+        uint256 totalPriceETH = price * ids.length;
+
+        // Since 1 listing will be canceled, the expected refund is its price
+        uint256 expectedETHRefund = price;
+
         uint256 sellerBalanceBefore = address(this).balance;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            if (i == cancelIndex) {
-                ++i;
-                continue;
-            }
-
-            totalPriceETH += prices[i];
-
-            unchecked {
-                ++i;
-            }
-        }
 
         page.cancel(ids[cancelIndex]);
 
@@ -617,8 +608,8 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         // Send enough ETH to cover seller proceeds but not tips
         page.batchBuy{value: totalPriceETH}(ids);
 
-        assertEq(sellerBalanceBefore + totalPriceETH, address(this).balance);
-        assertEq(buyerBalanceBefore - totalPriceETH, buyer.balance);
+        assertEq(sellerBalanceBefore + totalPriceETH - expectedETHRefund, address(this).balance);
+        assertEq(buyerBalanceBefore - totalPriceETH + expectedETHRefund, buyer.balance);
 
         for (uint256 i = 0; i < ids.length; ) {
             if (i == cancelIndex) {

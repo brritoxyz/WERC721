@@ -252,21 +252,13 @@ contract FrontPageTest is Test, FrontPageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchRedeemUnauthorized() external {
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = page.nextId();
-
-        assertEq(address(0), page.ownerOf(ids[0]));
-
+        vm.prank(address(0));
         vm.expectRevert(FrontPage.Unauthorized.selector);
 
         page.batchRedeem(ids);
     }
 
     function testBatchRedeem() external {
-        uint256[] memory ids = new uint256[](5);
-
-        page.batchMint{value: MINT_PRICE * ids.length}(ids.length);
-
         for (uint256 i = 0; i < ids.length; ) {
             ids[i] = i + 1;
 
@@ -291,5 +283,61 @@ contract FrontPageTest is Test, FrontPageBase {
                 ++i;
             }
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             multicall
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotMulticallInvalid() external {
+        uint256 listingId = ids[0];
+        uint96 price = 1 ether;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(
+            FrontPage.list.selector,
+            listingId,
+            price
+        );
+
+        // Attempt to call `list` with the same ID, which will revert
+        data[1] = abi.encodeWithSelector(
+            FrontPage.list.selector,
+            listingId,
+            price
+        );
+
+        // Custom error will include the reverted call index
+        vm.expectRevert(
+            abi.encodeWithSelector(FrontPage.MulticallError.selector, 1)
+        );
+
+        page.multicall(data);
+    }
+
+    function testMulticall() external {
+        uint256 listingId = ids[0];
+        uint256 redeemId = ids[1];
+        uint96 price = 1 ether;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(
+            FrontPage.list.selector,
+            listingId,
+            price
+        );
+        data[1] = abi.encodeWithSelector(FrontPage.redeem.selector, redeemId);
+
+        page.multicall(data);
+
+        assertEq(address(page), page.ownerOf(listingId));
+        assertEq(1, page.balanceOf(address(page), listingId));
+        assertEq(address(this), collection.ownerOf(redeemId));
+        assertEq(1, collection.balanceOf(address(this)));
+
+        (address seller, uint96 listingPrice) = page.listings(listingId);
+
+        assertEq(address(this), seller);
+        assertEq(price, listingPrice);
     }
 }
