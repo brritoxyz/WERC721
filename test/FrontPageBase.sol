@@ -36,9 +36,6 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
         collection = page.collection();
 
         // Assertions for FrontPage initialized state
-        assertEq(page.name(), name);
-        assertEq(page.symbol(), symbol);
-        assertEq(page.creator(), creator);
         assertEq(page.maxSupply(), MAX_SUPPLY);
         assertEq(page.mintPrice(), MINT_PRICE);
 

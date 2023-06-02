@@ -11,6 +11,55 @@ contract FrontPageTest is Test, FrontPageBase {
     event BatchMint();
 
     /*//////////////////////////////////////////////////////////////
+                             name
+    //////////////////////////////////////////////////////////////*/
+
+    function testName() external {
+        assertEq(collection.name(), page.name());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             symbol
+    //////////////////////////////////////////////////////////////*/
+
+    function testSymbol() external {
+        assertEq(collection.symbol(), page.symbol());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             tokenURI
+    //////////////////////////////////////////////////////////////*/
+
+    function testTokenURI(uint16 id) external {
+        vm.assume(id < page.maxSupply());
+
+        assertEq(collection.tokenURI(id), page.tokenURI(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             withdraw
+    //////////////////////////////////////////////////////////////*/
+
+    function testWithdraw() external {
+        uint256 balanceBefore = address(page).balance;
+
+        page.mint{value: MINT_PRICE}();
+
+        assertEq(balanceBefore + MINT_PRICE, address(page).balance);
+
+        uint256 creatorBalanceBeforeWithdraw = creator.balance;
+        uint256 pageBalanceBeforeWithdraw = address(page).balance;
+
+        page.withdraw();
+
+        assertEq(
+            creatorBalanceBeforeWithdraw + pageBalanceBeforeWithdraw,
+            creator.balance
+        );
+        assertEq(0, address(page).balance);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                              setBaseURI
     //////////////////////////////////////////////////////////////*/
 
