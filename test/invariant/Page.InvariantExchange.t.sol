@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import "forge-std/InvariantTest.sol";
+import "forge-std/StdInvariant.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {PageInvariantHandler} from "test/invariant/PageInvariantHandler.sol";
 import {Book} from "src/Book.sol";
@@ -22,7 +22,7 @@ contract Collection is ERC721("Collection", "COLLECTION") {
     }
 }
 
-contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
+contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
     address payable internal constant TIP_RECIPIENT =
         payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
@@ -82,7 +82,7 @@ contract PageInvariantExchangeTest is Test, InvariantTest, ERC721TokenReceiver {
         excludeContract(address(book));
         excludeContract(address(page));
 
-        targetSelector(InvariantTest.FuzzSelector(address(handler), selectors));
+        targetSelector(StdInvariant.FuzzSelector(address(handler), selectors));
     }
 
     function assertDepositedState(uint256 id, address pageOwnerOf) internal {

@@ -33,7 +33,7 @@ contract Book is Ownable {
     error AlreadyExists();
 
     // Removes opcodes for checking whether msg.value is non-zero during deployment
-    constructor() payable {}
+    constructor() payable Ownable(msg.sender) {}
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
