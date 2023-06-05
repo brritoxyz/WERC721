@@ -26,11 +26,21 @@ contract BenchmarkBatchMint is Test, BenchmarkBase {
         for (uint256 i = 0; i < BATCH_MINT_QTY; ) {
             ids[i] = i;
 
+            assertEq(address(0), frontPage.ownerOf(ids[i]));
+
             unchecked {
                 ++i;
             }
         }
 
         frontPage.batchMint{value: BATCH_MINT_QTY * MINT_PRICE}(BATCH_MINT_QTY);
+
+        for (uint256 i = 0; i < BATCH_MINT_QTY; ) {
+            assertEq(address(this), frontPage.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

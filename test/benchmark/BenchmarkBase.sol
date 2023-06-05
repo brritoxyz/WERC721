@@ -26,6 +26,16 @@ contract TestERC721Enumerable is ERC721Enumerable {
             }
         }
     }
+
+    function batchTransferFrom(
+        address from,
+        address[] calldata to,
+        uint256[] calldata ids
+    ) external {
+        for (uint256 i = 0; i < ids.length; ++i) {
+            _transfer(from, to[i], ids[i]);
+        }
+    }
 }
 
 contract TestERC721 is ERC721("Test", "TEST") {
@@ -48,6 +58,16 @@ contract TestERC721 is ERC721("Test", "TEST") {
             }
         }
     }
+
+    function batchTransferFrom(
+        address from,
+        address[] calldata to,
+        uint256[] calldata ids
+    ) external {
+        for (uint256 i = 0; i < ids.length; ++i) {
+            transferFrom(from, to[i], ids[i]);
+        }
+    }
 }
 
 contract TestERC721A is ERC721A("Test", "TEST") {
@@ -58,6 +78,16 @@ contract TestERC721A is ERC721A("Test", "TEST") {
     // Optional method to make it easier to read on the gas report output
     function batchMint(address to, uint256 quantity) external {
         _mint(to, quantity);
+    }
+
+    function batchTransferFrom(
+        address from,
+        address[] calldata to,
+        uint256[] calldata ids
+    ) external {
+        for (uint256 i = 0; i < ids.length; ++i) {
+            transferFrom(from, to[i], ids[i]);
+        }
     }
 }
 

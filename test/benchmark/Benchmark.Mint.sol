@@ -18,6 +18,12 @@ contract BenchmarkMint is Test, BenchmarkBase {
     }
 
     function testFrontPageMint() external {
+        uint256 id = frontPage.nextId();
+
+        assertEq(address(0), frontPage.ownerOf(id));
+
         frontPage.mint{value: MINT_PRICE}();
+
+        assertEq(address(this), frontPage.ownerOf(id));
     }
 }

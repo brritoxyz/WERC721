@@ -28,6 +28,11 @@ contract BenchmarkTransferFrom is Test, BenchmarkBase {
         uint256 id = frontPage.nextId();
 
         frontPage.mint{value: MINT_PRICE}();
+
+        assertEq(address(this), frontPage.ownerOf(id));
+
         frontPage.transferFrom(address(this), TRANSFER_TO, id);
+
+        assertEq(TRANSFER_TO, frontPage.ownerOf(id));
     }
 }
