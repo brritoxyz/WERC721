@@ -21,10 +21,11 @@ contract BenchmarkBatchMint is Test, BenchmarkBase {
     }
 
     function testFrontPageBatchMint() external {
+        uint256 startingId = frontPage.nextId();
         uint256[] memory ids = new uint256[](BATCH_MINT_QTY);
 
         for (uint256 i = 0; i < BATCH_MINT_QTY; ) {
-            ids[i] = i;
+            ids[i] = startingId + i;
 
             assertEq(address(0), frontPage.ownerOf(ids[i]));
 
