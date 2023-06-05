@@ -17,7 +17,7 @@ contract BenchmarkMint is Test, BenchmarkBase {
         erc721A.mint(address(this), 1);
     }
 
-    function testFrontPageERC721Mint() external {
-        frontPageERC721.mint(address(this), 0);
+    function testFrontPageMint() external {
+        frontPage.mint{value: MINT_PRICE}();
     }
 }

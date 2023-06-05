@@ -20,7 +20,7 @@ contract BenchmarkBatchMint is Test, BenchmarkBase {
         erc721A.batchMint(address(this), BATCH_MINT_QTY);
     }
 
-    function testFrontPageERC721BatchMint() external {
+    function testFrontPageBatchMint() external {
         uint256[] memory ids = new uint256[](BATCH_MINT_QTY);
 
         for (uint256 i = 0; i < BATCH_MINT_QTY; ) {
@@ -31,6 +31,6 @@ contract BenchmarkBatchMint is Test, BenchmarkBase {
             }
         }
 
-        frontPageERC721.batchMint(address(this), ids);
+        frontPage.batchMint{value: BATCH_MINT_QTY * MINT_PRICE}(BATCH_MINT_QTY);
     }
 }

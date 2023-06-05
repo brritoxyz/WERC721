@@ -24,8 +24,10 @@ contract BenchmarkTransferFrom is Test, BenchmarkBase {
         erc721A.transferFrom(address(this), TRANSFER_TO, TRANSFER_ID);
     }
 
-    function testFrontPageERC721TransferFrom() external {
-        frontPageERC721.mint(address(this), TRANSFER_ID);
-        frontPageERC721.transferFrom(address(this), TRANSFER_TO, TRANSFER_ID);
+    function testFrontPageTransferFrom() external {
+        uint256 id = frontPage.nextId();
+
+        frontPage.mint{value: MINT_PRICE}();
+        frontPage.transferFrom(address(this), TRANSFER_TO, id);
     }
 }

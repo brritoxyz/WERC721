@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721 as OZ_ERC721, ERC721Enumerable} from "openzeppelin/token/ERC721/extensions/ERC721Enumerable.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {ERC721A} from "ERC721A/ERC721A.sol";
-import {FrontPageERC721} from "src/FrontPageERC721.sol";
+import {FrontPage} from "src/FrontPage.sol";
 
 contract TestERC721Enumerable is ERC721Enumerable {
     constructor() payable OZ_ERC721("Test", "TEST") {}
@@ -15,7 +15,7 @@ contract TestERC721Enumerable is ERC721Enumerable {
     }
 
     // Having this method on the test contract allows us to test the gas cost of 1 call
-    // Not necessary on contracts that support batch minting natively (i.e. ERC721A and FrontPageERC721)
+    // Not necessary on contracts that support batch minting natively (i.e. ERC721A and FrontPage)
     // Needs to be modified for more complex cases where the token ID does not start from 0
     function batchMint(address to, uint256 quantity) external {
         for (uint256 i = 0; i < quantity; ) {
@@ -61,24 +61,31 @@ contract TestERC721A is ERC721A("Test", "TEST") {
     }
 }
 
-contract TestFrontPageERC721 is FrontPageERC721 {
+contract TestFrontPage is FrontPage {
     constructor(
-        address _owner,
-        uint256 _maxSupply
-    ) payable FrontPageERC721("Test", "TEST", _owner, _maxSupply) {}
+        address payable _owner,
+        uint256 _maxSupply,
+        uint256 _mintPrice
+    ) payable FrontPage("Test", "TEST", _owner, _maxSupply, _mintPrice) {}
 }
 
 contract BenchmarkBase {
+    uint256 internal constant MINT_PRICE = 0.069 ether;
+
     TestERC721Enumerable internal immutable erc721Enumerable;
     TestERC721 internal immutable erc721;
     TestERC721A internal immutable erc721A;
-    TestFrontPageERC721 internal immutable frontPageERC721;
+    TestFrontPage internal immutable frontPage;
 
     constructor() {
         erc721Enumerable = new TestERC721Enumerable();
         erc721 = new TestERC721();
         erc721A = new TestERC721A();
-        frontPageERC721 = new TestFrontPageERC721(address(this), 10_000);
+        frontPage = new TestFrontPage(
+            payable(address(this)),
+            10_000,
+            MINT_PRICE
+        );
     }
 
     function onERC721Received(
