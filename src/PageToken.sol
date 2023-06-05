@@ -44,9 +44,7 @@ abstract contract PageToken {
         ownerOf[id] = to;
     }
 
-    function batchTransfer(address to, uint256[] calldata ids) external {
-        require(to != address(0), "UNSAFE_RECIPIENT");
-
+    function batchTransfer(address[] calldata to, uint256[] calldata ids) external {
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
         uint256 idsLength = ids.length;
@@ -55,9 +53,10 @@ abstract contract PageToken {
             id = ids[i];
 
             require(msg.sender == ownerOf[id], "WRONG_FROM");
+            require(to[i] != address(0), "UNSAFE_RECIPIENT");
 
             // Set new owner as `to`
-            ownerOf[id] = to;
+            ownerOf[id] = to[i];
 
             unchecked {
                 ++i;
@@ -79,10 +78,9 @@ abstract contract PageToken {
 
     function batchTransferFrom(
         address from,
-        address to,
+        address[] calldata to,
         uint256[] calldata ids
     ) external {
-        require(to != address(0), "UNSAFE_RECIPIENT");
         require(
             msg.sender == from || isApprovedForAll[from][msg.sender],
             "NOT_AUTHORIZED"
@@ -96,8 +94,9 @@ abstract contract PageToken {
             id = ids[i];
 
             require(from == ownerOf[id], "WRONG_FROM");
+            require(to[i] != address(0), "UNSAFE_RECIPIENT");
 
-            ownerOf[id] = to;
+            ownerOf[id] = to[i];
 
             // An array can't have a total length
             // larger than the max uint256 value.
