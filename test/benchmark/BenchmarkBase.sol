@@ -32,8 +32,12 @@ contract TestERC721Enumerable is ERC721Enumerable {
         address[] calldata to,
         uint256[] calldata ids
     ) external {
-        for (uint256 i = 0; i < ids.length; ++i) {
+        for (uint256 i = 0; i < ids.length; ) {
             _transfer(from, to[i], ids[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 }
@@ -64,8 +68,12 @@ contract TestERC721 is ERC721("Test", "TEST") {
         address[] calldata to,
         uint256[] calldata ids
     ) external {
-        for (uint256 i = 0; i < ids.length; ++i) {
+        for (uint256 i = 0; i < ids.length; ) {
             transferFrom(from, to[i], ids[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 }
@@ -85,8 +93,12 @@ contract TestERC721A is ERC721A("Test", "TEST") {
         address[] calldata to,
         uint256[] calldata ids
     ) external {
-        for (uint256 i = 0; i < ids.length; ++i) {
+        for (uint256 i = 0; i < ids.length; ) {
             transferFrom(from, to[i], ids[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 }
