@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import "forge-std/Script.sol";
 
 import {FrontPage} from "src/FrontPage.sol";
+import {FrontPageReader} from "src/FrontPageReader.sol";
 
 contract RumasDeployScript is Script {
     function run() external {
@@ -23,9 +24,11 @@ contract RumasDeployScript is Script {
             maxSupply,
             mintPrice
         );
+        FrontPageReader reader = new FrontPageReader(address(page));
 
         console.log("page", address(page));
         console.log("collection", address(page.collection()));
+        console.log("reader", address(reader));
 
         vm.stopBroadcast();
     }
