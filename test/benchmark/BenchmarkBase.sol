@@ -68,7 +68,9 @@ contract TestERC721 is ERC721("Test", "TEST") {
         address[] calldata to,
         uint256[] calldata ids
     ) external {
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             transferFrom(from, to[i], ids[i]);
 
             unchecked {
@@ -93,7 +95,9 @@ contract TestERC721A is ERC721A("Test", "TEST") {
         address[] calldata to,
         uint256[] calldata ids
     ) external {
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
             transferFrom(from, to[i], ids[i]);
 
             unchecked {
