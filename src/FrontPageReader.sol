@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {DynamicBufferLib} from "solady/utils/DynamicBufferLib.sol";
+
 interface FrontPage {
     function ownerOf(uint256 id) external view returns (address);
 
@@ -8,6 +10,8 @@ interface FrontPage {
 }
 
 contract FrontPageReader {
+    using DynamicBufferLib for DynamicBufferLib.DynamicBuffer;
+
     FrontPage public immutable frontPage;
 
     constructor(address _frontPage) {
@@ -19,6 +23,22 @@ contract FrontPageReader {
 
         for (uint256 id = 1; id < maxId; ) {
             if (frontPage.ownerOf(id) == owner) ++balance;
+
+            unchecked {
+                ++id;
+            }
+        }
+    }
+
+    function ownedIds(
+        address owner
+    ) external view returns (DynamicBufferLib.DynamicBuffer memory ids) {
+        uint256 maxId = frontPage.nextId();
+
+        for (uint256 id = 1; id < maxId; ) {
+            if (frontPage.ownerOf(id) == owner) {
+                ids.append(abi.encode(id));
+            }
 
             unchecked {
                 ++id;
