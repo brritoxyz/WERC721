@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 import {FrontPageBase} from "test/FrontPageBase.sol";
 import {FrontPage} from "src/FrontPage.sol";
@@ -237,7 +238,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         assertEq(address(this), page.ownerOf(id));
 
-        vm.expectRevert("NOT_MINTED");
+        vm.expectRevert(ERC721.TokenDoesNotExist.selector);
 
         collection.ownerOf(id);
 
@@ -264,7 +265,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
             assertEq(address(this), page.ownerOf(ids[i]));
 
-            vm.expectRevert("NOT_MINTED");
+            vm.expectRevert(ERC721.TokenDoesNotExist.selector);
 
             collection.ownerOf(ids[i]);
 

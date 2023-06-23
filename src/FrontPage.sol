@@ -69,7 +69,7 @@ contract FrontPage is PageToken {
         if (_maxSupply == 0) revert Zero();
 
         // Deploy the associated NFT collection
-        collection = new FrontPageERC721(_name, _symbol, _creator, _maxSupply);
+        collection = new FrontPageERC721(_name, _symbol, _creator);
 
         creator = _creator;
         maxSupply = _maxSupply;
