@@ -2,10 +2,11 @@
 pragma solidity 0.8.20;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 import {FrontPageERC721} from "src/FrontPageERC721.sol";
 
-contract FrontPage is PageToken {
+contract FrontPage is ReentrancyGuard, PageToken {
     using SafeTransferLib for address payable;
 
     struct Listing {
@@ -26,9 +27,6 @@ contract FrontPage is PageToken {
 
     // NFT mint price
     uint256 public immutable mintPrice;
-
-    // Non-reentrancy lock
-    uint256 private _locked = 1;
 
     // Next NFT ID to be minted
     uint256 public nextId = 1;
@@ -74,16 +72,6 @@ contract FrontPage is PageToken {
         creator = _creator;
         maxSupply = _maxSupply;
         mintPrice = _mintPrice;
-    }
-
-    modifier nonReentrant() {
-        require(_locked == 1, "REENTRANCY");
-
-        _locked = 2;
-
-        _;
-
-        _locked = 1;
     }
 
     function name() external view override returns (string memory) {
