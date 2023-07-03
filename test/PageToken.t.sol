@@ -193,7 +193,13 @@ contract PageTokenTest is Test {
 
         pageToken.batchTransfer(to, ids);
 
-        for (uint256 i = 0; i < accounts.length; ) {
+        uint256[] memory toBatchBalances = pageToken.balanceOfBatch(to, ids);
+
+        assertEq(to.length, toBatchBalances.length);
+        assertEq(ids.length, toBatchBalances.length);
+
+        for (uint256 i = 0; i < toBatchBalances.length; ) {
+            assertEq(1, toBatchBalances[i]);
             assertEq(0, pageToken.balanceOf(address(this), ids[i]));
             assertEq(1, pageToken.balanceOf(to[i], ids[i]));
 
@@ -462,7 +468,56 @@ contract PageTokenTest is Test {
 
         pageToken.batchTransferFrom(from, to, ids);
 
-        for (uint256 i = 0; i < ids.length; ) {
+        uint256[] memory toBatchBalances = pageToken.balanceOfBatch(to, ids);
+
+        assertEq(to.length, toBatchBalances.length);
+        assertEq(ids.length, toBatchBalances.length);
+
+        for (uint256 i = 0; i < toBatchBalances.length; ) {
+            assertEq(1, toBatchBalances[i]);
+            assertEq(0, pageToken.balanceOf(from, ids[i]));
+            assertEq(1, pageToken.balanceOf(to[i], ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function testBatchTransferFrom() external {
+        address from = address(1);
+        address[] memory to = new address[](accounts.length);
+        uint256[] memory ids = new uint256[](accounts.length);
+
+        for (uint256 i = 0; i < accounts.length; ) {
+            to[i] = accounts[i];
+            ids[i] = i;
+
+            pageToken.setOwnerOf(ids[i], from);
+
+            assertEq(1, pageToken.balanceOf(from, ids[i]));
+            assertEq(0, pageToken.balanceOf(to[i], ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(from);
+
+        pageToken.setApprovalForAll(address(this), true);
+
+        assertTrue(pageToken.isApprovedForAll(from, address(this)));
+
+        pageToken.batchTransferFrom(from, to, ids);
+
+        uint256[] memory toBatchBalances = pageToken.balanceOfBatch(to, ids);
+
+        assertEq(to.length, toBatchBalances.length);
+        assertEq(ids.length, toBatchBalances.length);
+
+        for (uint256 i = 0; i < toBatchBalances.length; ) {
+            assertEq(1, toBatchBalances[i]);
             assertEq(0, pageToken.balanceOf(from, ids[i]));
             assertEq(1, pageToken.balanceOf(to[i], ids[i]));
 
