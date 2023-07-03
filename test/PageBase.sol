@@ -2,7 +2,8 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 
@@ -43,7 +44,7 @@ contract PageBase is Test, ERC721TokenReceiver {
         page = Page(book.createPage(LLAMA));
 
         // Verify that page cannot be initialized again
-        vm.expectRevert();
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         page.initialize();
 

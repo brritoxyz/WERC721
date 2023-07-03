@@ -2,7 +2,8 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Page} from "src/Page.sol";
 import {PageBase} from "test//PageBase.sol";
 

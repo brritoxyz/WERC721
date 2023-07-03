@@ -4,7 +4,8 @@ pragma solidity 0.8.20;
 import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 

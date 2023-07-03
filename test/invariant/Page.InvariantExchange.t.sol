@@ -3,12 +3,21 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import "forge-std/StdInvariant.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {PageInvariantHandler} from "test/invariant/PageInvariantHandler.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 
-contract Collection is ERC721("Collection", "COLLECTION") {
+contract Collection is ERC721 {
+    function name() public pure override returns (string memory) {
+        return "Test";
+    }
+
+    function symbol() public pure override returns (string memory) {
+        return "TEST";
+    }
+
     function mint(address to, uint256 id) external {
         _mint(to, id);
     }
@@ -18,7 +27,7 @@ contract Collection is ERC721("Collection", "COLLECTION") {
     }
 
     function ownerOf(uint256 id) public view override returns (address owner) {
-        return _ownerOf[id] == address(0) ? address(0) : _ownerOf[id];
+        return _ownerOf(id) == address(0) ? address(0) : _ownerOf(id);
     }
 }
 
