@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 
 interface IERC721 {
@@ -17,7 +18,7 @@ interface IERC721 {
     function tokenURI(uint256 id) external view returns (string memory);
 }
 
-contract Page is Clone, PageToken {
+contract Page is Clone, ReentrancyGuard, PageToken {
     using SafeTransferLib for address payable;
 
     struct Listing {
@@ -28,8 +29,6 @@ contract Page is Clone, PageToken {
     }
 
     bool private _initialized;
-
-    uint256 private _locked;
 
     mapping(uint256 => Listing) public listings;
 
@@ -47,6 +46,7 @@ contract Page is Clone, PageToken {
     event CancelOffer(address maker);
     event TakeOffer(address taker);
 
+    error AlreadyInitialized();
     error Invalid();
     error Unauthorized();
     error Insufficient();
@@ -57,27 +57,17 @@ contract Page is Clone, PageToken {
         _initialized = true;
     }
 
-    modifier nonReentrant() {
-        require(_locked == 1, "REENTRANCY");
-
-        _locked = 2;
-
-        _;
-
-        _locked = 1;
-    }
-
     /**
      * @notice Initializes the minimal proxy contract storage
      */
     function initialize() external {
-        if (_initialized) revert();
+        if (_initialized) revert AlreadyInitialized();
 
         // Prevent initialize from being called again
         _initialized = true;
 
         // Initialize `locked` with the value of 1 (i.e. unlocked)
-        _locked = 1;
+        locked = 1;
     }
 
     /**
