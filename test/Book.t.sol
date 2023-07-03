@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {Book} from "src/Book.sol";
 import {Page} from "src/Page.sol";
 
@@ -62,7 +63,7 @@ contract BookTest is Test {
         assertTrue(version != 0);
         assertTrue(implementation != address(0));
 
-        vm.expectRevert();
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         page.initialize();
     }
@@ -86,7 +87,7 @@ contract BookTest is Test {
         assertTrue(caller != book.owner());
 
         vm.prank(caller);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Ownable.Unauthorized.selector);
 
         book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
@@ -189,7 +190,7 @@ contract BookTest is Test {
         assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
         // Should be initialized
-        vm.expectRevert();
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         Page(newPage).initialize();
     }
@@ -226,7 +227,7 @@ contract BookTest is Test {
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(collection), Page(pageAddress).collection());
 
-        vm.expectRevert();
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         Page(pageAddress).initialize();
     }

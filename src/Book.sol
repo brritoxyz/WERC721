@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
-import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
 interface IPage {
@@ -33,7 +33,9 @@ contract Book is Ownable {
     error AlreadyExists();
 
     // Removes opcodes for checking whether msg.value is non-zero during deployment
-    constructor() payable Ownable(msg.sender) {}
+    constructor() payable {
+        _initializeOwner(msg.sender);
+    }
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
