@@ -268,7 +268,7 @@ contract Page is Clone, ReentrancyGuard, PageToken {
     function batchDeposit(
         uint256[] calldata ids,
         address recipient
-    ) external {
+    ) external nonReentrant {
         uint256 idsLength = ids.length;
 
         // If ids.length is zero then the loop body never runs and caller wastes gas
@@ -289,7 +289,7 @@ contract Page is Clone, ReentrancyGuard, PageToken {
     function batchWithdraw(
         uint256[] calldata ids,
         address recipient
-    ) external {
+    ) external nonReentrant {
         uint256 idsLength = ids.length;
 
         for (uint256 i = 0; i < idsLength; ) {
