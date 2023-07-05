@@ -498,31 +498,4 @@ contract FrontPage is ReentrancyGuard, PageToken {
 
         emit TakeOffer(msg.sender);
     }
-
-    /**
-     * @notice Receives and executes a batch of function calls on this contract
-     * @notice Non-payable to avoid reuse of msg.value across calls (thank you Solady)
-     * @notice See: https://www.paradigm.xyz/2021/08/two-rights-might-make-a-wrong
-     * @param  data       bytes[]  Encoded function selectors with optional data
-     */
-    function multicall(
-        bytes[] calldata data
-    ) external returns (bytes[] memory results) {
-        uint256 dataLength = data.length;
-        results = new bytes[](dataLength);
-
-        for (uint256 i = 0; i < dataLength; ) {
-            (bool success, bytes memory result) = address(this).delegatecall(
-                data[i]
-            );
-
-            if (!success) revert MulticallError(i);
-
-            results[i] = result;
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
 }

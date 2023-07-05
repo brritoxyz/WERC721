@@ -265,7 +265,10 @@ contract Page is Clone, ReentrancyGuard, PageToken {
      * @param  ids        uint256[]  Token IDs
      * @param  recipient  address    Derivative token recipient
      */
-    function batchDeposit(uint256[] calldata ids, address recipient) external {
+    function batchDeposit(
+        uint256[] calldata ids,
+        address recipient
+    ) external {
         uint256 idsLength = ids.length;
 
         // If ids.length is zero then the loop body never runs and caller wastes gas
@@ -283,7 +286,10 @@ contract Page is Clone, ReentrancyGuard, PageToken {
      * @param  ids        uint256[]  Token IDs
      * @param  recipient  address    NFT recipient
      */
-    function batchWithdraw(uint256[] calldata ids, address recipient) external {
+    function batchWithdraw(
+        uint256[] calldata ids,
+        address recipient
+    ) external {
         uint256 idsLength = ids.length;
 
         for (uint256 i = 0; i < idsLength; ) {
@@ -501,33 +507,6 @@ contract Page is Clone, ReentrancyGuard, PageToken {
         }
 
         emit TakeOffer(msg.sender);
-    }
-
-    /**
-     * @notice Receives and executes a batch of function calls on this contract
-     * @notice Non-payable to avoid reuse of msg.value across calls (thank you Solady)
-     * @notice See: https://www.paradigm.xyz/2021/08/two-rights-might-make-a-wrong
-     * @param  data       bytes[]  Encoded function selectors with optional data
-     */
-    function multicall(
-        bytes[] calldata data
-    ) external returns (bytes[] memory results) {
-        uint256 dataLength = data.length;
-        results = new bytes[](dataLength);
-
-        for (uint256 i = 0; i < dataLength; ) {
-            (bool success, bytes memory result) = address(this).delegatecall(
-                data[i]
-            );
-
-            if (!success) revert MulticallError(i);
-
-            results[i] = result;
-
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     function onERC721Received(
