@@ -13,7 +13,7 @@ contract Book is Ownable {
     event UpgradePage(uint256 version, address implementation);
 
     error EmptyBytecode();
-    error Create2Duplicate();
+    error Create2Failed();
 
     // Removes opcodes for checking whether msg.value is non-zero during deployment
     constructor() payable {
@@ -42,8 +42,8 @@ contract Book is Ownable {
             )
         }
 
-        // Revert if the deployment failed (i.e. previously-used bytecode and salt)
-        if (implementation == address(0)) revert Create2Duplicate();
+        // Revert if the deployment failed (e.g. previously-used bytecode and salt)
+        if (implementation == address(0)) revert Create2Failed();
     }
 
     /**
