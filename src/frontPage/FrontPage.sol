@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
-import {FrontPageERC721} from "src/FrontPageERC721.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
 contract FrontPage is ReentrancyGuard, PageToken {
     using SafeTransferLib for address payable;

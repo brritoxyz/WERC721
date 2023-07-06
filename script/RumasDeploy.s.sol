@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import "forge-std/Script.sol";
 
-import {FrontPage} from "src/FrontPage.sol";
-import {FrontPageReader} from "src/FrontPageReader.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageReader} from "src/frontPage/FrontPageReader.sol";
 
 contract RumasDeployScript is Script {
     function run() external {

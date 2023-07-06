@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
-import {FrontPageBase} from "test/FrontPageBase.sol";
-import {FrontPage} from "src/FrontPage.sol";
+import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
     event Mint();

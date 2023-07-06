@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "forge-std/Script.sol";
 
 import {Book} from "src/Book.sol";
-import {Page} from "src/Page.sol";
+import {BackPage} from "src/backPage/BackPage.sol";
 
 contract DeploymentScript is Script {
     function run() external {
@@ -17,7 +17,7 @@ contract DeploymentScript is Script {
         // Since this is the first implementation, the version is 1
         (uint256 version, address implementation) = book.upgradePage(
             keccak256("VERSION_1"),
-            type(Page).creationCode
+            type(BackPage).creationCode
         );
 
         require(version == 1, "INVALID VERSION");

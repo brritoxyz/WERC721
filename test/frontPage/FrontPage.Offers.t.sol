@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {Page} from "src/Page.sol";
-import {PageBase} from "test//PageBase.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
-contract PageOffersTest is Test, PageBase {
+contract FrontPageOffersTest is Test, FrontPageBase {
     event MakeOffer(address maker);
     event CancelOffer(address maker);
     event TakeOffer(address taker);
@@ -28,7 +28,7 @@ contract PageOffersTest is Test, PageBase {
         uint256 msgValue = greaterOrLesser ? excessiveValue : insufficientValue;
 
         vm.deal(address(this), msgValue);
-        vm.expectRevert(Page.Invalid.selector);
+        vm.expectRevert(FrontPage.Invalid.selector);
 
         page.makeOffer{value: msgValue}(offerETH, quantity);
     }
@@ -178,7 +178,9 @@ contract PageOffersTest is Test, PageBase {
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ids[0];
 
-        vm.expectRevert(Page.Unauthorized.selector);
+        // Zero address is guaranteed to not be the token owner
+        vm.prank(address(0));
+        vm.expectRevert(FrontPage.Unauthorized.selector);
 
         // Any offer that is not equal to the maker's offer will revert
         page.takeOffer(_ids, maker, offer);
@@ -204,9 +206,6 @@ contract PageOffersTest is Test, PageBase {
         uint256 takerBalanceBefore = taker.balance;
         uint256 makerOffersBefore = page.offers(maker, offerETH);
         uint256 takenValueETH = offerETH * ids.length;
-
-        // Deposit the NFTs into the page contract to get the correct tokens
-        page.batchDeposit(ids, taker);
 
         vm.expectEmit(false, false, false, true, address(page));
 

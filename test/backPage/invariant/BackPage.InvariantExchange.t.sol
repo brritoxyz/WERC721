@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 import "forge-std/StdInvariant.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {PageInvariantHandler} from "test/invariant/PageInvariantHandler.sol";
+import {BackPageInvariantHandler} from "test/backPage/invariant/BackPageInvariantHandler.sol";
 import {Book} from "src/Book.sol";
-import {Page} from "src/Page.sol";
+import {BackPage} from "src/backPage/BackPage.sol";
 
 contract Collection is ERC721 {
     function name() public pure override returns (string memory) {
@@ -37,8 +37,8 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
 
     Collection internal collection;
     Book internal book;
-    Page internal page;
-    PageInvariantHandler internal handler;
+    BackPage internal page;
+    BackPageInvariantHandler internal handler;
     address[] internal senders = [
         address(this),
         0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
@@ -54,13 +54,13 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
 
     // Specify target selectors to avoid calling handler getter methods
     bytes4[] selectors = [
-        PageInvariantHandler.mintDeposit.selector,
-        PageInvariantHandler.deposit.selector,
-        PageInvariantHandler.withdraw.selector,
-        PageInvariantHandler.list.selector,
-        PageInvariantHandler.edit.selector,
-        PageInvariantHandler.cancel.selector,
-        PageInvariantHandler.buy.selector
+        BackPageInvariantHandler.mintDeposit.selector,
+        BackPageInvariantHandler.deposit.selector,
+        BackPageInvariantHandler.withdraw.selector,
+        BackPageInvariantHandler.list.selector,
+        BackPageInvariantHandler.edit.selector,
+        BackPageInvariantHandler.cancel.selector,
+        BackPageInvariantHandler.buy.selector
     ];
 
     receive() external payable {}
@@ -69,12 +69,12 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
         collection = new Collection();
         book = new Book();
 
-        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
+        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
 
-        page = Page(book.createPage(collection));
+        page = BackPage(book.createPage(collection));
 
         // Deploy and initialize Handler contract
-        handler = new PageInvariantHandler(collection, book, page);
+        handler = new BackPageInvariantHandler(collection, book, page);
 
         unchecked {
             for (uint256 i = 0; i < senders.length; ++i) {
@@ -181,7 +181,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
             id = ids[ids.length - 1];
             (
                 address recipient,
-                PageInvariantHandler.TokenState tokenState
+                BackPageInvariantHandler.TokenState tokenState
             ) = handler.states(id);
 
             unchecked {
@@ -189,7 +189,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
             }
 
             // If the token ID is not in an "deposited" state, continue to the next ID
-            if (tokenState == PageInvariantHandler.TokenState.Deposited) {
+            if (tokenState == BackPageInvariantHandler.TokenState.Deposited) {
                 address pageOwnerOf = recipient;
 
                 assertDepositedState(id, pageOwnerOf);
@@ -197,7 +197,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
                 return;
             }
 
-            if (tokenState == PageInvariantHandler.TokenState.Withdrawn) {
+            if (tokenState == BackPageInvariantHandler.TokenState.Withdrawn) {
                 address collectionOwnerOf = recipient;
 
                 assertWithdrawnState(id, collectionOwnerOf);
@@ -206,8 +206,8 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
             }
 
             if (
-                tokenState == PageInvariantHandler.TokenState.Listed ||
-                tokenState == PageInvariantHandler.TokenState.Edited
+                tokenState == BackPageInvariantHandler.TokenState.Listed ||
+                tokenState == BackPageInvariantHandler.TokenState.Edited
             ) {
                 address listingSeller = recipient;
 
@@ -216,7 +216,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
                 return;
             }
 
-            if (tokenState == PageInvariantHandler.TokenState.Canceled) {
+            if (tokenState == BackPageInvariantHandler.TokenState.Canceled) {
                 address pageOwnerOf = recipient;
 
                 assertCanceledState(id, pageOwnerOf);
@@ -224,7 +224,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
                 return;
             }
 
-            if (tokenState == PageInvariantHandler.TokenState.Bought) {
+            if (tokenState == BackPageInvariantHandler.TokenState.Bought) {
                 address pageOwnerOf = recipient;
 
                 assertBoughtState(id, pageOwnerOf);

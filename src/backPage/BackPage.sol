@@ -18,7 +18,7 @@ interface IERC721 {
     function tokenURI(uint256 id) external view returns (string memory);
 }
 
-contract Page is Clone, ReentrancyGuard, PageToken {
+contract BackPage is Clone, ReentrancyGuard, PageToken {
     using SafeTransferLib for address payable;
 
     struct Listing {

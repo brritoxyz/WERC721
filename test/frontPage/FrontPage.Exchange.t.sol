@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {FrontPage} from "src/FrontPage.sol";
-import {FrontPageBase} from "test/FrontPageBase.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
 contract FrontPageExchangeTest is Test, FrontPageBase {
     uint256 internal constant ONE = 1;

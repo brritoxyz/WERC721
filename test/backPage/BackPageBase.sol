@@ -5,15 +5,15 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Book} from "src/Book.sol";
-import {Page} from "src/Page.sol";
+import {BackPage} from "src/backPage/BackPage.sol";
 
-contract PageBase is Test, ERC721TokenReceiver {
+contract BackPageBase is Test, ERC721TokenReceiver {
     ERC721 internal constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 internal constant ONE = 1;
 
     Book internal immutable book;
-    Page internal immutable page;
+    BackPage internal immutable page;
 
     uint256[] internal ids = [1, 39, 111];
     address[] internal accounts = [
@@ -39,12 +39,12 @@ contract PageBase is Test, ERC721TokenReceiver {
         book = new Book();
 
         // Set the page implementation (since the version and impl. start at zero)
-        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(Page).creationCode);
+        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
 
-        page = Page(book.createPage(LLAMA));
+        page = BackPage(book.createPage(LLAMA));
 
         // Verify that page cannot be initialized again
-        vm.expectRevert(Page.AlreadyInitialized.selector);
+        vm.expectRevert(BackPage.AlreadyInitialized.selector);
 
         page.initialize();
 

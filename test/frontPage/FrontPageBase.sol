@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeCastLib} from "solady/utils/SafeCastLib.sol";
-import {FrontPage} from "src/FrontPage.sol";
-import {FrontPageERC721} from "src/FrontPageERC721.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
 contract FrontPageBase is Test, ERC721TokenReceiver {
     uint256 internal constant MAX_SUPPLY = 10_000;

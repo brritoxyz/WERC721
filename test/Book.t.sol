@@ -7,7 +7,7 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 import {Book} from "src/Book.sol";
-import {Page} from "src/Page.sol";
+import {BackPage} from "src/backPage/BackPage.sol";
 
 contract DummyERC20 is ERC20("", "", 18) {
     constructor() payable {}
@@ -25,7 +25,7 @@ contract BookTest is Test {
     ];
 
     Book private immutable book;
-    Page private immutable page;
+    BackPage private immutable page;
     address private immutable bookAddr;
     address private immutable pageImplementation;
 
@@ -42,9 +42,9 @@ contract BookTest is Test {
         bookAddr = address(book);
         (uint256 version, address implementation) = book.upgradePage(
             DEPLOYMENT_SALT,
-            type(Page).creationCode
+            type(BackPage).creationCode
         );
-        page = Page(book.createPage(LLAMA));
+        page = BackPage(book.createPage(LLAMA));
         pageImplementation = implementation;
 
         address predeterminedPageAddress = LibClone.predictDeterministicAddress(
@@ -63,7 +63,7 @@ contract BookTest is Test {
         assertTrue(version != 0);
         assertTrue(implementation != address(0));
 
-        vm.expectRevert(Page.AlreadyInitialized.selector);
+        vm.expectRevert(BackPage.AlreadyInitialized.selector);
 
         page.initialize();
     }
@@ -190,9 +190,9 @@ contract BookTest is Test {
         assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
         // Should be initialized
-        vm.expectRevert(Page.AlreadyInitialized.selector);
+        vm.expectRevert(BackPage.AlreadyInitialized.selector);
 
-        Page(newPage).initialize();
+        BackPage(newPage).initialize();
     }
 
     function testCreatePage(ERC721 collection) external {
@@ -225,10 +225,10 @@ contract BookTest is Test {
         address pageAddress = book.createPage(collection);
 
         assertEq(predeterminedPageAddress, pageAddress);
-        assertEq(address(collection), Page(pageAddress).collection());
+        assertEq(address(collection), BackPage(pageAddress).collection());
 
-        vm.expectRevert(Page.AlreadyInitialized.selector);
+        vm.expectRevert(BackPage.AlreadyInitialized.selector);
 
-        Page(pageAddress).initialize();
+        BackPage(pageAddress).initialize();
     }
 }

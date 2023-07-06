@@ -7,13 +7,13 @@ import {StdUtils} from "forge-std/StdUtils.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {Book} from "src/Book.sol";
-import {Page} from "src/Page.sol";
+import {BackPage} from "src/backPage/BackPage.sol";
 
 interface ICollection {
     function mint(address, uint256) external;
 }
 
-contract PageInvariantHandler is
+contract BackPageInvariantHandler is
     CommonBase,
     StdCheats,
     StdUtils,
@@ -35,7 +35,7 @@ contract PageInvariantHandler is
 
     ERC721 internal immutable collection;
     Book internal immutable book;
-    Page internal immutable page;
+    BackPage internal immutable page;
 
     // Ghost variables
     uint256 internal currentIndex;
@@ -47,7 +47,7 @@ contract PageInvariantHandler is
 
     receive() external payable {}
 
-    constructor(ERC721 _collection, Book _book, Page _page) {
+    constructor(ERC721 _collection, Book _book, BackPage _page) {
         collection = _collection;
         book = _book;
         page = _page;

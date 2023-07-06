@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {BenchmarkBase} from "test/benchmark/BenchmarkBase.sol";
+import {BenchmarkBase} from "test/frontPage/benchmark/BenchmarkBase.sol";
 
 contract BenchmarkTransferFrom is Test, BenchmarkBase {
     address private constant TRANSFER_TO =

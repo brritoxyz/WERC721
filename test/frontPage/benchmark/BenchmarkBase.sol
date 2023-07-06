@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721 as OZ_ERC721, ERC721Enumerable} from "openzeppelin/token/ERC721/extensions/ERC721Enumerable.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {ERC721A} from "ERC721A/ERC721A.sol";
-import {FrontPage} from "src/FrontPage.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
 
 contract TestERC721Enumerable is ERC721Enumerable {
     constructor() payable OZ_ERC721("Test", "TEST") {}
