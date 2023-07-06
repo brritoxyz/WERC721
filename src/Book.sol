@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {ERC721} from "solady/tokens/ERC721.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
-import {LibClone} from "solady/utils/LibClone.sol";
-
-interface IPage {
-    function initialize() external;
-}
 
 contract Book is Ownable {
     // Current page implementation version
