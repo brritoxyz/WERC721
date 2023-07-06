@@ -23,19 +23,25 @@ contract BackPageBook is Book {
     );
 
     error ZeroAddress();
+    error InvalidVersion();
 
     /**
-     * @notice Creates a new Page contract (minimal proxy) for the given implementation and collection
+     * @notice Creates a new clone for the collection and implementation version
      * @param  collection  ERC721   NFT collection
+     * @param  version     uint256  Page implementation version
      * @return page        address  Page contract address
      */
     function createPage(
-        ERC721 collection
+        ERC721 collection,
+        uint256 version
     ) external payable returns (address page) {
         // Revert if the collection is the zero address
         if (address(collection) == address(0)) revert ZeroAddress();
 
-        address implementation = pageImplementations[currentVersion];
+        address implementation = pageImplementations[version];
+
+        // Revert if there is no implementation for the given version
+        if (implementation == address(0)) revert InvalidVersion();
 
         // Create a minimal proxy for the implementation
         page = LibClone.cloneDeterministic(
@@ -48,7 +54,7 @@ contract BackPageBook is Book {
 
         // Only store pages if they don't already exist, otherwise, return the address and emit the
         // event in order to signify that a new Page contract was deployed. By enabling multiple, "non-canonical"
-        // deployments, we're able to circumvent censorship by collections and other actors
+        // deployments, we're able to circumvent censorship by collections and actors such as OpenSea
         if (pages[implementation][collection] == address(0)) {
             // Update the mapping to point the collection to its page
             pages[implementation][collection] = page;

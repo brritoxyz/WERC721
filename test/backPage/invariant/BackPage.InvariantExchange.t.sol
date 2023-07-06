@@ -69,9 +69,9 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
         collection = new Collection();
         book = new BackPageBook();
 
-        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
+        (uint256 version, ) = book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
 
-        page = BackPage(book.createPage(collection));
+        page = BackPage(book.createPage(collection, version));
 
         // Deploy and initialize Handler contract
         handler = new BackPageInvariantHandler(collection, book, page);

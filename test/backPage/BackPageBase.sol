@@ -39,9 +39,14 @@ contract BackPageBase is Test, ERC721TokenReceiver {
         book = new BackPageBook();
 
         // Set the page implementation (since the version and impl. start at zero)
-        book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
+        (uint256 version, address implementation) = book.upgradePage(
+            keccak256("DEPLOYMENT_SALT"),
+            type(BackPage).creationCode
+        );
 
-        page = BackPage(book.createPage(LLAMA));
+        page = BackPage(book.createPage(LLAMA, version));
+
+        assertEq(address(page), book.pages(implementation, LLAMA));
 
         // Verify that page cannot be initialized again
         vm.expectRevert(BackPage.AlreadyInitialized.selector);

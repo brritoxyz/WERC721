@@ -45,7 +45,7 @@ contract BackPageBookTest is Test {
             DEPLOYMENT_SALT,
             type(BackPage).creationCode
         );
-        page = BackPage(book.createPage(LLAMA));
+        page = BackPage(book.createPage(LLAMA, version));
         pageImplementation = implementation;
 
         address predeterminedPageAddress = LibClone.predictDeterministicAddress(
@@ -158,9 +158,19 @@ contract BackPageBookTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotCreatePageZeroAddress() external {
+        uint256 version = book.currentVersion();
+
         vm.expectRevert(BackPageBook.ZeroAddress.selector);
 
-        book.createPage(ERC721(address(0)));
+        book.createPage(ERC721(address(0)), version);
+    }
+
+    function testCannotCreatePageInvalidVersion() external {
+        uint256 version = book.currentVersion() + 1;
+
+        vm.expectRevert(BackPageBook.InvalidVersion.selector);
+
+        book.createPage(LLAMA, version);
     }
 
     function testCreatePageRedeployWithoutStorage() external {
@@ -177,12 +187,13 @@ contract BackPageBookTest is Test {
             ),
             address(book)
         );
+        uint256 version = book.currentVersion();
 
         vm.expectEmit(true, true, false, true, address(book));
 
         emit CreatePage(pageImplementation, LLAMA, predeterminedPageAddress);
 
-        address newPage = book.createPage(LLAMA);
+        address newPage = book.createPage(LLAMA, version);
 
         assertTrue(newPage != address(page));
         assertEq(predeterminedPageAddress, newPage);
@@ -214,6 +225,7 @@ contract BackPageBookTest is Test {
             ),
             address(book)
         );
+        uint256 version = book.currentVersion();
 
         vm.expectEmit(true, true, false, true, address(book));
 
@@ -223,7 +235,7 @@ contract BackPageBookTest is Test {
             predeterminedPageAddress
         );
 
-        address pageAddress = book.createPage(collection);
+        address pageAddress = book.createPage(collection, version);
 
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(collection), BackPage(pageAddress).collection());
