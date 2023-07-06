@@ -6,7 +6,7 @@ import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {Book} from "src/Book.sol";
+import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
 
 interface ICollection {
@@ -34,7 +34,7 @@ contract BackPageInvariantHandler is
     }
 
     ERC721 internal immutable collection;
-    Book internal immutable book;
+    BackPageBook internal immutable book;
     BackPage internal immutable page;
 
     // Ghost variables
@@ -47,7 +47,7 @@ contract BackPageInvariantHandler is
 
     receive() external payable {}
 
-    constructor(ERC721 _collection, Book _book, BackPage _page) {
+    constructor(ERC721 _collection, BackPageBook _book, BackPage _page) {
         collection = _collection;
         book = _book;
         page = _page;

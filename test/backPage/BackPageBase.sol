@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {Book} from "src/Book.sol";
+import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
 
 contract BackPageBase is Test, ERC721TokenReceiver {
@@ -12,7 +12,7 @@ contract BackPageBase is Test, ERC721TokenReceiver {
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     uint256 internal constant ONE = 1;
 
-    Book internal immutable book;
+    BackPageBook internal immutable book;
     BackPage internal immutable page;
 
     uint256[] internal ids = [1, 39, 111];
@@ -36,7 +36,7 @@ contract BackPageBase is Test, ERC721TokenReceiver {
     receive() external payable {}
 
     constructor() {
-        book = new Book();
+        book = new BackPageBook();
 
         // Set the page implementation (since the version and impl. start at zero)
         book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);

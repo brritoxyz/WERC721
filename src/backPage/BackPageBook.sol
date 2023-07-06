@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
+
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
+import {Book} from "src/Book.sol";
+
+interface IPage {
+    function initialize() external;
+}
+
+contract BackPageBook is Book {
+    // Paired with the collection address to compute the CREATE2 salt
+    bytes32 public constant SALT_FRAGMENT = "JPAGE||EGAPJ";
+
+    // Page implementations mapped to their ERC721 collections and associated BackPage contracts
+    mapping(address => mapping(ERC721 => address)) public pages;
+
+    event CreatePage(
+        address indexed implementation,
+        ERC721 indexed collection,
+        address page
+    );
+
+    error ZeroAddress();
+
+    /**
+     * @notice Creates a new Page contract (minimal proxy) for the given implementation and collection
+     * @param  collection  ERC721   NFT collection
+     * @return page        address  Page contract address
+     */
+    function createPage(
+        ERC721 collection
+    ) external payable returns (address page) {
+        // Revert if the collection is the zero address
+        if (address(collection) == address(0)) revert ZeroAddress();
+
+        address implementation = pageImplementations[currentVersion];
+
+        // Create a minimal proxy for the implementation
+        page = LibClone.cloneDeterministic(
+            implementation,
+            abi.encodePacked(address(collection)),
+            keccak256(
+                abi.encodePacked(collection, SALT_FRAGMENT, block.timestamp)
+            )
+        );
+
+        // Only store pages if they don't already exist, otherwise, return the address and emit the
+        // event in order to signify that a new Page contract was deployed. By enabling multiple, "non-canonical"
+        // deployments, we're able to circumvent censorship by collections and other actors
+        if (pages[implementation][collection] == address(0)) {
+            // Update the mapping to point the collection to its page
+            pages[implementation][collection] = page;
+        }
+
+        emit CreatePage(implementation, collection, page);
+
+        // Initialize the minimal proxy's state variables
+        IPage(page).initialize();
+    }
+}

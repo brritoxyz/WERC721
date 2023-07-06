@@ -6,6 +6,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
+import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {Book} from "src/Book.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
 
@@ -13,7 +14,7 @@ contract DummyERC20 is ERC20("", "", 18) {
     constructor() payable {}
 }
 
-contract BookTest is Test {
+contract BackPageBookTest is Test {
     ERC721 private constant LLAMA =
         ERC721(0xe127cE638293FA123Be79C25782a5652581Db234);
     bytes32 private constant DEPLOYMENT_SALT = keccak256("DEPLOYMENT_SALT");
@@ -24,7 +25,7 @@ contract BookTest is Test {
         0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
     ];
 
-    Book private immutable book;
+    BackPageBook private immutable book;
     BackPage private immutable page;
     address private immutable bookAddr;
     address private immutable pageImplementation;
@@ -38,7 +39,7 @@ contract BookTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     constructor() {
-        book = new Book();
+        book = new BackPageBook();
         bookAddr = address(book);
         (uint256 version, address implementation) = book.upgradePage(
             DEPLOYMENT_SALT,
@@ -72,10 +73,10 @@ contract BookTest is Test {
                              upgradePage
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotUpgradePageBytecodeLengthZero() external {
+    function testCannotUpgradePageEmptyBytecode() external {
         bytes memory bytecode = bytes("");
 
-        vm.expectRevert(Book.Zero.selector);
+        vm.expectRevert(Book.EmptyBytecode.selector);
 
         book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
@@ -92,10 +93,10 @@ contract BookTest is Test {
         book.upgradePage(DEPLOYMENT_SALT, bytecode);
     }
 
-    function testCannotUpgradePageDuplicateDeploymentZero() external {
+    function testCannotUpgradePageCreate2Duplicate() external {
         book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
 
-        vm.expectRevert(Book.Zero.selector);
+        vm.expectRevert(Book.Create2Duplicate.selector);
 
         book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
     }
@@ -156,8 +157,8 @@ contract BookTest is Test {
                              createPage
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotCreatePageCollectionInvalid() external {
-        vm.expectRevert(Book.Zero.selector);
+    function testCannotCreatePageZeroAddress() external {
+        vm.expectRevert(BackPageBook.ZeroAddress.selector);
 
         book.createPage(ERC721(address(0)));
     }

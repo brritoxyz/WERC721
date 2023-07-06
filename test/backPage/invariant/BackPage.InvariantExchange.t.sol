@@ -6,7 +6,7 @@ import "forge-std/StdInvariant.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {BackPageInvariantHandler} from "test/backPage/invariant/BackPageInvariantHandler.sol";
-import {Book} from "src/Book.sol";
+import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
 
 contract Collection is ERC721 {
@@ -36,7 +36,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
         payable(0x9c9dC2110240391d4BEe41203bDFbD19c279B429);
 
     Collection internal collection;
-    Book internal book;
+    BackPageBook internal book;
     BackPage internal page;
     BackPageInvariantHandler internal handler;
     address[] internal senders = [
@@ -67,7 +67,7 @@ contract PageInvariantExchangeTest is StdInvariant, Test, ERC721TokenReceiver {
 
     function setUp() public {
         collection = new Collection();
-        book = new Book();
+        book = new BackPageBook();
 
         book.upgradePage(keccak256("DEPLOYMENT_SALT"), type(BackPage).creationCode);
 
