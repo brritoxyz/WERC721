@@ -3,12 +3,10 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PageERC721} from "src/PageERC721.sol";
 import {PageExchange} from "src/PageExchange.sol";
-import {IERC721} from "src/interfaces/IERC721.sol";
-import {IFrontPageERC721} from "src/interfaces/IFrontPageERC721.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
-contract FrontPage is Clone, PageERC721, PageExchange {
+contract FrontPage is Clone, PageExchange {
     using SafeTransferLib for address payable;
 
     // Fixed clone immutable arg byte offsets
@@ -139,7 +137,7 @@ contract FrontPage is Clone, PageERC721, PageExchange {
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
-        IFrontPageERC721(collection()).mint(msg.sender, id);
+        FrontPageERC721(collection()).mint(msg.sender, id);
     }
 
     /**
@@ -164,6 +162,6 @@ contract FrontPage is Clone, PageERC721, PageExchange {
         }
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
-        IFrontPageERC721(collection()).batchMint(msg.sender, ids);
+        FrontPageERC721(collection()).batchMint(msg.sender, ids);
     }
 }

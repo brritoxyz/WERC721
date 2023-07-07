@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
+import {PageERC721} from "src/PageERC721.sol";
 import {BackPageBase} from "test/backPage/BackPageBase.sol";
 
 contract BackPageTest is Test, BackPageBase {
@@ -31,7 +32,7 @@ contract BackPageTest is Test, BackPageBase {
 
     function testOnERC721Received() external {
         assertEq(
-            BackPage.onERC721Received.selector,
+            PageERC721.onERC721Received.selector,
             page.onERC721Received(address(0), address(0), 1, "")
         );
     }
