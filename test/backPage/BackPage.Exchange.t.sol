@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
+import {PageExchange} from "src/PageExchange.sol";
 import {BackPageBase} from "test/backPage/BackPageBase.sol";
 
 contract BackPageExchangeTest is Test, BackPageBase {
@@ -144,7 +145,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
         address recipient = accounts[0];
 
         vm.prank(msgSender);
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.withdraw(id, recipient);
     }
@@ -215,7 +216,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
         page.batchDeposit(ids, recipient);
 
         vm.prank(address(this));
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchWithdraw(ids, address(this));
     }
@@ -291,7 +292,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
         assertEq(recipient, page.ownerOf(id));
         assertEq(1, page.balanceOf(recipient, id));
 
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.list(id, price);
     }
@@ -309,7 +310,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
         // Call `list` as the recipient to ensure that they are authorized to sell
         vm.prank(recipient);
-        vm.expectRevert(BackPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.list(id, price);
     }
@@ -356,7 +357,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
         uint256 id = ids[0];
         uint96 price = 0;
 
-        vm.expectRevert(BackPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.edit(id, price);
     }
@@ -373,7 +374,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
         page.list(id, price);
 
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.edit(id, newPrice);
     }
@@ -432,7 +433,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
         page.list(id, price);
 
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.cancel(id);
     }
@@ -487,9 +488,9 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
             page.list(id, price);
 
-            vm.expectRevert(BackPage.Insufficient.selector);
+            vm.expectRevert(PageExchange.Insufficient.selector);
         } else {
-            vm.expectRevert(BackPage.Invalid.selector);
+            vm.expectRevert(PageExchange.Invalid.selector);
         }
 
         // Attempt to buy with msg.value less than price
@@ -611,7 +612,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
     function testCannotBatchEditNewPriceZero() external {
         uint96[] memory newPrices = new uint96[](ids.length);
 
-        vm.expectRevert(BackPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -637,7 +638,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
         page.batchList(ids, prices);
 
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -713,7 +714,7 @@ contract BackPageExchangeTest is Test, BackPageBase {
 
         page.batchList(ids, prices);
 
-        vm.expectRevert(BackPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchCancel(ids);
     }
