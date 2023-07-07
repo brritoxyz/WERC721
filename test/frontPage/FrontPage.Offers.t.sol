@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {PageExchange} from "src/PageExchange.sol";
 import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
 contract FrontPageOffersTest is Test, FrontPageBase {
@@ -28,7 +29,7 @@ contract FrontPageOffersTest is Test, FrontPageBase {
         uint256 msgValue = greaterOrLesser ? excessiveValue : insufficientValue;
 
         vm.deal(address(this), msgValue);
-        vm.expectRevert(FrontPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.makeOffer{value: msgValue}(offerETH, quantity);
     }
@@ -180,7 +181,7 @@ contract FrontPageOffersTest is Test, FrontPageBase {
 
         // Zero address is guaranteed to not be the token owner
         vm.prank(address(0));
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         // Any offer that is not equal to the maker's offer will revert
         page.takeOffer(_ids, maker, offer);

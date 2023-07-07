@@ -4,11 +4,12 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
-import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {PageExchange} from "src/PageExchange.sol";
+import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
-    bytes32 private constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(4));
+    bytes32 private constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(6));
 
     event Mint();
     event BatchMint();
@@ -226,7 +227,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         assertEq(address(0), page.ownerOf(id));
 
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.redeem(id);
     }
@@ -256,7 +257,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
     function testCannotBatchRedeemUnauthorized() external {
         vm.prank(address(0));
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchRedeem(ids);
     }

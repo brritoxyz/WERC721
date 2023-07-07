@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {PageExchange} from "src/PageExchange.sol";
 import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
 contract FrontPageExchangeTest is Test, FrontPageBase {
@@ -52,7 +53,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
 
         // Attempt to list as an account that does not own the token
         vm.prank(notOwner);
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.list(id, price);
     }
@@ -64,7 +65,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         assertEq(address(this), page.ownerOf(id));
         assertEq(1, page.balanceOf(address(this), id));
 
-        vm.expectRevert(FrontPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.list(id, price);
     }
@@ -107,7 +108,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         uint256 id = ids[0];
         uint96 price = 0;
 
-        vm.expectRevert(FrontPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.edit(id, price);
     }
@@ -126,7 +127,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         assertEq(price, listingPrice);
 
         vm.prank(notOwner);
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.edit(id, newPrice);
     }
@@ -181,7 +182,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         assertEq(price, listingPrice);
 
         vm.prank(notOwner);
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.cancel(id);
     }
@@ -225,9 +226,9 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         if (shouldList) {
             page.list(id, price);
 
-            vm.expectRevert(FrontPage.InvalidMsgValue.selector);
+            vm.expectRevert(PageExchange.Insufficient.selector);
         } else {
-            vm.expectRevert(FrontPage.Invalid.selector);
+            vm.expectRevert(PageExchange.Invalid.selector);
         }
 
         // Attempt to buy with msg.value less than price
@@ -343,7 +344,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
     function testCannotBatchEditNewPriceZero() external {
         uint96[] memory newPrices = new uint96[](ids.length);
 
-        vm.expectRevert(FrontPage.Invalid.selector);
+        vm.expectRevert(PageExchange.Invalid.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -366,7 +367,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         // Zero address guaranteed to not be the listing seller
         vm.prank(address(0));
 
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -430,7 +431,7 @@ contract FrontPageExchangeTest is Test, FrontPageBase {
         page.batchList(ids, prices);
 
         vm.prank(address(0));
-        vm.expectRevert(FrontPage.Unauthorized.selector);
+        vm.expectRevert(PageExchange.Unauthorized.selector);
 
         page.batchCancel(ids);
     }
