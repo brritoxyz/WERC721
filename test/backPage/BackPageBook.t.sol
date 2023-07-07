@@ -6,6 +6,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
+import {TestUtils} from "test/TestUtils.sol";
 import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {Book} from "src/Book.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
@@ -96,7 +97,7 @@ contract BackPageBookTest is Test {
     function testCannotUpgradePageCreate2Duplicate() external {
         book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
 
-        vm.expectRevert(Book.Create2Duplicate.selector);
+        vm.expectRevert(Book.Create2Failed.selector);
 
         book.upgradePage(DEPLOYMENT_SALT, type(DummyERC20).creationCode);
     }
@@ -110,19 +111,10 @@ contract BackPageBookTest is Test {
             currentVersion
         );
         uint256 nextVersion = currentVersion + 1;
-        address nextImplementation = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(book),
-                            DEPLOYMENT_SALT,
-                            keccak256(bytecode)
-                        )
-                    )
-                )
-            )
+        address nextImplementation = TestUtils.computeCreate2Address(
+            address(book),
+            DEPLOYMENT_SALT,
+            bytecode
         );
 
         vm.expectEmit(false, false, false, true, address(book));
