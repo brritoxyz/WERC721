@@ -3,11 +3,12 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {PageERC721} from "src/PageERC721.sol";
 import {PageExchange} from "src/PageExchange.sol";
 import {IERC721} from "src/interfaces/IERC721.sol";
 import {IFrontPageERC721} from "src/interfaces/IFrontPageERC721.sol";
 
-contract FrontPage is Clone, PageExchange {
+contract FrontPage is Clone, PageERC721, PageExchange {
     using SafeTransferLib for address payable;
 
     // Fixed clone immutable arg byte offsets
@@ -51,7 +52,7 @@ contract FrontPage is Clone, PageExchange {
         nextId = 1;
     }
 
-    function collection() public pure returns (address) {
+    function collection() public pure override returns (address) {
         return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
     }
 
@@ -65,20 +66,6 @@ contract FrontPage is Clone, PageExchange {
 
     function mintPrice() public pure returns (uint256) {
         return _getArgUint256(IMMUTABLE_ARG_OFFSET_MINT_PRICE);
-    }
-
-    function name() external view override returns (string memory) {
-        return IERC721(collection()).name();
-    }
-
-    function symbol() external view override returns (string memory) {
-        return IERC721(collection()).symbol();
-    }
-
-    function tokenURI(
-        uint256 _tokenId
-    ) external view override returns (string memory) {
-        return IERC721(collection()).tokenURI(_tokenId);
     }
 
     /**

@@ -5,18 +5,6 @@ import "forge-std/Test.sol";
 import {PageToken} from "src/PageToken.sol";
 
 contract PageTokenImpl is PageToken {
-    function name() external pure override returns (string memory) {
-        return "Page";
-    }
-
-    function symbol() external pure override returns (string memory) {
-        return "PAGE";
-    }
-
-    function tokenURI(uint256) external pure override returns (string memory) {
-        return "";
-    }
-
     function setOwnerOf(uint256 id, address owner) external {
         ownerOf[id] = owner;
     }

@@ -12,7 +12,7 @@ pragma solidity 0.8.20;
  *         and interacted with by contracts. This decision was made to reduce user gas costs across all
  *         contract-based NFT marketplaces that integrate (those contracts can emit events if desired)
  */
-abstract contract PageToken {
+contract PageToken {
     // Tracks the owner of each ERC721 derivative
     mapping(uint256 => address) public ownerOf;
 
@@ -21,14 +21,6 @@ abstract contract PageToken {
     error WrongFrom();
     error UnsafeRecipient();
     error NotAuthorized();
-
-    function name() external view virtual returns (string memory);
-
-    function symbol() external view virtual returns (string memory);
-
-    function tokenURI(
-        uint256 _tokenId
-    ) external view virtual returns (string memory);
 
     function balanceOf(
         address owner,

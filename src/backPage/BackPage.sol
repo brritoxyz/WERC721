@@ -4,10 +4,14 @@ pragma solidity 0.8.20;
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PageExchange} from "src/PageExchange.sol";
+import {PageERC721} from "src/PageERC721.sol";
 import {IERC721} from "src/interfaces/IERC721.sol";
 
-contract BackPage is Clone, PageExchange {
+contract BackPage is Clone, PageERC721, PageExchange {
     using SafeTransferLib for address payable;
+
+    // Fixed clone immutable arg byte offsets
+    uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
     bool private _initialized;
 
@@ -31,6 +35,10 @@ contract BackPage is Clone, PageExchange {
         locked = 1;
     }
 
+    function collection() public pure override returns (address) {
+        return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
+    }
+
     /**
      * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
      * @param  id         uint256  Token ID
@@ -42,7 +50,7 @@ contract BackPage is Clone, PageExchange {
 
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
-        IERC721(_getArgAddress(0)).transferFrom(msg.sender, address(this), id);
+        IERC721(collection()).transferFrom(msg.sender, address(this), id);
     }
 
     /**
@@ -58,42 +66,11 @@ contract BackPage is Clone, PageExchange {
         delete ownerOf[id];
 
         // Transfer the NFT to the recipient - reverts if recipient is zero address
-        IERC721(_getArgAddress(0)).safeTransferFrom(
+        IERC721(collection()).safeTransferFrom(
             address(this),
             recipient,
             id
         );
-    }
-
-    function collection() external pure returns (address) {
-        return _getArgAddress(0);
-    }
-
-    /**
-     * @notice Retrieves the collection name
-     * @return string  Token name
-     */
-    function name() external view override returns (string memory) {
-        return IERC721(_getArgAddress(0)).name();
-    }
-
-    /**
-     * @notice Retrieves the collection symbol
-     * @return string  Token symbol
-     */
-    function symbol() external view override returns (string memory) {
-        return IERC721(_getArgAddress(0)).symbol();
-    }
-
-    /**
-     * @notice Retrieves the collection token URI for the specified ID
-     * @param  tokenId  uint256  Token ID
-     * @return           string   JSON file that conforms to the ERC721 Metadata JSON Schema
-     */
-    function tokenURI(
-        uint256 tokenId
-    ) external view override returns (string memory) {
-        return IERC721(_getArgAddress(0)).tokenURI(tokenId);
     }
 
     /**
