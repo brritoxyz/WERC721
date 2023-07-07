@@ -6,25 +6,46 @@ import {Ownable} from "solady/auth/Ownable.sol";
 import {LibString} from "solady/utils/LibString.sol";
 
 contract FrontPageERC721 is Ownable, ERC721 {
-    address public immutable frontPage;
-    string public baseURI;
+    bool private _initialized;
     string private _name;
     string private _symbol;
 
-    constructor(
-        string memory metadataName,
-        string memory metadataSymbol,
-        address _owner
-    ) payable {
-        // ERC-721 metadata
-        _name = metadataName;
-        _symbol = metadataSymbol;
+    address public frontPage;
+    string public baseURI;
 
-        // Set the FrontPage contract (i.e. the deployer of this contract)
-        frontPage = msg.sender;
+    error ZeroAddress();
+    error EmptyString();
+    error AlreadyInitialized();
 
-        // Enable the creator to update the baseURI
+    constructor() payable {
+        // Prevent the implementation contract from being initialized
+        _initialized = true;
+    }
+
+    function initialize(
+        address _frontPage,
+        address _owner,
+        string calldata collectionName,
+        string calldata collectionSymbol
+    ) external payable {
+        if (_initialized) revert AlreadyInitialized();
+        if (_frontPage == address(0)) revert ZeroAddress();
+        if (_owner == address(0)) revert ZeroAddress();
+        if (bytes(collectionName).length == 0) revert EmptyString();
+        if (bytes(collectionSymbol).length == 0) revert EmptyString();
+
+        // Set _initialized to true to prevent subsequent calls
+        _initialized = true;
+
+        // Set the FrontPage contract, which facilitates J.Page token => ERC-721 redemptions
+        frontPage = _frontPage;
+
+        // Set the contract owner, who has the ability to set the baseURI
         _initializeOwner(_owner);
+
+        // Set the collection name and symbol which are publicly accessible via the name and symbol methods
+        _name = collectionName;
+        _symbol = collectionSymbol;
     }
 
     function setBaseURI(string calldata baseURI_) external payable onlyOwner {

@@ -8,6 +8,8 @@ import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
+    bytes32 private constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(4));
+
     event Mint();
     event BatchMint();
 
@@ -89,7 +91,7 @@ contract FrontPageTest is Test, FrontPageBase {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotMintSoldout() external {
-        vm.store(address(page), bytes32(uint256(3)), bytes32(MAX_SUPPLY + 1));
+        vm.store(address(page), STORAGE_SLOT_NEXT_ID, bytes32(MAX_SUPPLY + 1));
 
         assertGt(page.nextId(), page.maxSupply());
 
@@ -144,7 +146,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
     function testCannotBatchMintSoldout(uint48 quantity) external {
         vm.assume(quantity != 0);
-        vm.store(address(page), bytes32(uint256(3)), bytes32(MAX_SUPPLY));
+        vm.store(address(page), STORAGE_SLOT_NEXT_ID, bytes32(MAX_SUPPLY));
 
         uint256 value = uint256(quantity) * uint256(MINT_PRICE);
 

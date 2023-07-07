@@ -7,11 +7,11 @@ import {Ownable} from "solady/auth/Ownable.sol";
 import {TestUtils} from "test/TestUtils.sol";
 import {Book} from "src/Book.sol";
 import {FrontPageBook} from "src/frontPage/FrontPageBook.sol";
-import {FrontPageCWIA} from "src/frontPage/FrontPageCWIA.sol";
-import {FrontPageERC721Initializable} from "src/frontPage/FrontPageERC721Initializable.sol";
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
 contract FrontPageBookTest is Test {
-    FrontPageBook private book;
+    FrontPageBook private immutable book;
 
     event UpgradeCollection(uint256 version, address implementation);
     event CreateFrontPage(
@@ -38,7 +38,7 @@ contract FrontPageBookTest is Test {
 
         book.upgradeCollection(
             bytes32(0),
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
     }
 
@@ -55,14 +55,14 @@ contract FrontPageBookTest is Test {
 
         book.upgradeCollection(
             bytes32(0),
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
 
         vm.expectRevert(Book.Create2Failed.selector);
 
         book.upgradeCollection(
             bytes32(0),
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
     }
 
@@ -75,7 +75,7 @@ contract FrontPageBookTest is Test {
         );
         assertEq(address(this), book.owner());
 
-        bytes memory bytecode = type(FrontPageERC721Initializable).creationCode;
+        bytes memory bytecode = type(FrontPageERC721).creationCode;
         address expectedImplementationAddress = TestUtils.computeCreate2Address(
             address(book),
             salt,
@@ -141,7 +141,7 @@ contract FrontPageBookTest is Test {
 
         book.upgradeCollection(
             collectionSalt,
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
 
         assertTrue(
@@ -175,9 +175,9 @@ contract FrontPageBookTest is Test {
 
         book.upgradeCollection(
             collectionSalt,
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
-        book.upgradePage(pageSalt, type(FrontPageCWIA).creationCode);
+        book.upgradePage(pageSalt, type(FrontPage).creationCode);
 
         assertTrue(
             address(0) != book.collectionImplementations(collectionVersion)
@@ -219,9 +219,9 @@ contract FrontPageBookTest is Test {
 
         book.upgradeCollection(
             collectionSalt,
-            type(FrontPageERC721Initializable).creationCode
+            type(FrontPageERC721).creationCode
         );
-        book.upgradePage(pageSalt, type(FrontPageCWIA).creationCode);
+        book.upgradePage(pageSalt, type(FrontPage).creationCode);
 
         address predictedCollection = LibClone.predictDeterministicAddress(
             book.collectionImplementations(collectionVersion),
@@ -255,14 +255,15 @@ contract FrontPageBookTest is Test {
         assertEq(predictedCollection, collection);
         assertEq(predictedPage, page);
 
-        FrontPageCWIA frontPage = FrontPageCWIA(page);
+        FrontPage frontPage = FrontPage(page);
 
         assertEq(collection, address(frontPage.collection()));
         assertEq(cloneArgs.creator, frontPage.creator());
         assertEq(cloneArgs.maxSupply, frontPage.maxSupply());
         assertEq(cloneArgs.mintPrice, frontPage.mintPrice());
+        assertEq(1, frontPage.nextId());
 
-        FrontPageERC721Initializable frontPageERC721 = FrontPageERC721Initializable(
+        FrontPageERC721 frontPageERC721 = FrontPageERC721(
                 collection
             );
 
@@ -276,12 +277,12 @@ contract FrontPageBookTest is Test {
             keccak256(bytes(frontPageERC721.symbol()))
         );
 
-        vm.expectRevert(FrontPageCWIA.AlreadyInitialized.selector);
+        vm.expectRevert(FrontPage.AlreadyInitialized.selector);
 
         frontPage.initialize();
 
         vm.expectRevert(
-            FrontPageERC721Initializable.AlreadyInitialized.selector
+            FrontPageERC721.AlreadyInitialized.selector
         );
 
         frontPageERC721.initialize(

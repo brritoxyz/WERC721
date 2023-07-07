@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeCastLib} from "solady/utils/SafeCastLib.sol";
+import {FrontPageBook} from "src/frontPage/FrontPageBook.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
 import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
@@ -12,6 +13,7 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
     uint256 internal constant MAX_SUPPLY = 10_000;
     uint256 internal constant MINT_PRICE = 0.069 ether;
 
+    FrontPageBook internal immutable book;
     FrontPage internal immutable page;
     FrontPageERC721 internal immutable collection;
 
@@ -30,14 +32,26 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
     receive() external payable {}
 
     constructor() {
-        page = new FrontPage(
-            name,
-            symbol,
-            payable(address(this)),
-            MAX_SUPPLY,
-            MINT_PRICE
+        book = new FrontPageBook();
+
+        book.upgradeCollection(bytes32(0), type(FrontPageERC721).creationCode);
+        book.upgradePage(bytes32(0), type(FrontPage).creationCode);
+        (address newCollection, address newPage) = book.createPage(
+            FrontPageBook.CloneArgs(
+                name,
+                symbol,
+                creator,
+                MAX_SUPPLY,
+                MINT_PRICE
+            ),
+            book.currentCollectionVersion(),
+            book.currentVersion(),
+            bytes32(0),
+            bytes32(0)
         );
-        collection = page.collection();
+
+        page = FrontPage(newPage);
+        collection = FrontPageERC721(newCollection);
 
         // Assertions for FrontPage initialized state
         assertEq(page.maxSupply(), MAX_SUPPLY);

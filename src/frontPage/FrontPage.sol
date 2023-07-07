@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 import {PageToken} from "src/PageToken.sol";
 import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
-contract FrontPage is ReentrancyGuard, PageToken {
+contract FrontPage is Clone, ReentrancyGuard, PageToken {
     using SafeTransferLib for address payable;
 
     struct Listing {
@@ -16,20 +17,16 @@ contract FrontPage is ReentrancyGuard, PageToken {
         uint96 price;
     }
 
-    // NFT collection deployed by this contract
-    FrontPageERC721 public immutable collection;
+    // Fixed clone immutable arg byte offsets
+    uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
+    uint256 private constant IMMUTABLE_ARG_OFFSET_CREATOR = 20;
+    uint256 private constant IMMUTABLE_ARG_OFFSET_MAX_SUPPLY = 40;
+    uint256 private constant IMMUTABLE_ARG_OFFSET_MINT_PRICE = 72;
 
-    // NFT creator, has permission to update the NFT collection and receive funds
-    address payable public immutable creator;
-
-    // Maximum NFT supply
-    uint256 public immutable maxSupply;
-
-    // NFT mint price
-    uint256 public immutable mintPrice;
+    bool private _initialized;
 
     // Next NFT ID to be minted
-    uint256 public nextId = 1;
+    uint256 public nextId;
 
     mapping(uint256 => Listing) public listings;
 
@@ -49,6 +46,7 @@ contract FrontPage is ReentrancyGuard, PageToken {
     event CancelOffer(address maker);
     event TakeOffer(address taker);
 
+    error AlreadyInitialized();
     error Zero();
     error Soldout();
     error InvalidMsgValue();
@@ -56,43 +54,63 @@ contract FrontPage is ReentrancyGuard, PageToken {
     error Invalid();
     error MulticallError(uint256 callIndex);
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        address payable _creator,
-        uint256 _maxSupply,
-        uint256 _mintPrice
-    ) payable {
-        if (_creator == address(0)) revert Zero();
-        if (_maxSupply == 0) revert Zero();
+    constructor() payable {
+        // Prevent the implementation from being initialized
+        _initialized = true;
+    }
 
-        // Deploy the associated NFT collection
-        collection = new FrontPageERC721(_name, _symbol, _creator);
+    /**
+     * @notice Initializes the minimal proxy contract storage
+     */
+    function initialize() external payable {
+        if (_initialized) revert AlreadyInitialized();
 
-        creator = _creator;
-        maxSupply = _maxSupply;
-        mintPrice = _mintPrice;
+        // Prevent initialize from being called again
+        _initialized = true;
+
+        // Initialize `locked` with the value of 1 (i.e. unlocked)
+        locked = 1;
+
+        // Initialize `nextId` to 1 to reduce gas (SSTORE non-zero to non-zero) for the 1st mint onward
+        // See the following: https://github.com/wolflo/evm-opcodes/blob/main/gas.md#a7-sstore
+        nextId = 1;
+    }
+
+    function collection() public pure returns (FrontPageERC721) {
+        return FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
+    }
+
+    function creator() public pure returns (address payable) {
+        return payable(_getArgAddress(IMMUTABLE_ARG_OFFSET_CREATOR));
+    }
+
+    function maxSupply() public pure returns (uint256) {
+        return _getArgUint256(IMMUTABLE_ARG_OFFSET_MAX_SUPPLY);
+    }
+
+    function mintPrice() public pure returns (uint256) {
+        return _getArgUint256(IMMUTABLE_ARG_OFFSET_MINT_PRICE);
     }
 
     function name() external view override returns (string memory) {
-        return collection.name();
+        return collection().name();
     }
 
     function symbol() external view override returns (string memory) {
-        return collection.symbol();
+        return collection().symbol();
     }
 
     function tokenURI(
         uint256 _tokenId
     ) external view override returns (string memory) {
-        return collection.tokenURI(_tokenId);
+        return collection().tokenURI(_tokenId);
     }
 
     /**
      * @notice Withdraw mint proceeds to the designated recipient (i.e. creator)
      */
     function withdraw() external payable {
-        creator.safeTransferETH(address(this).balance);
+        creator().safeTransferETH(address(this).balance);
     }
 
     /**
@@ -102,10 +120,10 @@ contract FrontPage is ReentrancyGuard, PageToken {
         uint256 _nextId = nextId;
 
         // Revert if the max NFT supply has already been minted
-        if (_nextId > maxSupply) revert Soldout();
+        if (_nextId > maxSupply()) revert Soldout();
 
         // Revert if the value sent does not equal the mint price
-        if (msg.value != mintPrice) revert InvalidMsgValue();
+        if (msg.value != mintPrice()) revert InvalidMsgValue();
 
         // Set the owner of the token ID to the minter
         ownerOf[_nextId] = msg.sender;
@@ -125,7 +143,7 @@ contract FrontPage is ReentrancyGuard, PageToken {
      */
     function batchMint(uint256 quantity) external payable {
         // Revert if the value sent does not equal the mint price
-        if (msg.value != mintPrice * quantity) revert InvalidMsgValue();
+        if (msg.value != mintPrice() * quantity) revert InvalidMsgValue();
 
         unchecked {
             // Update nextId to reflect the additional tokens to be minted
@@ -133,7 +151,7 @@ contract FrontPage is ReentrancyGuard, PageToken {
             uint256 _nextId = (nextId += quantity);
 
             // Revert if the max NFT supply has been or will be exceeded post-mint
-            if (_nextId > maxSupply) revert Soldout();
+            if (_nextId > maxSupply()) revert Soldout();
 
             // If quantity is zero, the loop logic will never be executed
             for (uint256 i = quantity; i > 0; --i) {
@@ -156,7 +174,7 @@ contract FrontPage is ReentrancyGuard, PageToken {
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
-        collection.mint(msg.sender, id);
+        collection().mint(msg.sender, id);
     }
 
     /**
@@ -181,7 +199,7 @@ contract FrontPage is ReentrancyGuard, PageToken {
         }
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
-        collection.batchMint(msg.sender, ids);
+        collection().batchMint(msg.sender, ids);
     }
 
     /**

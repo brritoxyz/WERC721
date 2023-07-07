@@ -6,6 +6,8 @@ import {ERC721 as OZ_ERC721, ERC721Enumerable} from "openzeppelin/token/ERC721/e
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {ERC721A} from "ERC721A/ERC721A.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageBook} from "src/frontPage/FrontPageBook.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
 contract TestERC721Enumerable is ERC721Enumerable {
     constructor() payable OZ_ERC721("Test", "TEST") {}
@@ -107,31 +109,37 @@ contract TestERC721A is ERC721A("Test", "TEST") {
     }
 }
 
-contract TestFrontPage is FrontPage {
-    constructor(
-        address payable _owner,
-        uint256 _maxSupply,
-        uint256 _mintPrice
-    ) payable FrontPage("Test", "TEST", _owner, _maxSupply, _mintPrice) {}
-}
-
 contract BenchmarkBase {
+    uint256 internal constant MAX_SUPPLY = 10_000;
     uint256 internal constant MINT_PRICE = 0.069 ether;
 
     TestERC721Enumerable internal immutable erc721Enumerable;
     TestERC721 internal immutable erc721;
     TestERC721A internal immutable erc721A;
-    TestFrontPage internal immutable frontPage;
+    FrontPage internal immutable frontPage;
 
     constructor() {
         erc721Enumerable = new TestERC721Enumerable();
         erc721 = new TestERC721();
         erc721A = new TestERC721A();
-        frontPage = new TestFrontPage(
-            payable(address(this)),
-            10_000,
-            MINT_PRICE
+        FrontPageBook book = new FrontPageBook();
+
+        book.upgradeCollection(bytes32(0), type(FrontPageERC721).creationCode);
+        book.upgradePage(bytes32(0), type(FrontPage).creationCode);
+        (, address newPage) = book.createPage(
+            FrontPageBook.CloneArgs(
+                "Test",
+                "TEST",
+                payable(address(this)),
+                MAX_SUPPLY,
+                MINT_PRICE
+            ),
+            book.currentCollectionVersion(),
+            book.currentVersion(),
+            bytes32(0),
+            bytes32(0)
         );
+        frontPage = FrontPage(newPage);
     }
 
     function onERC721Received(
