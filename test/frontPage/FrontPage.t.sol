@@ -54,7 +54,7 @@ contract FrontPageTest is Test, FrontPageBase {
         uint256 creatorBalanceBeforeWithdraw = creator.balance;
         uint256 pageBalanceBeforeWithdraw = address(page).balance;
 
-        page.withdraw();
+        page.withdrawProceeds();
 
         assertEq(
             creatorBalanceBeforeWithdraw + pageBalanceBeforeWithdraw,

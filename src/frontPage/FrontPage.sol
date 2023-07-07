@@ -56,6 +56,7 @@ contract FrontPage is Clone, PageERC721, PageExchange {
         return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
     }
 
+    // TODO: Make `creator` updateable
     function creator() public pure returns (address payable) {
         return payable(_getArgAddress(IMMUTABLE_ARG_OFFSET_CREATOR));
     }
@@ -69,9 +70,11 @@ contract FrontPage is Clone, PageERC721, PageExchange {
     }
 
     /**
-     * @notice Withdraw mint proceeds to the designated recipient (i.e. creator)
+     * @notice Withdraw proceeds to `creator`
      */
-    function withdraw() external payable {
+    function withdrawProceeds() external {
+        // BUG: Must limit withdrawals to mint proceeds only
+        // TODO: Restrict this method to being called only by `creator`
         creator().safeTransferETH(address(this).balance);
     }
 
