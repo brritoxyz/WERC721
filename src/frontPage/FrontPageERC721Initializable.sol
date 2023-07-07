@@ -23,25 +23,25 @@ contract FrontPageERC721Initializable is Ownable, ERC721 {
     }
 
     function initialize(
-        address _owner,
         address _frontPage,
+        address _owner,
         string calldata collectionName,
         string calldata collectionSymbol
     ) external payable {
         if (_initialized) revert AlreadyInitialized();
-        if (_owner == address(0)) revert ZeroAddress();
         if (_frontPage == address(0)) revert ZeroAddress();
+        if (_owner == address(0)) revert ZeroAddress();
         if (bytes(collectionName).length == 0) revert EmptyString();
         if (bytes(collectionSymbol).length == 0) revert EmptyString();
 
         // Set _initialized to true to prevent subsequent calls
         _initialized = true;
 
-        // Set the contract owner, who has the ability to set the baseURI
-        _initializeOwner(_owner);
-
         // Set the FrontPage contract, which facilitates J.Page token => ERC-721 redemptions
         frontPage = _frontPage;
+
+        // Set the contract owner, who has the ability to set the baseURI
+        _initializeOwner(_owner);
 
         // Set the collection name and symbol which are publicly accessible via the name and symbol methods
         _name = collectionName;

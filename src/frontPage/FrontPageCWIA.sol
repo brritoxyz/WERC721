@@ -62,7 +62,7 @@ contract FrontPageCWIA is Clone, ReentrancyGuard, PageToken {
     /**
      * @notice Initializes the minimal proxy contract storage
      */
-    function initialize() external {
+    function initialize() external payable {
         if (_initialized) revert AlreadyInitialized();
 
         // Prevent initialize from being called again

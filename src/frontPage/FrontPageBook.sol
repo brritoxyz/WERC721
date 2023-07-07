@@ -11,14 +11,22 @@ interface IFrontPage {
 
 interface IFrontPageERC721 {
     function initialize(
-        address _owner,
         address _frontPage,
+        address _owner,
         string calldata collectionName,
         string calldata collectionSymbol
     ) external payable;
 }
 
 contract FrontPageBook is Book {
+    struct CloneArgs {
+        string name;
+        string symbol;
+        address payable creator;
+        uint256 maxSupply;
+        uint256 mintPrice;
+    }
+
     // Current ERC-721 collection implementation version
     uint256 public currentCollectionVersion;
 
@@ -70,11 +78,7 @@ contract FrontPageBook is Book {
      * @notice Creates a new FrontPage contract
      */
     function createPage(
-        string calldata name,
-        string calldata symbol,
-        address payable creator,
-        uint256 maxSupply,
-        uint256 mintPrice,
+        CloneArgs calldata args,
         uint256 collectionVersion,
         uint256 pageVersion,
         bytes32 collectionSalt,
@@ -85,6 +89,7 @@ contract FrontPageBook is Book {
         ];
         address pageImplementation = pageImplementations[pageVersion];
 
+        // Revert if the versions are invalid (i.e. implementations are non-existent)
         if (collectionImplementation == address(0))
             revert InvalidCollectionVersion();
         if (pageImplementation == address(0)) revert InvalidPageVersion();
@@ -95,20 +100,32 @@ contract FrontPageBook is Book {
             collectionSalt
         );
 
+        // Revert if deploying the collection clone failed
         if (collection == address(0)) revert CollectionCloneFailed();
 
         // Create a minimal proxy for the implementation
         page = LibClone.cloneDeterministic(
             pageImplementation,
-            abi.encodePacked(collection, creator, maxSupply, mintPrice),
+            abi.encodePacked(
+                collection,
+                args.creator,
+                args.maxSupply,
+                args.mintPrice
+            ),
             pageSalt
         );
 
+        // Revert if deploying the page clone failed
         if (page == address(0)) revert PageCloneFailed();
 
         // Initialize clones
         IFrontPage(page).initialize();
-        IFrontPageERC721(collection).initialize(creator, page, name, symbol);
+        IFrontPageERC721(collection).initialize(
+            page,
+            args.creator,
+            args.name,
+            args.symbol
+        );
 
         emit CreateFrontPage(page, collectionVersion, pageVersion);
     }
