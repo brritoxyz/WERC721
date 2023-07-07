@@ -42,8 +42,6 @@ contract FrontPageBook is Book {
 
     error InvalidCollectionVersion();
     error InvalidPageVersion();
-    error CollectionCloneFailed();
-    error PageCloneFailed();
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
@@ -100,9 +98,6 @@ contract FrontPageBook is Book {
             collectionSalt
         );
 
-        // Revert if deploying the collection clone failed
-        if (collection == address(0)) revert CollectionCloneFailed();
-
         // Create a minimal proxy for the implementation
         page = LibClone.cloneDeterministic(
             pageImplementation,
@@ -114,9 +109,6 @@ contract FrontPageBook is Book {
             ),
             pageSalt
         );
-
-        // Revert if deploying the page clone failed
-        if (page == address(0)) revert PageCloneFailed();
 
         // Initialize clones
         IFrontPage(page).initialize();
