@@ -5,6 +5,19 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Book} from "src/Book.sol";
 
+interface IFrontPage {
+    function initialize() external;
+}
+
+interface IFrontPageERC721 {
+    function initialize(
+        address _owner,
+        address _frontPage,
+        string calldata collectionName,
+        string calldata collectionSymbol
+    ) external payable;
+}
+
 contract FrontPageBook is Book {
     // Current ERC-721 collection implementation version
     uint256 public currentCollectionVersion;
@@ -13,6 +26,16 @@ contract FrontPageBook is Book {
     mapping(uint256 => address) public collectionImplementations;
 
     event UpgradeCollection(uint256 version, address implementation);
+    event CreateFrontPage(
+        address indexed page,
+        uint256 indexed collectionVersion,
+        uint256 indexed pageVersion
+    );
+
+    error InvalidCollectionVersion();
+    error InvalidPageVersion();
+    error CollectionCloneFailed();
+    error PageCloneFailed();
 
     /**
      * @notice Increment the version and deploy a new implementation to that version
@@ -41,5 +64,52 @@ contract FrontPageBook is Book {
         collectionImplementations[version] = implementation;
 
         emit UpgradeCollection(version, implementation);
+    }
+
+    /**
+     * @notice Creates a new FrontPage contract
+     */
+    function createPage(
+        string calldata name,
+        string calldata symbol,
+        address payable creator,
+        uint256 maxSupply,
+        uint256 mintPrice,
+        uint256 collectionVersion,
+        uint256 pageVersion,
+        bytes32 collectionSalt,
+        bytes32 pageSalt
+    ) external payable returns (address collection, address page) {
+        address collectionImplementation = collectionImplementations[
+            collectionVersion
+        ];
+        address pageImplementation = pageImplementations[pageVersion];
+
+        if (collectionImplementation == address(0))
+            revert InvalidCollectionVersion();
+        if (pageImplementation == address(0)) revert InvalidPageVersion();
+
+        // TODO: Consider using CWIA for the collection clones after FrontPage is done
+        collection = LibClone.cloneDeterministic(
+            collectionImplementation,
+            collectionSalt
+        );
+
+        if (collection == address(0)) revert CollectionCloneFailed();
+
+        // Create a minimal proxy for the implementation
+        page = LibClone.cloneDeterministic(
+            pageImplementation,
+            abi.encodePacked(collection, creator, maxSupply, mintPrice),
+            pageSalt
+        );
+
+        if (page == address(0)) revert PageCloneFailed();
+
+        // Initialize clones
+        IFrontPage(page).initialize();
+        IFrontPageERC721(collection).initialize(creator, page, name, symbol);
+
+        emit CreateFrontPage(page, collectionVersion, pageVersion);
     }
 }
