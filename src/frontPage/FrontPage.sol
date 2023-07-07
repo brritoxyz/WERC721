@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {Clone} from "solady/utils/Clone.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PageExchange} from "src/PageExchange.sol";
-import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
+import {IERC721} from "src/interfaces/IERC721.sol";
+import {IFrontPageERC721} from "src/interfaces/IFrontPageERC721.sol";
 
 contract FrontPage is Clone, PageExchange {
     using SafeTransferLib for address payable;
@@ -50,8 +51,8 @@ contract FrontPage is Clone, PageExchange {
         nextId = 1;
     }
 
-    function collection() public pure returns (FrontPageERC721) {
-        return FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
+    function collection() public pure returns (address) {
+        return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
     }
 
     function creator() public pure returns (address payable) {
@@ -67,17 +68,17 @@ contract FrontPage is Clone, PageExchange {
     }
 
     function name() external view override returns (string memory) {
-        return collection().name();
+        return IERC721(collection()).name();
     }
 
     function symbol() external view override returns (string memory) {
-        return collection().symbol();
+        return IERC721(collection()).symbol();
     }
 
     function tokenURI(
         uint256 _tokenId
     ) external view override returns (string memory) {
-        return collection().tokenURI(_tokenId);
+        return IERC721(collection()).tokenURI(_tokenId);
     }
 
     /**
@@ -148,7 +149,7 @@ contract FrontPage is Clone, PageExchange {
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
-        collection().mint(msg.sender, id);
+        IFrontPageERC721(collection()).mint(msg.sender, id);
     }
 
     /**
@@ -173,6 +174,6 @@ contract FrontPage is Clone, PageExchange {
         }
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
-        collection().batchMint(msg.sender, ids);
+        IFrontPageERC721(collection()).batchMint(msg.sender, ids);
     }
 }

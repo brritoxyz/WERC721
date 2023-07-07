@@ -257,7 +257,7 @@ contract FrontPageBookTest is Test {
 
         FrontPage frontPage = FrontPage(page);
 
-        assertEq(collection, address(frontPage.collection()));
+        assertEq(collection, frontPage.collection());
         assertEq(cloneArgs.creator, frontPage.creator());
         assertEq(cloneArgs.maxSupply, frontPage.maxSupply());
         assertEq(cloneArgs.mintPrice, frontPage.mintPrice());

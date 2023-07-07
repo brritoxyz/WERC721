@@ -3,23 +3,10 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
-import {PageToken} from "src/PageToken.sol";
 import {PageExchange} from "src/PageExchange.sol";
+import {IERC721} from "src/interfaces/IERC721.sol";
 
-interface IERC721 {
-    function transferFrom(address from, address to, uint256 id) external;
-
-    function safeTransferFrom(address from, address to, uint256 id) external;
-
-    function name() external view returns (string memory);
-
-    function symbol() external view returns (string memory);
-
-    function tokenURI(uint256 id) external view returns (string memory);
-}
-
-contract BackPage is Clone, ReentrancyGuard, PageExchange {
+contract BackPage is Clone, PageExchange {
     using SafeTransferLib for address payable;
 
     bool private _initialized;
