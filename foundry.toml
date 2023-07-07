@@ -4,6 +4,8 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 verbosity = 3
+bytecode_hash = 'none'
+extra_output = ['storageLayout']
 
 [fuzz]
 runs = 512
@@ -17,7 +19,6 @@ fail_on_revert = false
 via_ir = true
 optimizer_runs = 4_294_967_295
 out = 'optimized-out'
-bytecode_hash = 'none'
 
 [profile.optimized.fuzz]
 runs = 64
