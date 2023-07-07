@@ -4,10 +4,7 @@ pragma solidity 0.8.20;
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Book} from "src/Book.sol";
-
-interface IPage {
-    function initialize() external;
-}
+import {BackPage} from "src/backPage/BackPage.sol";
 
 contract BackPageBook is Book {
     // Paired with the collection address to compute the CREATE2 salt
@@ -63,6 +60,6 @@ contract BackPageBook is Book {
         emit CreatePage(implementation, collection, page);
 
         // Initialize the minimal proxy's state variables
-        IPage(page).initialize();
+        BackPage(page).initialize();
     }
 }

@@ -4,19 +4,8 @@ pragma solidity 0.8.20;
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {Book} from "src/Book.sol";
-
-interface IFrontPage {
-    function initialize() external;
-}
-
-interface IFrontPageERC721 {
-    function initialize(
-        address _frontPage,
-        address _owner,
-        string calldata collectionName,
-        string calldata collectionSymbol
-    ) external payable;
-}
+import {FrontPage} from "src/frontPage/FrontPage.sol";
+import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 
 contract FrontPageBook is Book {
     struct CloneArgs {
@@ -111,8 +100,8 @@ contract FrontPageBook is Book {
         );
 
         // Initialize clones
-        IFrontPage(page).initialize();
-        IFrontPageERC721(collection).initialize(
+        FrontPage(page).initialize();
+        FrontPageERC721(collection).initialize(
             page,
             args.creator,
             args.name,

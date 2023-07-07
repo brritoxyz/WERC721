@@ -2,21 +2,7 @@
 pragma solidity 0.8.20;
 
 import {DynamicBufferLib} from "solady/utils/DynamicBufferLib.sol";
-
-interface FrontPage {
-    struct Listing {
-        // Seller address
-        address payable seller;
-        // Adequate for 79m ether
-        uint96 price;
-    }
-
-    function nextId() external view returns (uint256);
-
-    function ownerOf(uint256 id) external view returns (address);
-
-    function listings(uint256 id) external view returns (Listing memory);
-}
+import {FrontPage} from "src/frontPage/FrontPage.sol";
 
 contract FrontPageReader {
     using DynamicBufferLib for DynamicBufferLib.DynamicBuffer;
@@ -67,11 +53,11 @@ contract FrontPageReader {
                 ++id;
             }
 
-            FrontPage.Listing memory listing = frontPage.listings(id);
+            (address seller, uint96 price) = frontPage.listings(id);
 
-            if (listing.seller == address(0)) continue;
+            if (seller == address(0)) continue;
 
-            ids.append(abi.encode(id, listing.seller, listing.price));
+            ids.append(abi.encode(id, seller, price));
         }
     }
 
@@ -81,10 +67,9 @@ contract FrontPageReader {
         uint256 maxId = frontPage.nextId();
 
         for (uint256 id = 1; id < maxId; ) {
-            FrontPage.Listing memory listing = frontPage.listings(id);
+            (address seller, uint96 price) = frontPage.listings(id);
 
-            if (listing.seller == account)
-                ids.append(abi.encode(id, listing.price));
+            if (seller == account) ids.append(abi.encode(id, price));
 
             unchecked {
                 ++id;
