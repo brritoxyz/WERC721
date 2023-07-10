@@ -42,7 +42,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     error Insufficient();
     error WrongFrom();
     error UnsafeRecipient();
-    error NotAuthorized();
+    error NotApproved();
 
     constructor() payable {
         // Prevent the implementation from being initialized
@@ -142,7 +142,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
         // Revert if `msg.sender` is not `from` and does not have transfer approval
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotAuthorized();
+            revert NotApproved();
 
         // Set new owner as `to`
         ownerOf[id] = to;
@@ -155,7 +155,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     ) external {
         // Revert if `msg.sender` is not `from` and does not have transfer approval
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotAuthorized();
+            revert NotApproved();
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
