@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
 import {Page} from "src/Page.sol";
@@ -25,8 +26,8 @@ contract FrontPage is Clone, Page {
     error Soldout();
     error InvalidMsgValue();
 
-    function collection() public pure override returns (address) {
-        return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
+    function collection() public pure override returns (ERC721) {
+        return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
     }
 
     // TODO: Make `creator` updateable
@@ -112,7 +113,7 @@ contract FrontPage is Clone, Page {
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
-        FrontPageERC721(collection()).mint(msg.sender, id);
+        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION)).mint(msg.sender, id);
     }
 
     /**
@@ -137,6 +138,6 @@ contract FrontPage is Clone, Page {
         }
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
-        FrontPageERC721(collection()).batchMint(msg.sender, ids);
+        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION)).batchMint(msg.sender, ids);
     }
 }
