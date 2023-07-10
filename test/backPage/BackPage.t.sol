@@ -2,8 +2,8 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
-import {PageERC721} from "src/PageERC721.sol";
 import {BackPageBase} from "test/backPage/BackPageBase.sol";
 
 contract BackPageTest is Test, BackPageBase {
@@ -32,7 +32,7 @@ contract BackPageTest is Test, BackPageBase {
 
     function testOnERC721Received() external {
         assertEq(
-            PageERC721.onERC721Received.selector,
+            ERC721TokenReceiver.onERC721Received.selector,
             page.onERC721Received(address(0), address(0), 1, "")
         );
     }

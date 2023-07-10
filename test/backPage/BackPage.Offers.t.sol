@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
-import {PageExchange} from "src/PageExchange.sol";
+import {Page} from "src/Page.sol";
 import {BackPageBase} from "test/backPage/BackPageBase.sol";
 
 contract BackPageOffersTest is Test, BackPageBase {
@@ -29,7 +29,7 @@ contract BackPageOffersTest is Test, BackPageBase {
         uint256 msgValue = greaterOrLesser ? excessiveValue : insufficientValue;
 
         vm.deal(address(this), msgValue);
-        vm.expectRevert(PageExchange.Invalid.selector);
+        vm.expectRevert(Page.Invalid.selector);
 
         page.makeOffer{value: msgValue}(offerETH, quantity);
     }
@@ -179,7 +179,7 @@ contract BackPageOffersTest is Test, BackPageBase {
         uint256[] memory _ids = new uint256[](1);
         _ids[0] = ids[0];
 
-        vm.expectRevert(PageExchange.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         // Any offer that is not equal to the maker's offer will revert
         page.takeOffer(_ids, maker, offer);

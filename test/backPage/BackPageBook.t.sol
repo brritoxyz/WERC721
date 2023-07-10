@@ -231,7 +231,7 @@ contract BackPageBookTest is Test {
         address pageAddress = book.createPage(collection, version);
 
         assertEq(predeterminedPageAddress, pageAddress);
-        assertEq(address(collection), BackPage(pageAddress).collection());
+        assertEq(address(collection), address(BackPage(pageAddress).collection()));
 
         vm.expectRevert(Page.AlreadyInitialized.selector);
 

@@ -37,10 +37,7 @@ contract FrontPageBookTest is Test {
         vm.prank(unauthorizedCaller);
         vm.expectRevert(Ownable.Unauthorized.selector);
 
-        book.upgradeCollection(
-            bytes32(0),
-            type(FrontPageERC721).creationCode
-        );
+        book.upgradeCollection(bytes32(0), type(FrontPageERC721).creationCode);
     }
 
     function testCannotUpgradeCollectionEmptyBytes() external {
@@ -54,17 +51,11 @@ contract FrontPageBookTest is Test {
     function testCannotUpgradeCollectionCreate2Failed() external {
         assertEq(address(this), book.owner());
 
-        book.upgradeCollection(
-            bytes32(0),
-            type(FrontPageERC721).creationCode
-        );
+        book.upgradeCollection(bytes32(0), type(FrontPageERC721).creationCode);
 
         vm.expectRevert(Book.Create2Failed.selector);
 
-        book.upgradeCollection(
-            bytes32(0),
-            type(FrontPageERC721).creationCode
-        );
+        book.upgradeCollection(bytes32(0), type(FrontPageERC721).creationCode);
     }
 
     function testUpgradeCollection(bytes32 salt) external {
@@ -258,15 +249,13 @@ contract FrontPageBookTest is Test {
 
         FrontPage frontPage = FrontPage(page);
 
-        assertEq(collection, frontPage.collection());
+        assertEq(collection, address(frontPage.collection()));
         assertEq(cloneArgs.creator, frontPage.creator());
         assertEq(cloneArgs.maxSupply, frontPage.maxSupply());
         assertEq(cloneArgs.mintPrice, frontPage.mintPrice());
         assertEq(0, frontPage.nextId());
 
-        FrontPageERC721 frontPageERC721 = FrontPageERC721(
-                collection
-            );
+        FrontPageERC721 frontPageERC721 = FrontPageERC721(collection);
 
         assertEq(cloneArgs.creator, frontPageERC721.owner());
         assertEq(
@@ -282,9 +271,7 @@ contract FrontPageBookTest is Test {
 
         frontPage.initialize();
 
-        vm.expectRevert(
-            FrontPageERC721.AlreadyInitialized.selector
-        );
+        vm.expectRevert(FrontPageERC721.AlreadyInitialized.selector);
 
         frontPageERC721.initialize(
             page,

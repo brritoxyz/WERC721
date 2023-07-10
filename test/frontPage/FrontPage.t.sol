@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
-import {PageExchange} from "src/PageExchange.sol";
+import {Page} from "src/Page.sol";
 import {FrontPageBase} from "test/frontPage/FrontPageBase.sol";
 
 contract FrontPageTest is Test, FrontPageBase {
@@ -227,7 +227,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
         assertEq(address(0), page.ownerOf(id));
 
-        vm.expectRevert(PageExchange.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.redeem(id);
     }
@@ -257,7 +257,7 @@ contract FrontPageTest is Test, FrontPageBase {
 
     function testCannotBatchRedeemUnauthorized() external {
         vm.prank(address(0));
-        vm.expectRevert(PageExchange.Unauthorized.selector);
+        vm.expectRevert(Page.Unauthorized.selector);
 
         page.batchRedeem(ids);
     }

@@ -62,16 +62,32 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         locked = 1;
     }
 
-    function collection() public pure virtual returns (ERC721);
+    /**
+     * @notice Returns the ERC-721 contract (underlying asset)
+     * @return ERC721  ERC-721 contract associated with this Page
+     */
+    function collection() public view virtual returns (ERC721);
 
+    /**
+     * @notice Returns the result of calling `name` on the ERC-721 contract
+     * @return string  ERC-721 contract `name` return value
+     */
     function name() external view returns (string memory) {
         return collection().name();
     }
 
+    /**
+     * @notice Returns the result of calling `symbol` on the ERC-721 contract
+     * @return string  ERC-721 contract `synbol` return value
+     */
     function symbol() external view returns (string memory) {
         return collection().symbol();
     }
 
+    /**
+     * @notice Returns the result of calling `tokenURI` on the ERC-721 contract
+     * @return string  ERC-721 contract `tokenURI` return value
+     */
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
         return collection().tokenURI(_tokenId);
     }

@@ -2,9 +2,14 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import {PageToken} from "src/PageToken.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
+import {Page} from "src/Page.sol";
 
-contract PageTokenImpl is PageToken {
+contract PageTokenImpl is Page {
+    function collection() public pure override returns (ERC721) {
+        return ERC721(address(0));
+    }
+
     function setOwnerOf(uint256 id, address owner) external {
         ownerOf[id] = owner;
     }
@@ -60,7 +65,7 @@ contract PageTokenTest is Test {
 
         assertEq(0, pageToken.balanceOf(address(this), id));
 
-        vm.expectRevert(PageToken.WrongFrom.selector);
+        vm.expectRevert(Page.WrongFrom.selector);
 
         pageToken.transfer(to, id);
     }
@@ -73,7 +78,7 @@ contract PageTokenTest is Test {
 
         assertEq(1, pageToken.balanceOf(address(this), id));
 
-        vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.transfer(to, id);
     }
@@ -106,7 +111,7 @@ contract PageTokenTest is Test {
 
         vm.prank(from);
 
-        if (toIsUnsafe) vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        if (toIsUnsafe) vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.transfer(to, id);
 
@@ -134,7 +139,7 @@ contract PageTokenTest is Test {
             }
         }
 
-        vm.expectRevert(PageToken.WrongFrom.selector);
+        vm.expectRevert(Page.WrongFrom.selector);
 
         pageToken.batchTransfer(to, ids);
     }
@@ -155,7 +160,7 @@ contract PageTokenTest is Test {
             }
         }
 
-        vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.batchTransfer(to, ids);
     }
@@ -208,7 +213,7 @@ contract PageTokenTest is Test {
 
         assertEq(0, pageToken.balanceOf(from, id));
 
-        vm.expectRevert(PageToken.WrongFrom.selector);
+        vm.expectRevert(Page.WrongFrom.selector);
 
         pageToken.transferFrom(from, to, id);
     }
@@ -222,7 +227,7 @@ contract PageTokenTest is Test {
 
         assertEq(1, pageToken.balanceOf(from, id));
 
-        vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.transferFrom(from, to, id);
     }
@@ -237,7 +242,7 @@ contract PageTokenTest is Test {
         assertEq(1, pageToken.balanceOf(from, id));
         assertTrue(!pageToken.isApprovedForAll(from, address(this)));
 
-        vm.expectRevert(PageToken.NotAuthorized.selector);
+        vm.expectRevert(Page.NotAuthorized.selector);
 
         pageToken.transferFrom(from, to, id);
     }
@@ -306,7 +311,7 @@ contract PageTokenTest is Test {
 
         bool toIsUnsafe = to == address(0);
 
-        if (toIsUnsafe) vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        if (toIsUnsafe) vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.transferFrom(from, to, id);
 
@@ -330,7 +335,7 @@ contract PageTokenTest is Test {
         assertTrue(!pageToken.isApprovedForAll(from, address(this)));
         assertTrue(from != address(this));
 
-        vm.expectRevert(PageToken.NotAuthorized.selector);
+        vm.expectRevert(Page.NotAuthorized.selector);
 
         pageToken.batchTransferFrom(from, to, ids);
     }
@@ -351,7 +356,7 @@ contract PageTokenTest is Test {
         }
 
         vm.prank(from);
-        vm.expectRevert(PageToken.WrongFrom.selector);
+        vm.expectRevert(Page.WrongFrom.selector);
 
         pageToken.batchTransferFrom(from, to, ids);
     }
@@ -377,7 +382,7 @@ contract PageTokenTest is Test {
 
         assertTrue(pageToken.isApprovedForAll(from, address(this)));
 
-        vm.expectRevert(PageToken.WrongFrom.selector);
+        vm.expectRevert(Page.WrongFrom.selector);
 
         pageToken.batchTransferFrom(from, to, ids);
     }
@@ -400,7 +405,7 @@ contract PageTokenTest is Test {
         }
 
         vm.prank(from);
-        vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.batchTransferFrom(from, to, ids);
     }
@@ -428,7 +433,7 @@ contract PageTokenTest is Test {
 
         assertTrue(pageToken.isApprovedForAll(from, address(this)));
 
-        vm.expectRevert(PageToken.UnsafeRecipient.selector);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         pageToken.batchTransferFrom(from, to, ids);
     }
