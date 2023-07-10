@@ -54,11 +54,9 @@ contract PageTests is Test {
                              name
     //////////////////////////////////////////////////////////////*/
 
-    function _testName(
-        address collectionAddress,
-        address pageAddress
-    ) internal {
-        string memory collectionName = ERC721(collectionAddress).name();
+    function _testName(address pageAddress) internal {
+        ERC721 collection = Page(pageAddress).collection();
+        string memory collectionName = collection.name();
         string memory pageName = Page(pageAddress).name();
 
         assertEq(
@@ -71,11 +69,9 @@ contract PageTests is Test {
                              symbol
     //////////////////////////////////////////////////////////////*/
 
-    function _testSymbol(
-        address collectionAddress,
-        address pageAddress
-    ) internal {
-        string memory collectionSymbol = ERC721(collectionAddress).symbol();
+    function _testSymbol(address pageAddress) internal {
+        ERC721 collection = Page(pageAddress).collection();
+        string memory collectionSymbol = collection.symbol();
         string memory pageSymbol = Page(pageAddress).symbol();
 
         assertEq(
@@ -88,20 +84,39 @@ contract PageTests is Test {
                              tokenURI
     //////////////////////////////////////////////////////////////*/
 
-    function _testTokenURI(
-        address collectionAddress,
-        address pageAddress,
-        uint256 id
-    ) internal {
-        string memory collectionTokenURI = ERC721(collectionAddress).tokenURI(
-            id
-        );
+    function _testTokenURI(address pageAddress, uint256 id) internal {
+        ERC721 collection = Page(pageAddress).collection();
+        string memory collectionTokenURI = collection.tokenURI(id);
         string memory pageTokenURI = Page(pageAddress).tokenURI(id);
 
         assertEq(
             keccak256(abi.encode(collectionTokenURI)),
             keccak256(abi.encode(pageTokenURI))
         );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setApprovalForAll
+    //////////////////////////////////////////////////////////////*/
+
+    function _testSetApprovalForAll(
+        Page page,
+        address owner,
+        address operator
+    ) internal {
+        assertEq(false, page.isApprovedForAll(owner, operator));
+
+        vm.prank(owner);
+
+        page.setApprovalForAll(operator, true);
+
+        assertEq(true, page.isApprovedForAll(owner, operator));
+
+        vm.prank(owner);
+
+        page.setApprovalForAll(operator, false);
+
+        assertEq(false, page.isApprovedForAll(owner, operator));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -122,7 +137,6 @@ contract PageTests is Test {
         // Pre-deposit state
         assertEq(msgSender, collection.ownerOf(id));
         assertEq(address(0), page.ownerOf(id));
-        assertEq(0, page.balanceOf(recipient, id));
 
         vm.prank(msgSender);
         vm.expectEmit(true, true, true, true, address(collection));
@@ -134,6 +148,5 @@ contract PageTests is Test {
         // Post-deposit state
         assertEq(address(page), collection.ownerOf(id));
         assertEq(recipient, page.ownerOf(id));
-        assertEq(1, page.balanceOf(recipient, id));
     }
 }

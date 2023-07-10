@@ -46,7 +46,7 @@ contract BackPageTests is Test, ERC721TokenReceiver, PageTests {
     //////////////////////////////////////////////////////////////*/
 
     function testName() external {
-        _testName(address(collection), address(page));
+        _testName(address(page));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ contract BackPageTests is Test, ERC721TokenReceiver, PageTests {
     //////////////////////////////////////////////////////////////*/
 
     function testSymbol() external {
-        _testSymbol(address(collection), address(page));
+        _testSymbol(address(page));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -62,7 +62,15 @@ contract BackPageTests is Test, ERC721TokenReceiver, PageTests {
     //////////////////////////////////////////////////////////////*/
 
     function testTokenURI(uint256 id) external {
-        _testTokenURI(address(collection), address(page), id);
+        _testTokenURI(address(page), id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setApprovalForAll
+    //////////////////////////////////////////////////////////////*/
+
+    function testSetApprovalForAll() external {
+        _testSetApprovalForAll(page, address(this), address(1));
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -92,13 +92,6 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         return collection().tokenURI(_tokenId);
     }
 
-    function balanceOf(
-        address owner,
-        uint256 id
-    ) external view returns (uint256) {
-        return ownerOf[id] == owner ? 1 : 0;
-    }
-
     function setApprovalForAll(address operator, bool approved) external {
         isApprovedForAll[msg.sender][operator] = approved;
     }
