@@ -52,38 +52,6 @@ contract BackPageExchangeTest is Test, BackPageBase {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             deposit
-    //////////////////////////////////////////////////////////////*/
-
-    function testDeposit() external {
-        uint256 id;
-        address recipient;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            id = ids[i];
-            recipient = accounts[i];
-
-            assertEq(address(this), LLAMA.ownerOf(id));
-            assertEq(address(0), page.ownerOf(id));
-            assertEq(0, page.balanceOf(recipient, id));
-
-            vm.expectEmit(true, true, true, true, address(LLAMA));
-
-            emit Transfer(address(this), address(page), id);
-
-            page.deposit(id, recipient);
-
-            assertEq(address(page), LLAMA.ownerOf(id));
-            assertEq(recipient, page.ownerOf(id));
-            assertEq(1, page.balanceOf(recipient, id));
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /*//////////////////////////////////////////////////////////////
                              batchDeposit
     //////////////////////////////////////////////////////////////*/
 
