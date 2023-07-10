@@ -28,7 +28,6 @@ contract BackPageExchangeTest is Test, BackPageBase {
         uint256[] ids,
         uint256[] amounts
     );
-    event SetTipRecipient(address tipRecipient);
     event List(uint256 id);
     event Edit(uint256 id);
     event Cancel(uint256 id);
