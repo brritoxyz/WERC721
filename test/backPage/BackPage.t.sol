@@ -25,6 +25,47 @@ contract BackPageTests is Test, ERC721TokenReceiver, PageTests {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             initialize
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotInitializeAlreadyInitialized() external {
+        // All deployed pages via Book are initialized
+        _testInitializeAlreadyInitialized(address(page));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             collection
+    //////////////////////////////////////////////////////////////*/
+
+    function testCollection() external {
+        _testCollection(address(collection), address(page));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             name
+    //////////////////////////////////////////////////////////////*/
+
+    function testName() external {
+        _testName(address(collection), address(page));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             symbol
+    //////////////////////////////////////////////////////////////*/
+
+    function testSymbol() external {
+        _testSymbol(address(collection), address(page));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             tokenURI
+    //////////////////////////////////////////////////////////////*/
+
+    function testTokenURI(uint256 id) external {
+        _testTokenURI(address(collection), address(page), id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                              deposit
     //////////////////////////////////////////////////////////////*/
 
@@ -36,6 +77,6 @@ contract BackPageTests is Test, ERC721TokenReceiver, PageTests {
         collection.mint(msgSender, id);
         collection.setApprovalForAll(address(page), true);
 
-        _deposit(page, msgSender, id, recipient);
+        _testDeposit(page, msgSender, id, recipient);
     }
 }
