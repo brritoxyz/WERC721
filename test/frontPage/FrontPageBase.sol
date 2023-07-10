@@ -27,7 +27,7 @@ contract FrontPageBase is Test, ERC721TokenReceiver {
     ];
 
     // Minted token IDs for testing
-    uint256[] internal ids = [1, 2, 3];
+    uint256[] internal ids = [0, 1, 2];
 
     receive() external payable {}
 

@@ -9,6 +9,7 @@ import {Book} from "src/Book.sol";
 import {FrontPageBook} from "src/frontPage/FrontPageBook.sol";
 import {FrontPage} from "src/frontPage/FrontPage.sol";
 import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
+import {Page} from "src/Page.sol";
 
 contract FrontPageBookTest is Test {
     FrontPageBook private immutable book;
@@ -261,7 +262,7 @@ contract FrontPageBookTest is Test {
         assertEq(cloneArgs.creator, frontPage.creator());
         assertEq(cloneArgs.maxSupply, frontPage.maxSupply());
         assertEq(cloneArgs.mintPrice, frontPage.mintPrice());
-        assertEq(1, frontPage.nextId());
+        assertEq(0, frontPage.nextId());
 
         FrontPageERC721 frontPageERC721 = FrontPageERC721(
                 collection
@@ -277,7 +278,7 @@ contract FrontPageBookTest is Test {
             keccak256(bytes(frontPageERC721.symbol()))
         );
 
-        vm.expectRevert(FrontPage.AlreadyInitialized.selector);
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         frontPage.initialize();
 

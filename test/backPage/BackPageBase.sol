@@ -6,6 +6,7 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
+import {Page} from "src/Page.sol";
 
 contract BackPageBase is Test, ERC721TokenReceiver {
     ERC721 internal constant LLAMA =
@@ -49,7 +50,7 @@ contract BackPageBase is Test, ERC721TokenReceiver {
         assertEq(address(page), book.pages(implementation, LLAMA));
 
         // Verify that page cannot be initialized again
-        vm.expectRevert(BackPage.AlreadyInitialized.selector);
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         page.initialize();
 

@@ -10,6 +10,7 @@ import {TestUtils} from "test/TestUtils.sol";
 import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {Book} from "src/Book.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
+import {Page} from "src/Page.sol";
 
 contract DummyERC20 is ERC20("", "", 18) {
     constructor() payable {}
@@ -65,7 +66,7 @@ contract BackPageBookTest is Test {
         assertTrue(version != 0);
         assertTrue(implementation != address(0));
 
-        vm.expectRevert(BackPage.AlreadyInitialized.selector);
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         page.initialize();
     }
@@ -194,7 +195,7 @@ contract BackPageBookTest is Test {
         assertEq(address(page), book.pages(pageImplementation, LLAMA));
 
         // Should be initialized
-        vm.expectRevert(BackPage.AlreadyInitialized.selector);
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         BackPage(newPage).initialize();
     }
@@ -232,7 +233,7 @@ contract BackPageBookTest is Test {
         assertEq(predeterminedPageAddress, pageAddress);
         assertEq(address(collection), BackPage(pageAddress).collection());
 
-        vm.expectRevert(BackPage.AlreadyInitialized.selector);
+        vm.expectRevert(Page.AlreadyInitialized.selector);
 
         BackPage(pageAddress).initialize();
     }

@@ -264,8 +264,6 @@ contract FrontPageTest is Test, FrontPageBase {
 
     function testBatchRedeem() external {
         for (uint256 i = 0; i < ids.length; ) {
-            ids[i] = i + 1;
-
             assertEq(address(this), page.ownerOf(ids[i]));
 
             vm.expectRevert(ERC721.TokenDoesNotExist.selector);

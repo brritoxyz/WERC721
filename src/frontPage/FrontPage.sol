@@ -3,10 +3,10 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PageExchange} from "src/PageExchange.sol";
 import {FrontPageERC721} from "src/frontPage/FrontPageERC721.sol";
+import {Page} from "src/Page.sol";
 
-contract FrontPage is Clone, PageExchange {
+contract FrontPage is Clone, Page {
     using SafeTransferLib for address payable;
 
     // Fixed clone immutable arg byte offsets
@@ -15,40 +15,15 @@ contract FrontPage is Clone, PageExchange {
     uint256 private constant IMMUTABLE_ARG_OFFSET_MAX_SUPPLY = 40;
     uint256 private constant IMMUTABLE_ARG_OFFSET_MINT_PRICE = 72;
 
-    bool private _initialized;
-
     // Next NFT ID to be minted
     uint256 public nextId;
 
     event Mint();
     event BatchMint();
 
-    error AlreadyInitialized();
     error Zero();
     error Soldout();
     error InvalidMsgValue();
-
-    constructor() payable {
-        // Prevent the implementation from being initialized
-        _initialized = true;
-    }
-
-    /**
-     * @notice Initializes the minimal proxy contract storage
-     */
-    function initialize() external payable {
-        if (_initialized) revert AlreadyInitialized();
-
-        // Prevent initialize from being called again
-        _initialized = true;
-
-        // Initialize `locked` with the value of 1 (i.e. unlocked)
-        locked = 1;
-
-        // Initialize `nextId` to 1 to reduce gas (SSTORE non-zero to non-zero) for the 1st mint onward
-        // See the following: https://github.com/wolflo/evm-opcodes/blob/main/gas.md#a7-sstore
-        nextId = 1;
-    }
 
     function collection() public pure override returns (address) {
         return _getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION);
