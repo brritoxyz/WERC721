@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {BackPageBook} from "src/backPage/BackPageBook.sol";
 import {BackPage} from "src/backPage/BackPage.sol";
@@ -49,6 +50,20 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.deposit(id, to);
 
         vm.stopPrank();
+    }
+
+    function _batchMintDeposit(address to, uint256 quantity) internal returns (uint256[] memory ids) {
+        ids = new uint256[](quantity);
+
+        for (uint256 i = 0; i < quantity; ) {
+            ids[i] = i;
+
+            _mintDeposit(to, ids[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -610,5 +625,99 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         // Post-deposit state
         assertEq(address(page), collection.ownerOf(id));
         assertEq(recipient, page.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchDeposit
+    //////////////////////////////////////////////////////////////*/
+
+    function testBatchDeposit() external {
+        uint256 quantity = 5;
+        uint256[] memory ids = new uint256[](quantity);
+        address msgSender = address(this);
+        address recipient = accounts[0];
+
+        for (uint256 i = 0; i < ids.length; ) {
+            ids[i] = i;
+
+            collection.mint(msgSender, ids[i]);
+
+            assertEq(address(0), page.ownerOf(ids[i]));
+            assertEq(msgSender, collection.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.startPrank(msgSender);
+
+        collection.setApprovalForAll(address(page), true);
+        page.batchDeposit(ids, recipient);
+
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < ids.length; ) {
+            assertEq(recipient, page.ownerOf(ids[i]));
+            assertEq(address(page), collection.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             withdraw
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotWithdrawRecipientZero() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+        address recipient = address(0);
+
+        _mintDeposit(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectRevert(ERC721.TransferToZeroAddress.selector);
+
+        page.withdraw(id, recipient);
+    }
+
+    function testCannotWithdrawMsgSenderUnauthorized() external {
+        address owner = address(this);
+        address msgSender = accounts[0];
+        uint256 id = 0;
+        address recipient = accounts[1];
+
+        _mintDeposit(owner, id);
+
+        assertTrue(msgSender != page.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.withdraw(id, recipient);
+    }
+
+    function testWithdraw() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+        address recipient = accounts[0];
+
+        _mintDeposit(msgSender, id);
+
+        assertEq(msgSender, page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(address(page), recipient, id);
+
+        page.withdraw(id, recipient);
+
+        assertEq(address(0), page.ownerOf(id));
+        assertEq(recipient, collection.ownerOf(id));
     }
 }
