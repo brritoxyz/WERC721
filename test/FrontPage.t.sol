@@ -14,6 +14,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     bytes32 internal constant SALT = keccak256("SALT");
     string internal constant NAME = "Test";
     string internal constant SYMBOL = "TEST";
+    address payable internal constant CREATOR = payable(address(this));
     uint256 internal constant MAX_SUPPLY = 12_345;
     uint256 internal constant MINT_PRICE = 0.069 ether;
 
@@ -40,7 +41,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
             FrontPageBook.CloneArgs({
                 name: NAME,
                 symbol: SYMBOL,
-                creator: payable(address(this)),
+                creator: CREATOR,
                 maxSupply: MAX_SUPPLY,
                 mintPrice: MINT_PRICE
             }),
@@ -51,5 +52,37 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         );
         collection = FrontPageERC721(collectionAddress);
         page = FrontPage(pageAddress);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             collection
+    //////////////////////////////////////////////////////////////*/
+
+    function testCollection() external {
+        assertEq(address(collection), address(page.collection()));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             creator
+    //////////////////////////////////////////////////////////////*/
+
+    function testCreator() external {
+        assertEq(CREATOR, page.creator());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             maxSupply
+    //////////////////////////////////////////////////////////////*/
+
+    function testMaxSupply() external {
+        assertEq(MAX_SUPPLY, page.maxSupply());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             mintPrice
+    //////////////////////////////////////////////////////////////*/
+
+    function testMintPrice() external {
+        assertEq(MINT_PRICE, page.mintPrice());
     }
 }
