@@ -16,6 +16,9 @@ contract FrontPage is Clone, Page {
     uint256 private constant IMMUTABLE_ARG_OFFSET_MAX_SUPPLY = 40;
     uint256 private constant IMMUTABLE_ARG_OFFSET_MINT_PRICE = 72;
 
+    // ETH proceeds from mints
+    uint256 public mintProceeds;
+
     // Next NFT ID to be minted
     uint256 public nextId;
 
@@ -47,9 +50,16 @@ contract FrontPage is Clone, Page {
      * @notice Withdraw proceeds to `creator`
      */
     function withdrawProceeds() external {
-        // BUG: Must limit withdrawals to mint proceeds only
-        // TODO: Restrict this method to being called only by `creator`
-        creator().safeTransferETH(address(this).balance);
+        if (msg.sender != creator()) revert Unauthorized();
+
+        // Withdraw all except 1 wei to reduce SSTORE gas costs when updating `mintProceeds` by users
+        // See here (non-zero to non-zero): https://github.com/wolflo/evm-opcodes/blob/main/gas.md#a7-sstore
+        uint256 withdrawAmount = mintProceeds - 1;
+
+        // Update `mintProceeds` to reflect the amount being withdrawn
+        mintProceeds -= withdrawAmount;
+
+        creator().safeTransferETH(withdrawAmount);
     }
 
     /**
@@ -67,9 +77,13 @@ contract FrontPage is Clone, Page {
         // Set the owner of the token ID to the minter
         ownerOf[_nextId] = msg.sender;
 
-        // Will not overflow since nextId is less than or equal to maxSupply
         unchecked {
+            // Increase `mintProceeds` by the ETH amount paid for the mint
+            // Will not overflow since there is not enough ETH in circulation
+            mintProceeds += msg.value;
+
             // Increment nextId to the next NFT ID to be minted
+            // Will not overflow since nextId is less than or equal to maxSupply
             ++nextId;
         }
 
@@ -92,6 +106,10 @@ contract FrontPage is Clone, Page {
             // Revert if the max NFT supply has been or will be exceeded post-mint
             if (_nextId > maxSupply()) revert Soldout();
 
+            // Increase `mintProceeds` by the ETH amount paid for the mint
+            // Will not overflow since there is not enough ETH in circulation
+            mintProceeds += msg.value;
+
             // If quantity is zero, the loop logic will never be executed
             for (uint256 i = quantity; i > 0; --i) {
                 // Set the owner of the token ID to the minter
@@ -113,7 +131,10 @@ contract FrontPage is Clone, Page {
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
-        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION)).mint(msg.sender, id);
+        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION)).mint(
+            msg.sender,
+            id
+        );
     }
 
     /**
@@ -138,6 +159,7 @@ contract FrontPage is Clone, Page {
         }
 
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
-        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION)).batchMint(msg.sender, ids);
+        FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION))
+            .batchMint(msg.sender, ids);
     }
 }
