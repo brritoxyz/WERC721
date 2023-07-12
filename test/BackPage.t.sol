@@ -99,6 +99,25 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(address(page), collection.ownerOf(id));
     }
 
+    function _batchMintDepositList(
+        address to,
+        uint256 quantity
+    ) internal returns (uint256[] memory ids, uint96[] memory prices) {
+        ids = new uint256[](quantity);
+        prices = new uint96[](quantity);
+
+        for (uint256 i = 0; i < quantity; ) {
+            ids[i] = i;
+            prices[i] = uint96(1 ether) * uint96(i + 1);
+
+            _mintDepositList(to, ids[i], prices[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /*//////////////////////////////////////////////////////////////
                              initialize
     //////////////////////////////////////////////////////////////*/
@@ -1003,7 +1022,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.assume(price != 0);
         vm.deal(msgSender, price);
 
-        // Set `seller` to this address to avoid reversions from contracts w/o fallback methods
+        // Set `seller` to this address to avoid reversions from contract accounts w/o fallback methods
         address seller = address(this);
 
         _mintDepositList(seller, id, price);
@@ -1082,6 +1101,309 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             assertEq(prices[i], listingPrice);
             assertEq(address(page), page.ownerOf(id));
             assertEq(address(page), collection.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchEdit
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchEditMismatchedArrayInvalid() external {
+        address msgSender = address(this);
+        uint256 listQuantity = 5;
+        (uint256[] memory ids, ) = _batchMintDepositList(
+            msgSender,
+            listQuantity
+        );
+        uint96[] memory newPrices = new uint96[](0);
+
+        vm.prank(msgSender);
+        vm.expectRevert(stdError.indexOOBError);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testCannotBatchEditNewPriceZero() external {
+        address msgSender = address(this);
+        uint256 listQuantity = 5;
+        (uint256[] memory ids, ) = _batchMintDepositList(
+            msgSender,
+            listQuantity
+        );
+        uint96[] memory newPrices = new uint96[](ids.length);
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.Invalid.selector);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testCannotBatchEditUnauthorized() external {
+        address owner = address(this);
+        address unauthorizedMsgSender = accounts[0];
+        uint256 listQuantity = 5;
+        (uint256[] memory ids, ) = _batchMintDepositList(owner, listQuantity);
+        uint96[] memory newPrices = new uint96[](ids.length);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            newPrices[i] = 1 ether;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.batchEdit(ids, newPrices);
+    }
+
+    function testBatchEdit(address msgSender, uint8 listQuantity) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(listQuantity != 0);
+
+        (uint256[] memory ids, uint96[] memory prices) = _batchMintDepositList(
+            msgSender,
+            listQuantity
+        );
+        uint96[] memory newPrices = new uint96[](ids.length);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            newPrices[i] = prices[i] - uint96(i);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchEdit(ids);
+
+        page.batchEdit(ids, newPrices);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            uint256 id = ids[i];
+            (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(msgSender, listingSeller);
+            assertEq(newPrices[id], listingPrice);
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(address(page), collection.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchCancel
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchCancelUnauthorized() external {
+        address owner = address(this);
+        address unauthorizedMsgSender = accounts[0];
+        uint256 listQuantity = 5;
+        (uint256[] memory ids, ) = _batchMintDepositList(owner, listQuantity);
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.batchCancel(ids);
+    }
+
+    function testBatchCancel(address msgSender, uint8 listQuantity) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(listQuantity != 0);
+
+        (uint256[] memory ids, ) = _batchMintDepositList(
+            msgSender,
+            listQuantity
+        );
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchCancel(ids);
+
+        page.batchCancel(ids);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            uint256 id = ids[i];
+            (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(address(0), listingSeller);
+            assertEq(0, listingPrice);
+            assertEq(msgSender, page.ownerOf(id));
+            assertEq(address(page), collection.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchBuy
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchBuyMsgValueInsufficient() external {
+        address seller = address(this);
+        address msgSender = accounts[0];
+        uint256 listQuantity = 5;
+        (uint256[] memory ids, uint96[] memory prices) = _batchMintDepositList(
+            seller,
+            listQuantity
+        );
+        uint256 totalPrice;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            totalPrice += uint256(prices[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 insufficientMsgValue = totalPrice - 1;
+
+        vm.deal(msgSender, totalPrice);
+        vm.prank(msgSender);
+        vm.expectRevert(stdError.arithmeticError);
+
+        // Send an insufficient amount of ETH
+        page.batchBuy{value: insufficientMsgValue}(ids);
+    }
+
+    function testBatchBuy(address msgSender, uint8 listQuantity) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(listQuantity != 0);
+
+        // Set `seller` to this address to avoid reversions from contract accounts w/o fallback methods
+        address seller = address(this);
+
+        (uint256[] memory ids, uint96[] memory prices) = _batchMintDepositList(
+            seller,
+            listQuantity
+        );
+        uint256 totalPrice;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            totalPrice += uint256(prices[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.deal(msgSender, totalPrice);
+
+        uint256 sellerBalanceBefore = seller.balance;
+        uint256 buyerBalanceBefore = msgSender.balance;
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchBuy(ids);
+
+        // Send enough ETH to cover seller proceeds
+        page.batchBuy{value: totalPrice}(ids);
+
+        assertEq(sellerBalanceBefore + totalPrice, seller.balance);
+        assertEq(buyerBalanceBefore - totalPrice, msgSender.balance);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            uint256 id = ids[i];
+            (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(address(0), listingSeller);
+            assertEq(0, listingPrice);
+            assertEq(msgSender, page.ownerOf(id));
+            assertEq(address(page), collection.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function testBatchBuyPartial(
+        address msgSender,
+        uint8 listQuantity
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(listQuantity != 0);
+
+        // Set `seller` to this address to avoid reversions from contract accounts w/o fallback methods
+        address seller = address(this);
+
+        // Index of the listing to cancel to test partial buy fill
+        uint256 canceledIndex = 0;
+
+        (uint256[] memory ids, uint96[] memory prices) = _batchMintDepositList(
+            seller,
+            listQuantity
+        );
+        uint256 totalPrice;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            totalPrice += uint256(prices[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(seller);
+
+        page.cancel(ids[canceledIndex]);
+
+        vm.deal(msgSender, totalPrice);
+
+        uint256 sellerBalanceBefore = seller.balance;
+        uint256 buyerBalanceBefore = msgSender.balance;
+        uint256 expectedRefund = prices[canceledIndex];
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchBuy(ids);
+
+        // Send enough ETH to cover seller proceeds
+        page.batchBuy{value: totalPrice}(ids);
+
+        // Seller should not receive ETH for canceled listing
+        assertEq(
+            (sellerBalanceBefore + totalPrice) - expectedRefund,
+            seller.balance
+        );
+
+        // Buyer should have received a refund for the unfilled listing(s)
+        assertEq(
+            (buyerBalanceBefore - totalPrice) + expectedRefund,
+            msgSender.balance
+        );
+
+        for (uint256 i = 0; i < ids.length; ) {
+            uint256 id = ids[i];
+            (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(address(0), listingSeller);
+            assertEq(0, listingPrice);
+            assertEq(address(page), collection.ownerOf(id));
+
+            if (i == canceledIndex) {
+                assertEq(seller, page.ownerOf(id));
+            } else {
+                assertEq(msgSender, page.ownerOf(id));
+            }
 
             unchecked {
                 ++i;
