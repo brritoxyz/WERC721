@@ -1335,11 +1335,12 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     }
 
     function testBatchBuyPartial(
-        address msgSender,
         uint8 listQuantity
     ) external {
-        vm.assume(msgSender != address(0));
         vm.assume(listQuantity != 0);
+
+        // Set `msgSender` to an EOA to avoid reversions from contract accounts w/o fallback methods
+        address msgSender = accounts[0];
 
         // Set `seller` to this address to avoid reversions from contract accounts w/o fallback methods
         address seller = address(this);

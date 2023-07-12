@@ -14,9 +14,10 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     bytes32 internal constant SALT = keccak256("SALT");
     string internal constant NAME = "Test";
     string internal constant SYMBOL = "TEST";
-    address payable internal constant CREATOR = payable(address(this));
     uint256 internal constant MAX_SUPPLY = 12_345;
     uint256 internal constant MINT_PRICE = 0.069 ether;
+
+    address payable internal immutable creator = payable(address(this));
 
     FrontPageBook internal immutable book = new FrontPageBook();
     FrontPageERC721 internal immutable collection;
@@ -41,7 +42,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
             FrontPageBook.CloneArgs({
                 name: NAME,
                 symbol: SYMBOL,
-                creator: CREATOR,
+                creator: creator,
                 maxSupply: MAX_SUPPLY,
                 mintPrice: MINT_PRICE
             }),
@@ -67,7 +68,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCreator() external {
-        assertEq(CREATOR, page.creator());
+        assertEq(creator, page.creator());
     }
 
     /*//////////////////////////////////////////////////////////////
