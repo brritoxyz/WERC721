@@ -180,23 +180,6 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         }
     }
 
-    function balanceOfBatch(
-        address[] calldata owners,
-        uint256[] calldata ids
-    ) external view returns (uint256[] memory balances) {
-        uint256 ownersLength = owners.length;
-        balances = new uint256[](ownersLength);
-
-        for (uint256 i = 0; i < ownersLength; ) {
-            // Reverts with index OOB error if arrays are mismatched
-            balances[i] = ownerOf[ids[i]] == owners[i] ? 1 : 0;
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     /**
      * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
      * @param  id         uint256  Token ID
