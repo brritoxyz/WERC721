@@ -24,6 +24,19 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         address indexed to,
         uint256 indexed id
     );
+    event List(uint256 id);
+    event Edit(uint256 id);
+    event Cancel(uint256 id);
+    event BatchList(uint256[] ids);
+    event BatchEdit(uint256[] ids);
+    event BatchCancel(uint256[] ids);
+    event Buy(uint256 id);
+    event BatchBuy(uint256[] ids);
+    event MakeOffer(address maker);
+    event CancelOffer(address maker);
+    event TakeOffer(address taker);
+
+    receive() external payable {}
 
     constructor() {
         // Call `upgradePage` and set the first page implementation
@@ -36,11 +49,6 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page = BackPage(book.createPage(collection, version));
     }
 
-    /**
-     * @notice Mint an ERC-721 and deposit it for a Page token
-     * @param  to  address  Recipient
-     * @param  id  uint256  Token ID
-     */
     function _mintDeposit(address to, uint256 id) internal {
         collection.mint(to, id);
 
@@ -50,9 +58,16 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.deposit(id, to);
 
         vm.stopPrank();
+
+        // Checks to verify token ownership of the J.Page and ERC-721 tokens
+        assertEq(to, page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
     }
 
-    function _batchMintDeposit(address to, uint256 quantity) internal returns (uint256[] memory ids) {
+    function _batchMintDeposit(
+        address to,
+        uint256 quantity
+    ) internal returns (uint256[] memory ids) {
         ids = new uint256[](quantity);
 
         for (uint256 i = 0; i < quantity; ) {
@@ -64,6 +79,24 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                 ++i;
             }
         }
+    }
+
+    function _mintDepositList(address to, uint256 id, uint96 price) internal {
+        _mintDeposit(to, id);
+
+        vm.prank(to);
+        vm.expectEmit(true, false, false, false, address(page));
+
+        emit List(id);
+
+        page.list(id, price);
+
+        (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+        assertEq(to, listingSeller);
+        assertEq(price, listingPrice);
+        assertEq(address(page), page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -719,5 +752,340 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         assertEq(address(0), page.ownerOf(id));
         assertEq(recipient, collection.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchWithdraw
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchWithdrawRecipientZero() external {
+        address msgSender = address(this);
+        uint256 mintQuantity = 5;
+        uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
+        address recipient = address(0);
+
+        vm.prank(msgSender);
+        vm.expectRevert(ERC721.TransferToZeroAddress.selector);
+
+        page.batchWithdraw(ids, recipient);
+    }
+
+    function testCannotBatchWithdrawMsgSenderUnauthorized() external {
+        address owner = address(this);
+        address unauthorizedMsgSender = accounts[0];
+        uint256 mintQuantity = 5;
+        uint256[] memory ids = _batchMintDeposit(owner, mintQuantity);
+        address recipient = accounts[0];
+
+        for (uint256 i = 0; i < ids.length; ) {
+            assertTrue(unauthorizedMsgSender != page.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.batchWithdraw(ids, recipient);
+    }
+
+    function testBatchWithdraw() external {
+        address msgSender = address(this);
+        uint256 mintQuantity = 5;
+        uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
+        address recipient = accounts[0];
+
+        vm.prank(msgSender);
+
+        page.batchWithdraw(ids, recipient);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            assertEq(address(0), page.ownerOf(ids[i]));
+            assertEq(recipient, collection.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             list
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotListUnauthorized() external {
+        address owner = address(this);
+        address unauthorizedMsgSender = accounts[0];
+        uint256 id = 0;
+        uint96 price = 1 ether;
+
+        _mintDeposit(owner, id);
+
+        assertTrue(unauthorizedMsgSender != page.ownerOf(id));
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.list(id, price);
+    }
+
+    function testCannotListPriceZero() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+        uint96 price = 0;
+
+        _mintDeposit(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.Invalid.selector);
+
+        page.list(id, price);
+    }
+
+    function testList(address msgSender, uint256 id, uint96 price) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(price != 0);
+
+        _mintDeposit(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit List(id);
+
+        page.list(id, price);
+
+        (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+        assertEq(msgSender, listingSeller);
+        assertEq(price, listingPrice);
+        assertEq(address(page), page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             edit
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotEditPriceZero() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+        uint96 price = 1 ether;
+        uint96 newPrice = 0;
+
+        _mintDepositList(msgSender, id, price);
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.Invalid.selector);
+
+        page.edit(id, newPrice);
+    }
+
+    function testCannotEditUnauthorized() external {
+        address owner = address(this);
+        address msgSender = accounts[0];
+        uint256 id = 0;
+        uint96 price = 1 ether;
+        uint96 newPrice = 2 ether;
+
+        _mintDepositList(owner, id, price);
+
+        (address listingSeller, ) = page.listings(id);
+
+        assertTrue(msgSender != listingSeller);
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.edit(id, newPrice);
+    }
+
+    function testEdit(
+        address msgSender,
+        uint256 id,
+        uint96 price,
+        uint96 newPrice
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(price != 0);
+        vm.assume(newPrice != 0);
+        vm.assume(newPrice != price);
+
+        _mintDepositList(msgSender, id, price);
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit Edit(id);
+
+        page.edit(id, newPrice);
+
+        (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+        assertEq(msgSender, listingSeller);
+        assertEq(newPrice, listingPrice);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             cancel
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotCancelUnauthorized() external {
+        address owner = address(this);
+        address unauthorizedMsgSender = accounts[0];
+        uint256 id = 0;
+        uint96 price = 1 ether;
+
+        _mintDepositList(owner, id, price);
+
+        (address listingSeller, ) = page.listings(id);
+
+        assertTrue(unauthorizedMsgSender != listingSeller);
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.cancel(id);
+    }
+
+    function testCancel(address msgSender, uint256 id, uint96 price) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(price != 0);
+
+        _mintDepositList(msgSender, id, price);
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit Cancel(id);
+
+        page.cancel(id);
+
+        (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+        assertEq(address(0), listingSeller);
+        assertEq(0, listingPrice);
+        assertEq(msgSender, page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             buy
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBuyMsgValueInsufficient(bool shouldList) external {
+        address seller = address(this);
+        address msgSender = accounts[0];
+        uint256 id = 0;
+        uint96 price = 1 ether;
+        uint256 insufficientMsgValue = price - 1;
+
+        // Reverts with `Insufficient` if msg.value is insufficient or if not listed
+        if (shouldList) {
+            _mintDepositList(seller, id, price);
+
+            vm.expectRevert(Page.Insufficient.selector);
+        } else {
+            vm.expectRevert(Page.Invalid.selector);
+        }
+
+        vm.deal(msgSender, price);
+        vm.prank(msgSender);
+
+        // Attempt to buy with msg.value less than price
+        page.buy{value: insufficientMsgValue}(id);
+    }
+
+    function testBuy(address msgSender, uint256 id, uint96 price) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(price != 0);
+        vm.deal(msgSender, price);
+
+        // Set `seller` to this address to avoid reversions from contracts w/o fallback methods
+        address seller = address(this);
+
+        _mintDepositList(seller, id, price);
+
+        uint256 sellerBalanceBefore = seller.balance;
+        uint256 buyerBalanceBefore = msgSender.balance;
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit Buy(id);
+
+        page.buy{value: price}(id);
+
+        (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+        assertEq(address(0), listingSeller);
+        assertEq(0, listingPrice);
+        assertEq(sellerBalanceBefore + price, seller.balance);
+        assertEq(buyerBalanceBefore - price, msgSender.balance);
+        assertEq(msgSender, page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             batchList
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotBatchListMismatchedArrayInvalid() external {
+        address msgSender = address(this);
+        uint256 mintQuantity = 5;
+        uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
+        uint96[] memory prices = new uint96[](0);
+
+        assertTrue(ids.length != prices.length);
+
+        vm.expectRevert(stdError.indexOOBError);
+
+        page.batchList(ids, prices);
+    }
+
+    function testBatchList(
+        uint96 price1,
+        uint96 price2,
+        uint96 price3
+    ) external {
+        vm.assume(price1 != 0);
+        vm.assume(price2 != 0);
+        vm.assume(price3 != 0);
+
+        address msgSender = address(this);
+
+        // Must be updated depending on the number of price params
+        uint256 mintQuantity = 3;
+
+        uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
+        uint96[] memory prices = new uint96[](ids.length);
+        prices[0] = price1;
+        prices[1] = price2;
+        prices[2] = price3;
+
+        assertEq(ids.length, prices.length);
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit BatchList(ids);
+
+        page.batchList(ids, prices);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            uint256 id = ids[i];
+            (address listingSeller, uint96 listingPrice) = page.listings(id);
+
+            assertEq(msgSender, listingSeller);
+            assertEq(prices[i], listingPrice);
+            assertEq(address(page), page.ownerOf(id));
+            assertEq(address(page), collection.ownerOf(id));
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
