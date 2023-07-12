@@ -52,13 +52,13 @@ contract FrontPage is Clone, Page {
     function withdrawProceeds() external {
         if (msg.sender != creator()) revert Unauthorized();
 
-        // Withdraw all except 1 wei to reduce SSTORE gas costs when updating `mintProceeds` by users
-        // See here (non-zero to non-zero): https://github.com/wolflo/evm-opcodes/blob/main/gas.md#a7-sstore
-        uint256 withdrawAmount = mintProceeds - 1;
+        // Store the proceeds amount before updating `mintProceeds`
+        uint256 withdrawAmount = mintProceeds;
 
-        // Update `mintProceeds` to reflect the amount being withdrawn
-        mintProceeds -= withdrawAmount;
+        // Set `mintProceeds` to 0 to reflect withdrawal
+        mintProceeds = 0;
 
+        // Transfer the withdraw amount to the creator
         creator().safeTransferETH(withdrawAmount);
     }
 
