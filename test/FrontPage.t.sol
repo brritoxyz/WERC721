@@ -171,6 +171,51 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             setCreator
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSetCreatorUnauthorized() external {
+        address unauthorizedMsgSender = accounts[0];
+        address payable newCreator = payable(accounts[0]);
+
+        assertTrue(unauthorizedMsgSender != page.creator());
+
+        vm.prank(unauthorizedMsgSender);
+        vm.expectRevert(Page.Unauthorized.selector);
+
+        page.setCreator(newCreator);
+    }
+
+    function testCannotSetCreatorZero() external {
+        address msgSender = creator;
+        address payable newCreator = payable(address(0));
+
+        assertEq(msgSender, page.creator());
+
+        vm.prank(msgSender);
+        vm.expectRevert(FrontPage.Zero.selector);
+
+        page.setCreator(newCreator);
+    }
+
+    function testSetCreator() external {
+        address msgSender = creator;
+        address payable newCreator = payable(accounts[0]);
+
+        assertEq(msgSender, page.creator());
+        assertTrue(newCreator != msgSender);
+
+        vm.prank(msgSender);
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit SetCreator(newCreator);
+
+        page.setCreator(newCreator);
+
+        assertEq(newCreator, page.creator());
+    }
+
+    /*//////////////////////////////////////////////////////////////
                              withdrawProceeds
     //////////////////////////////////////////////////////////////*/
 
