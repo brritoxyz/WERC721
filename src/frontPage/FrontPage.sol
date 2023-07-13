@@ -46,12 +46,15 @@ contract FrontPage is Clone, Page {
         return _getArgUint256(IMMUTABLE_ARG_OFFSET_MINT_PRICE);
     }
 
+    modifier onlyCreator() {
+        if (msg.sender != creator()) revert Unauthorized();
+        _;
+    }
+
     /**
      * @notice Withdraw proceeds to `creator`
      */
-    function withdrawProceeds() external {
-        if (msg.sender != creator()) revert Unauthorized();
-
+    function withdrawProceeds() external onlyCreator {
         // Store the proceeds amount before updating `mintProceeds`
         uint256 withdrawAmount = mintProceeds;
 
