@@ -126,7 +126,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         // All deployed pages via Book are initialized
         uint256 locked = uint256(vm.load(address(page), STORAGE_SLOT_LOCKED));
         bool initialized = vm.load(address(page), STORAGE_SLOT_INITIALIZED) ==
-            bytes32(abi.encode(bool(true)));
+            bytes32(abi.encode(true));
 
         assertEq(1, locked);
         assertEq(true, initialized);
@@ -1334,9 +1334,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
     }
 
-    function testBatchBuyPartial(
-        uint8 listQuantity
-    ) external {
+    function testBatchBuyPartial(uint8 listQuantity) external {
         vm.assume(listQuantity != 0);
 
         // Set `msgSender` to an EOA to avoid reversions from contract accounts w/o fallback methods

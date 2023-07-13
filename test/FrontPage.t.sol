@@ -11,6 +11,7 @@ import {Page} from "src/Page.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 
 contract FrontPageTests is Test, ERC721TokenReceiver {
+    bytes32 internal constant STORAGE_SLOT_INITIALIZED = bytes32(uint256(1));
     bytes32 internal constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(8));
     bytes32 internal constant SALT = keccak256("SALT");
     string internal constant NAME = "Test";
@@ -25,6 +26,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
     address[] internal accounts = [address(1), address(2), address(3)];
 
+    event SetCreator(address creator);
     event Mint();
     event BatchMint();
 
@@ -89,6 +91,19 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         }
     }
 
+    function _setInitialized(bool isInitialized) internal {
+        vm.store(
+            address(page),
+            STORAGE_SLOT_INITIALIZED,
+            bytes32(abi.encode(isInitialized))
+        );
+
+        assertTrue(
+            vm.load(address(page), STORAGE_SLOT_INITIALIZED) ==
+                bytes32(abi.encode(isInitialized))
+        );
+    }
+
     /*//////////////////////////////////////////////////////////////
                              collection
     //////////////////////////////////////////////////////////////*/
@@ -111,6 +126,48 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
     function testMintPrice() external {
         assertEq(MINT_PRICE, page.mintPrice());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             initializeCreator
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotInitializeCreatorAlreadyInitialized() external {
+        bytes32 initializedIsTrue = bytes32(abi.encode(true));
+
+        // When FrontPages are cloned, they are also initialized - this must be true
+        assertTrue(
+            vm.load(address(page), STORAGE_SLOT_INITIALIZED) ==
+                initializedIsTrue
+        );
+
+        vm.expectRevert(Page.AlreadyInitialized.selector);
+
+        page.initializeCreator(creator);
+    }
+
+    function testCannotInitializeCreatorZero() external {
+        // Set `_initialized` to false to test param validation
+        _setInitialized(false);
+
+        vm.expectRevert(FrontPage.Zero.selector);
+
+        page.initializeCreator(payable(address(0)));
+    }
+
+    function testInitializeCreator() external {
+        // Set `_initialized` to false to test setting `creator`
+        _setInitialized(false);
+
+        address payable newCreator = payable(accounts[0]);
+
+        assertTrue(newCreator != page.creator());
+
+        vm.expectEmit(false, false, false, true, address(page));
+
+        emit SetCreator(newCreator);
+
+        page.initializeCreator(newCreator);
     }
 
     /*//////////////////////////////////////////////////////////////
