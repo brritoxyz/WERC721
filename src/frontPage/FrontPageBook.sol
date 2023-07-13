@@ -11,9 +11,9 @@ contract FrontPageBook is Book {
     struct CloneArgs {
         string name;
         string symbol;
-        address payable creator;
         uint256 maxSupply;
         uint256 mintPrice;
+        address payable creator;
     }
 
     // Current ERC-721 collection implementation version
@@ -90,16 +90,12 @@ contract FrontPageBook is Book {
         // Create a minimal proxy for the implementation
         page = LibClone.cloneDeterministic(
             pageImplementation,
-            abi.encodePacked(
-                collection,
-                args.creator,
-                args.maxSupply,
-                args.mintPrice
-            ),
+            abi.encodePacked(collection, args.maxSupply, args.mintPrice),
             pageSalt
         );
 
-        // Initialize clones
+        // Call clone initializer methods
+        FrontPage(page).initializeCreator(args.creator);
         FrontPage(page).initialize();
         FrontPageERC721(collection).initialize(
             page,

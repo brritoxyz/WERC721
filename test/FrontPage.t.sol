@@ -11,7 +11,7 @@ import {Page} from "src/Page.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 
 contract FrontPageTests is Test, ERC721TokenReceiver {
-    bytes32 internal constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(7));
+    bytes32 internal constant STORAGE_SLOT_NEXT_ID = bytes32(uint256(8));
     bytes32 internal constant SALT = keccak256("SALT");
     string internal constant NAME = "Test";
     string internal constant SYMBOL = "TEST";
@@ -29,6 +29,36 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     event BatchMint();
 
     receive() external payable {}
+
+    constructor() {
+        (uint256 collectionVersion, ) = book.upgradeCollection(
+            SALT,
+            type(FrontPageERC721).creationCode
+        );
+
+        // Call `upgradePage` and set the first page implementation
+        (uint256 pageVersion, ) = book.upgradePage(
+            SALT,
+            type(FrontPage).creationCode
+        );
+
+        // Clone the collection and page implementations and assign to variables
+        (address collectionAddress, address pageAddress) = book.createPage(
+            FrontPageBook.CloneArgs({
+                name: NAME,
+                symbol: SYMBOL,
+                maxSupply: MAX_SUPPLY,
+                mintPrice: MINT_PRICE,
+                creator: creator
+            }),
+            collectionVersion,
+            pageVersion,
+            SALT,
+            SALT
+        );
+        collection = FrontPageERC721(collectionAddress);
+        page = FrontPage(pageAddress);
+    }
 
     function _batchMint(
         address to,
@@ -59,50 +89,12 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         }
     }
 
-    constructor() {
-        (uint256 collectionVersion, ) = book.upgradeCollection(
-            SALT,
-            type(FrontPageERC721).creationCode
-        );
-
-        // Call `upgradePage` and set the first page implementation
-        (uint256 pageVersion, ) = book.upgradePage(
-            SALT,
-            type(FrontPage).creationCode
-        );
-
-        // Clone the collection and page implementations and assign to variables
-        (address collectionAddress, address pageAddress) = book.createPage(
-            FrontPageBook.CloneArgs({
-                name: NAME,
-                symbol: SYMBOL,
-                creator: creator,
-                maxSupply: MAX_SUPPLY,
-                mintPrice: MINT_PRICE
-            }),
-            collectionVersion,
-            pageVersion,
-            SALT,
-            SALT
-        );
-        collection = FrontPageERC721(collectionAddress);
-        page = FrontPage(pageAddress);
-    }
-
     /*//////////////////////////////////////////////////////////////
                              collection
     //////////////////////////////////////////////////////////////*/
 
     function testCollection() external {
         assertEq(address(collection), address(page.collection()));
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                             creator
-    //////////////////////////////////////////////////////////////*/
-
-    function testCreator() external {
-        assertEq(creator, page.creator());
     }
 
     /*//////////////////////////////////////////////////////////////

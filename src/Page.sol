@@ -49,12 +49,15 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         _initialized = true;
     }
 
+    modifier onlyUninitialized() {
+        if (_initialized) revert AlreadyInitialized();
+        _;
+    }
+
     /**
      * @notice Initializes the minimal proxy contract storage
      */
-    function initialize() external {
-        if (_initialized) revert AlreadyInitialized();
-
+    function initialize() external onlyUninitialized {
         // Prevent initialize from being called again
         _initialized = true;
 

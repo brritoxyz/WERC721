@@ -12,9 +12,11 @@ contract FrontPage is Clone, Page {
 
     // Fixed clone immutable arg byte offsets
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
-    uint256 private constant IMMUTABLE_ARG_OFFSET_CREATOR = 20;
-    uint256 private constant IMMUTABLE_ARG_OFFSET_MAX_SUPPLY = 40;
-    uint256 private constant IMMUTABLE_ARG_OFFSET_MINT_PRICE = 72;
+    uint256 private constant IMMUTABLE_ARG_OFFSET_MAX_SUPPLY = 20;
+    uint256 private constant IMMUTABLE_ARG_OFFSET_MINT_PRICE = 52;
+
+    // NFT creator, has permission to withdraw mint proceeds
+    address payable public creator;
 
     // ETH proceeds from mints
     uint256 public mintProceeds;
@@ -22,6 +24,7 @@ contract FrontPage is Clone, Page {
     // Next NFT ID to be minted
     uint256 public nextId;
 
+    event SetCreator(address creator);
     event Mint();
     event BatchMint();
 
@@ -29,13 +32,13 @@ contract FrontPage is Clone, Page {
     error Soldout();
     error InvalidMsgValue();
 
-    function collection() public pure override returns (ERC721) {
-        return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
+    modifier onlyCreator() {
+        if (msg.sender != creator) revert Unauthorized();
+        _;
     }
 
-    // TODO: Make `creator` updateable
-    function creator() public pure returns (address payable) {
-        return payable(_getArgAddress(IMMUTABLE_ARG_OFFSET_CREATOR));
+    function collection() public pure override returns (ERC721) {
+        return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
     }
 
     function maxSupply() public pure returns (uint256) {
@@ -46,9 +49,29 @@ contract FrontPage is Clone, Page {
         return _getArgUint256(IMMUTABLE_ARG_OFFSET_MINT_PRICE);
     }
 
-    modifier onlyCreator() {
-        if (msg.sender != creator()) revert Unauthorized();
-        _;
+    /**
+     * @notice Set the initial creator value
+     * @param  _creator  address  Initial creator address
+     */
+    function initializeCreator(
+        address payable _creator
+    ) external onlyUninitialized {
+        if (_creator == address(0)) revert Zero();
+
+        creator = _creator;
+
+        emit SetCreator(_creator);
+    }
+
+    /**
+     * @notice Set creator
+     */
+    function setCreator(address payable _creator) external onlyCreator {
+        if (_creator == address(0)) revert Zero();
+
+        creator = _creator;
+
+        emit SetCreator(_creator);
     }
 
     /**
@@ -62,7 +85,7 @@ contract FrontPage is Clone, Page {
         mintProceeds = 0;
 
         // Transfer the withdraw amount to the creator
-        creator().safeTransferETH(withdrawAmount);
+        creator.safeTransferETH(withdrawAmount);
     }
 
     /**
