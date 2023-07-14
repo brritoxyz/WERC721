@@ -27,8 +27,10 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
     address[] internal accounts = [address(1), address(2), address(3)];
 
     event SetCreator(address creator);
-    event Mint();
-    event BatchMint();
+    event Mint(address indexed minter, uint256 id);
+    event BatchMint(address indexed minter, uint256 quantity);
+    event Redeem(address indexed redeemer, uint256 id);
+    event BatchRedeem(address indexed redeemer, uint256[] ids);
 
     receive() external payable {}
 
@@ -72,9 +74,9 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
         vm.deal(to, msgValue);
         vm.prank(to);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchMint();
+        emit BatchMint(to, quantity);
 
         page.batchMint{value: msgValue}(quantity);
 
@@ -297,24 +299,24 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
         assertLe(page.nextId(), page.maxSupply());
 
-        uint256 nextId = page.nextId();
+        uint256 id = page.nextId();
         uint256 pageBalanceBefore = address(page).balance;
 
-        assertEq(address(0), page.ownerOf(nextId));
+        assertEq(address(0), page.ownerOf(id));
 
         uint256 value = MINT_PRICE;
 
-        vm.deal(msgSender, MINT_PRICE);
+        vm.deal(msgSender, value);
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit Mint();
+        emit Mint(msgSender, id);
 
         page.mint{value: value}();
 
-        assertEq(msgSender, page.ownerOf(nextId));
+        assertEq(msgSender, page.ownerOf(id));
         assertEq(pageBalanceBefore + value, address(page).balance);
-        assertEq(nextId + 1, page.nextId());
+        assertEq(id + 1, page.nextId());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -366,9 +368,9 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
         vm.deal(msgSender, value);
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchMint();
+        emit BatchMint(msgSender, quantity);
 
         page.batchMint{value: value}(quantity);
 
@@ -399,9 +401,9 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
 
         vm.deal(msgSender, value);
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchMint();
+        emit BatchMint(msgSender, quantity);
 
         page.batchMint{value: value}(quantity);
 
@@ -445,6 +447,11 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         vm.expectRevert(ERC721.TokenDoesNotExist.selector);
 
         collection.ownerOf(id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit Redeem(msgSender, id);
 
         page.redeem(id);
 
@@ -492,6 +499,11 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
                 ++i;
             }
         }
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchRedeem(msgSender, ids);
 
         page.batchRedeem(ids);
 

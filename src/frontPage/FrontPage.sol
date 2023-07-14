@@ -25,8 +25,10 @@ contract FrontPage is Clone, Page {
     uint256 public nextId;
 
     event SetCreator(address creator);
-    event Mint();
-    event BatchMint();
+    event Mint(address indexed minter, uint256 id);
+    event BatchMint(address indexed minter, uint256 quantity);
+    event Redeem(address indexed redeemer, uint256 id);
+    event BatchRedeem(address indexed redeemer, uint256[] ids);
 
     error NotCreator();
     error InvalidAddress();
@@ -93,16 +95,16 @@ contract FrontPage is Clone, Page {
      * @notice Mint the FrontPage token representing the redeemable NFT
      */
     function mint() external payable {
-        uint256 _nextId = nextId;
+        uint256 id = nextId;
 
         // Revert if the max NFT supply has already been minted
-        if (_nextId > maxSupply()) revert Soldout();
+        if (id > maxSupply()) revert Soldout();
 
         // Revert if the value sent does not equal the mint price
         if (msg.value != mintPrice()) revert InvalidMsgValue();
 
         // Set the owner of the token ID to the minter
-        ownerOf[_nextId] = msg.sender;
+        ownerOf[id] = msg.sender;
 
         unchecked {
             // Increase `mintProceeds` by the ETH amount paid for the mint
@@ -114,7 +116,7 @@ contract FrontPage is Clone, Page {
             ++nextId;
         }
 
-        emit Mint();
+        emit Mint(msg.sender, id);
     }
 
     /**
@@ -128,10 +130,10 @@ contract FrontPage is Clone, Page {
         unchecked {
             // Update nextId to reflect the additional tokens to be minted
             // Virtually impossible to overflow due to the msg.value check above
-            uint256 _nextId = (nextId += quantity);
+            uint256 id = (nextId += quantity);
 
             // Revert if the max NFT supply has been or will be exceeded post-mint
-            if (_nextId > maxSupply()) revert Soldout();
+            if (id > maxSupply()) revert Soldout();
 
             // Increase `mintProceeds` by the ETH amount paid for the mint
             // Will not overflow since there is not enough ETH in circulation
@@ -140,11 +142,11 @@ contract FrontPage is Clone, Page {
             // If quantity is zero, the loop logic will never be executed
             for (uint256 i = quantity; i > 0; --i) {
                 // Set the owner of the token ID to the minter
-                ownerOf[_nextId - i] = msg.sender;
+                ownerOf[id - i] = msg.sender;
             }
         }
 
-        emit BatchMint();
+        emit BatchMint(msg.sender, quantity);
     }
 
     /**
@@ -154,7 +156,7 @@ contract FrontPage is Clone, Page {
     function redeem(uint256 id) external {
         if (ownerOf[id] != msg.sender) revert NotOwner();
 
-        // Burn the token to prevent the double-spending
+        // Burn the token to prevent double-spending
         delete ownerOf[id];
 
         // Mint the NFT for msg.sender with the same ID as the FrontPage token
@@ -162,6 +164,8 @@ contract FrontPage is Clone, Page {
             msg.sender,
             id
         );
+
+        emit Redeem(msg.sender, id);
     }
 
     /**
@@ -177,7 +181,7 @@ contract FrontPage is Clone, Page {
 
             if (ownerOf[id] != msg.sender) revert NotOwner();
 
-            // Burn the token to prevent the double-spending
+            // Burn the token to prevent double-spending
             delete ownerOf[id];
 
             unchecked {
@@ -188,5 +192,7 @@ contract FrontPage is Clone, Page {
         // Mint the NFTs for msg.sender with the same IDs as the FrontPage tokens
         FrontPageERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION))
             .batchMint(msg.sender, ids);
+
+        emit BatchRedeem(msg.sender, ids);
     }
 }
