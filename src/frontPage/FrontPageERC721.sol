@@ -62,7 +62,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
     }
 
     function tokenURI(uint256 id) public view override returns (string memory) {
-        return string(abi.encodePacked(baseURI, LibString.toString(id)));
+        return string.concat(baseURI, LibString.toString(id));
     }
 
     function mint(address to, uint256 id) external payable {

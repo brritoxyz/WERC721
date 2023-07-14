@@ -31,9 +31,7 @@ contract FrontPageReader {
         uint256 maxId = frontPage.nextId();
 
         for (uint256 id = 1; id < maxId; ) {
-            if (frontPage.ownerOf(id) == owner) {
-                ids.append(abi.encode(id));
-            }
+            if (frontPage.ownerOf(id) == owner) ids = ids.append(abi.encode(id));
 
             unchecked {
                 ++id;
@@ -57,7 +55,7 @@ contract FrontPageReader {
 
             if (seller == address(0)) continue;
 
-            ids.append(abi.encode(id, seller, price));
+            ids = ids.append(abi.encode(id, seller, price));
         }
     }
 
@@ -69,7 +67,7 @@ contract FrontPageReader {
         for (uint256 id = 1; id < maxId; ) {
             (address seller, uint96 price) = frontPage.listings(id);
 
-            if (seller == account) ids.append(abi.encode(id, price));
+            if (seller == account) ids = ids.append(abi.encode(id, price));
 
             unchecked {
                 ++id;
