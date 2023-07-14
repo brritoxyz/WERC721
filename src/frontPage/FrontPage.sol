@@ -29,7 +29,7 @@ contract FrontPage is Clone, Page {
     event BatchMint();
 
     error NotCreator();
-    error Zero();
+    error InvalidAddress();
     error Soldout();
     error InvalidMsgValue();
 
@@ -57,7 +57,7 @@ contract FrontPage is Clone, Page {
     function initializeCreator(
         address payable _creator
     ) external onlyUninitialized {
-        if (_creator == address(0)) revert Zero();
+        if (_creator == address(0)) revert InvalidAddress();
 
         creator = _creator;
 
@@ -68,7 +68,7 @@ contract FrontPage is Clone, Page {
      * @notice Set creator
      */
     function setCreator(address payable _creator) external onlyCreator {
-        if (_creator == address(0)) revert Zero();
+        if (_creator == address(0)) revert InvalidAddress();
 
         creator = _creator;
 

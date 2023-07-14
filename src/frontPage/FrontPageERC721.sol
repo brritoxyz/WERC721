@@ -13,7 +13,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
     address public frontPage;
     string public baseURI;
 
-    error ZeroAddress();
+    error InvalidAddress();
     error EmptyString();
     error AlreadyInitialized();
     error NotFrontPage();
@@ -30,8 +30,8 @@ contract FrontPageERC721 is Ownable, ERC721 {
         string calldata collectionSymbol
     ) external payable {
         if (_initialized) revert AlreadyInitialized();
-        if (_frontPage == address(0)) revert ZeroAddress();
-        if (_owner == address(0)) revert ZeroAddress();
+        if (_frontPage == address(0)) revert InvalidAddress();
+        if (_owner == address(0)) revert InvalidAddress();
         if (bytes(collectionName).length == 0) revert EmptyString();
         if (bytes(collectionSymbol).length == 0) revert EmptyString();
 

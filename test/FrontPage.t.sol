@@ -146,11 +146,11 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         page.initializeCreator(creator);
     }
 
-    function testCannotInitializeCreatorZero() external {
+    function testCannotInitializeCreatorInvalidAddress() external {
         // Set `_initialized` to false to test param validation
         _setInitialized(false);
 
-        vm.expectRevert(FrontPage.Zero.selector);
+        vm.expectRevert(FrontPage.InvalidAddress.selector);
 
         page.initializeCreator(payable(address(0)));
     }
@@ -186,14 +186,14 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         page.setCreator(newCreator);
     }
 
-    function testCannotSetCreatorZero() external {
+    function testCannotSetCreatorInvalidAddress() external {
         address msgSender = creator;
         address payable newCreator = payable(address(0));
 
         assertEq(msgSender, page.creator());
 
         vm.prank(msgSender);
-        vm.expectRevert(FrontPage.Zero.selector);
+        vm.expectRevert(FrontPage.InvalidAddress.selector);
 
         page.setCreator(newCreator);
     }

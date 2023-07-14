@@ -19,7 +19,7 @@ contract BackPageBook is Book {
         address page
     );
 
-    error ZeroAddress();
+    error InvalidCollection();
     error InvalidVersion();
 
     /**
@@ -33,7 +33,7 @@ contract BackPageBook is Book {
         uint256 version
     ) external payable returns (address page) {
         // Revert if the collection is the zero address
-        if (address(collection) == address(0)) revert ZeroAddress();
+        if (address(collection) == address(0)) revert InvalidCollection();
 
         address implementation = pageImplementations[version];
 
