@@ -28,12 +28,13 @@ contract FrontPage is Clone, Page {
     event Mint();
     event BatchMint();
 
+    error NotCreator();
     error Zero();
     error Soldout();
     error InvalidMsgValue();
 
     modifier onlyCreator() {
-        if (msg.sender != creator) revert Unauthorized();
+        if (msg.sender != creator) revert NotCreator();
         _;
     }
 
@@ -151,7 +152,7 @@ contract FrontPage is Clone, Page {
      * @param  id  uint256  FrontPage token ID
      */
     function redeem(uint256 id) external {
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
+        if (ownerOf[id] != msg.sender) revert NotOwner();
 
         // Burn the token to prevent the double-spending
         delete ownerOf[id];
@@ -174,7 +175,7 @@ contract FrontPage is Clone, Page {
         for (uint256 i = 0; i < idsLength; ) {
             id = ids[i];
 
-            if (ownerOf[id] != msg.sender) revert Unauthorized();
+            if (ownerOf[id] != msg.sender) revert NotOwner();
 
             // Burn the token to prevent the double-spending
             delete ownerOf[id];

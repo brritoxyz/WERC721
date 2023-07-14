@@ -174,14 +174,14 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
                              setCreator
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotSetCreatorUnauthorized() external {
+    function testCannotSetCreatorNotCreator() external {
         address unauthorizedMsgSender = accounts[0];
         address payable newCreator = payable(accounts[0]);
 
         assertTrue(unauthorizedMsgSender != page.creator());
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(FrontPage.NotCreator.selector);
 
         page.setCreator(newCreator);
     }
@@ -219,13 +219,13 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
                              withdrawProceeds
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotWithdrawProceedsUnauthorized() external {
+    function testCannotWithdrawProceedsNotCreator() external {
         address unauthorizedMsgSender = accounts[0];
 
         assertTrue(unauthorizedMsgSender != page.creator());
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(FrontPage.NotCreator.selector);
 
         page.withdrawProceeds();
     }
@@ -420,14 +420,14 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
                              redeem
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotRedeemUnauthorized() external {
+    function testCannotRedeemNotOwner() external {
         address msgSender = address(this);
         uint256 id = page.nextId();
 
         assertEq(address(0), page.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.redeem(id);
     }
@@ -456,7 +456,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
                              batchRedeem
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchRedeemUnauthorized() external {
+    function testCannotBatchRedeemNotOwner() external {
         address owner = address(this);
         uint256 mintQuantity = 5;
         address unauthorizedMsgSender = accounts[0];
@@ -471,7 +471,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         }
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.batchRedeem(ids);
     }

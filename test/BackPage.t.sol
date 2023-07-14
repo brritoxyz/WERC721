@@ -736,7 +736,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.withdraw(id, recipient);
     }
 
-    function testCannotWithdrawMsgSenderUnauthorized() external {
+    function testCannotWithdrawMsgSenderNotOwner() external {
         address owner = address(this);
         address msgSender = accounts[0];
         uint256 id = 0;
@@ -747,7 +747,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertTrue(msgSender != page.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.withdraw(id, recipient);
     }
@@ -789,7 +789,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.batchWithdraw(ids, recipient);
     }
 
-    function testCannotBatchWithdrawMsgSenderUnauthorized() external {
+    function testCannotBatchWithdrawMsgSenderNotOwner() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 mintQuantity = 5;
@@ -805,7 +805,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.batchWithdraw(ids, recipient);
     }
@@ -834,7 +834,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              list
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotListUnauthorized() external {
+    function testCannotListNotOwner() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 id = 0;
@@ -845,7 +845,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertTrue(unauthorizedMsgSender != page.ownerOf(id));
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.list(id, price);
     }
@@ -902,7 +902,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.edit(id, newPrice);
     }
 
-    function testCannotEditUnauthorized() external {
+    function testCannotEditNotSeller() external {
         address owner = address(this);
         address msgSender = accounts[0];
         uint256 id = 0;
@@ -916,7 +916,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertTrue(msgSender != listingSeller);
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotSeller.selector);
 
         page.edit(id, newPrice);
     }
@@ -951,7 +951,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              cancel
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotCancelUnauthorized() external {
+    function testCannotCancelNotSeller() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 id = 0;
@@ -964,7 +964,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertTrue(unauthorizedMsgSender != listingSeller);
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotSeller.selector);
 
         page.cancel(id);
     }
@@ -1142,7 +1142,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.batchEdit(ids, newPrices);
     }
 
-    function testCannotBatchEditUnauthorized() external {
+    function testCannotBatchEditNotSeller() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 listQuantity = 5;
@@ -1158,7 +1158,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotSeller.selector);
 
         page.batchEdit(ids, newPrices);
     }
@@ -1207,14 +1207,14 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              batchCancel
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchCancelUnauthorized() external {
+    function testCannotBatchCancelNotSeller() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 listQuantity = 5;
         (uint256[] memory ids, ) = _batchMintDepositList(owner, listQuantity);
 
         vm.prank(unauthorizedMsgSender);
-        vm.expectRevert(Page.Unauthorized.selector);
+        vm.expectRevert(Page.NotSeller.selector);
 
         page.batchCancel(ids);
     }

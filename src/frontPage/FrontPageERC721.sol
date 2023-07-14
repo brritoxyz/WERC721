@@ -16,6 +16,7 @@ contract FrontPageERC721 is Ownable, ERC721 {
     error ZeroAddress();
     error EmptyString();
     error AlreadyInitialized();
+    error NotFrontPage();
 
     constructor() payable {
         // Prevent the implementation contract from being initialized
@@ -67,13 +68,13 @@ contract FrontPageERC721 is Ownable, ERC721 {
     function mint(address to, uint256 id) external payable {
         // Users must redeem through the FrontPage contract, the only authorized caller of this method
         // since FrontPage burns the FP token ID prior to minting the NFT, preventing reuse
-        if (msg.sender != frontPage) revert Unauthorized();
+        if (msg.sender != frontPage) revert NotFrontPage();
 
         _mint(to, id);
     }
 
     function batchMint(address to, uint256[] calldata ids) external payable {
-        if (msg.sender != frontPage) revert Unauthorized();
+        if (msg.sender != frontPage) revert NotFrontPage();
 
         uint256 idsLength = ids.length;
 

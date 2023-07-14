@@ -37,7 +37,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     event TakeOffer(address taker);
 
     error AlreadyInitialized();
-    error Unauthorized();
+    error NotOwner();
+    error NotSeller();
     error Invalid();
     error Insufficient();
     error WrongFrom();
@@ -204,7 +205,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function _withdraw(uint256 id, address recipient) private {
         // Revert if msg.sender is not the owner of the derivative token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
+        if (ownerOf[id] != msg.sender) revert NotOwner();
 
         // Burn the derivative token before transferring the NFT to the recipient
         delete ownerOf[id];
@@ -220,7 +221,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function _list(uint256 id, uint96 price) private {
         // Reverts if msg.sender does not have the token
-        if (ownerOf[id] != msg.sender) revert Unauthorized();
+        if (ownerOf[id] != msg.sender) revert NotOwner();
 
         // Revert if the price is zero
         if (price == 0) revert Invalid();
@@ -244,7 +245,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         Listing storage listing = listings[id];
 
         // Reverts if msg.sender is not the seller or listing does not exist
-        if (listing.seller != msg.sender) revert Unauthorized();
+        if (listing.seller != msg.sender) revert NotSeller();
 
         listing.price = newPrice;
     }
@@ -255,7 +256,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function _cancel(uint256 id) private {
         // Reverts if msg.sender is not the seller
-        if (listings[id].seller != msg.sender) revert Unauthorized();
+        if (listings[id].seller != msg.sender) revert NotSeller();
 
         // Delete listing prior to returning the token
         delete listings[id];
@@ -567,7 +568,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             id = ids[i];
 
             // Revert if msg.sender/taker is not the owner of the derivative token
-            if (ownerOf[id] != msg.sender) revert Unauthorized();
+            if (ownerOf[id] != msg.sender) revert NotOwner();
 
             // Set maker as the new owner of the token
             ownerOf[id] = maker;
