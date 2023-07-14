@@ -31,29 +31,13 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         address indexed operator,
         bool approved
     );
-    event Deposit(
-        address indexed depositor,
-        uint256 indexed id,
-        address indexed recipient
-    );
-    event Withdraw(
-        address indexed withdrawer,
-        uint256 indexed id,
-        address indexed recipient
-    );
+    event Deposit(address indexed depositor, uint256 indexed id);
+    event Withdraw(address indexed withdrawer, uint256 indexed id);
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event Edit(address indexed seller, uint256 indexed id, uint96 price);
     event Cancel(address indexed seller, uint256 indexed id);
-    event BatchDeposit(
-        address indexed depositor,
-        uint256[] ids,
-        address indexed recipient
-    );
-    event BatchWithdraw(
-        address indexed withdrawer,
-        uint256[] ids,
-        address indexed recipient
-    );
+    event BatchDeposit(address indexed depositor, uint256[] ids);
+    event BatchWithdraw(address indexed withdrawer, uint256[] ids);
     event BatchList(address indexed seller, uint256[] ids, uint96[] prices);
     event BatchEdit(address indexed seller, uint256[] ids, uint96[] prices);
     event BatchCancel(address indexed seller, uint256[] ids);
@@ -87,7 +71,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.startPrank(to);
 
         collection.setApprovalForAll(address(page), true);
-        page.deposit(id, to);
+        page.deposit(id);
 
         vm.stopPrank();
 
@@ -803,7 +787,6 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     function testDeposit() external {
         address msgSender = address(this);
         uint256 id = 0;
-        address recipient = address(1);
 
         collection.mint(msgSender, id);
         collection.setApprovalForAll(address(page), true);
@@ -816,15 +799,15 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(address(0), page.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectEmit(true, true, true, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit Deposit(msgSender, id, recipient);
+        emit Deposit(msgSender, id);
 
-        page.deposit(id, recipient);
+        page.deposit(id);
 
         // Post-deposit state
+        assertEq(msgSender, page.ownerOf(id));
         assertEq(address(page), collection.ownerOf(id));
-        assertEq(recipient, page.ownerOf(id));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -835,7 +818,6 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         uint256 quantity = 5;
         uint256[] memory ids = new uint256[](quantity);
         address msgSender = address(this);
-        address recipient = accounts[0];
 
         for (uint256 i = 0; i < ids.length; ) {
             ids[i] = i;
@@ -854,16 +836,16 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         collection.setApprovalForAll(address(page), true);
 
-        vm.expectEmit(true, true, true, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit BatchDeposit(msgSender, ids, recipient);
+        emit BatchDeposit(msgSender, ids);
 
-        page.batchDeposit(ids, recipient);
+        page.batchDeposit(ids);
 
         vm.stopPrank();
 
         for (uint256 i = 0; i < ids.length; ) {
-            assertEq(recipient, page.ownerOf(ids[i]));
+            assertEq(msgSender, page.ownerOf(ids[i]));
             assertEq(address(page), collection.ownerOf(ids[i]));
 
             unchecked {
@@ -876,24 +858,10 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              withdraw
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotWithdrawRecipientZero() external {
-        address msgSender = address(this);
-        uint256 id = 0;
-        address recipient = address(0);
-
-        _mintDeposit(msgSender, id);
-
-        vm.prank(msgSender);
-        vm.expectRevert(ERC721.TransferToZeroAddress.selector);
-
-        page.withdraw(id, recipient);
-    }
-
     function testCannotWithdrawMsgSenderNotOwner() external {
         address owner = address(this);
         address msgSender = accounts[0];
         uint256 id = 0;
-        address recipient = accounts[1];
 
         _mintDeposit(owner, id);
 
@@ -902,13 +870,12 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
-        page.withdraw(id, recipient);
+        page.withdraw(id);
     }
 
     function testWithdraw() external {
         address msgSender = address(this);
         uint256 id = 0;
-        address recipient = accounts[0];
 
         _mintDeposit(msgSender, id);
 
@@ -916,38 +883,25 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(address(page), collection.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectEmit(true, true, true, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit Withdraw(msgSender, id, recipient);
+        emit Withdraw(msgSender, id);
 
-        page.withdraw(id, recipient);
+        page.withdraw(id);
 
         assertEq(address(0), page.ownerOf(id));
-        assertEq(recipient, collection.ownerOf(id));
+        assertEq(msgSender, collection.ownerOf(id));
     }
 
     /*//////////////////////////////////////////////////////////////
                              batchWithdraw
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchWithdrawRecipientZero() external {
-        address msgSender = address(this);
-        uint256 mintQuantity = 5;
-        uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
-        address recipient = address(0);
-
-        vm.prank(msgSender);
-        vm.expectRevert(ERC721.TransferToZeroAddress.selector);
-
-        page.batchWithdraw(ids, recipient);
-    }
-
     function testCannotBatchWithdrawMsgSenderNotOwner() external {
         address owner = address(this);
         address unauthorizedMsgSender = accounts[0];
         uint256 mintQuantity = 5;
         uint256[] memory ids = _batchMintDeposit(owner, mintQuantity);
-        address recipient = accounts[0];
 
         for (uint256 i = 0; i < ids.length; ) {
             assertTrue(unauthorizedMsgSender != page.ownerOf(ids[i]));
@@ -960,25 +914,24 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.prank(unauthorizedMsgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
-        page.batchWithdraw(ids, recipient);
+        page.batchWithdraw(ids);
     }
 
     function testBatchWithdraw() external {
         address msgSender = address(this);
         uint256 mintQuantity = 5;
         uint256[] memory ids = _batchMintDeposit(msgSender, mintQuantity);
-        address recipient = accounts[0];
 
         vm.prank(msgSender);
-        vm.expectEmit(true, false, true, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchWithdraw(msgSender, ids, recipient);
+        emit BatchWithdraw(msgSender, ids);
 
-        page.batchWithdraw(ids, recipient);
+        page.batchWithdraw(ids);
 
         for (uint256 i = 0; i < ids.length; ) {
             assertEq(address(0), page.ownerOf(ids[i]));
-            assertEq(recipient, collection.ownerOf(ids[i]));
+            assertEq(msgSender, collection.ownerOf(ids[i]));
 
             unchecked {
                 ++i;

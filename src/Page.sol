@@ -36,29 +36,13 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         address indexed operator,
         bool approved
     );
-    event Deposit(
-        address indexed depositor,
-        uint256 indexed id,
-        address indexed recipient
-    );
-    event Withdraw(
-        address indexed withdrawer,
-        uint256 indexed id,
-        address indexed recipient
-    );
+    event Deposit(address indexed depositor, uint256 indexed id);
+    event Withdraw(address indexed withdrawer, uint256 indexed id);
     event List(address indexed seller, uint256 indexed id, uint96 price);
     event Edit(address indexed seller, uint256 indexed id, uint96 price);
     event Cancel(address indexed seller, uint256 indexed id);
-    event BatchDeposit(
-        address indexed depositor,
-        uint256[] ids,
-        address indexed recipient
-    );
-    event BatchWithdraw(
-        address indexed withdrawer,
-        uint256[] ids,
-        address indexed recipient
-    );
+    event BatchDeposit(address indexed depositor, uint256[] ids);
+    event BatchWithdraw(address indexed withdrawer, uint256[] ids);
     event BatchList(address indexed seller, uint256[] ids, uint96[] prices);
     event BatchEdit(address indexed seller, uint256[] ids, uint96[] prices);
     event BatchCancel(address indexed seller, uint256[] ids);
@@ -235,13 +219,12 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     }
 
     /**
-     * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
-     * @param  id         uint256  Token ID
-     * @param  recipient  address  Derivative token recipient
+     * @notice Deposit a NFT into the vault and mint a redeemable derivative token
+     * @param  id  uint256  Token ID
      */
-    function _deposit(uint256 id, address recipient) private {
+    function _deposit(uint256 id) private {
         // Mint the derivative token for the specified recipient (same ID)
-        ownerOf[id] = recipient;
+        ownerOf[id] = msg.sender;
 
         // Transfer the NFT to self before minting the derivative token
         // Reverts if unapproved or if msg.sender does not have the token
@@ -250,10 +233,9 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     /**
      * @notice Withdraw a NFT from the vault by redeeming a derivative token
-     * @param  id         uint256  Token ID
-     * @param  recipient  address  NFT recipient
+     * @param  id  uint256  Token ID
      */
-    function _withdraw(uint256 id, address recipient) private {
+    function _withdraw(uint256 id) private {
         // Revert if msg.sender is not the owner of the derivative token
         if (ownerOf[id] != msg.sender) revert NotOwner();
 
@@ -261,7 +243,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         delete ownerOf[id];
 
         // Transfer the NFT to the recipient - reverts if recipient is zero address
-        collection().safeTransferFrom(address(this), recipient, id);
+        collection().safeTransferFrom(address(this), msg.sender, id);
     }
 
     /**
@@ -316,24 +298,22 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     /**
      * @notice Deposit a NFT into the vault to mint a redeemable derivative token with the same ID
-     * @param  id         uint256  Token ID
-     * @param  recipient  address  Derivative token recipient
+     * @param  id  uint256  Token ID
      */
-    function deposit(uint256 id, address recipient) external {
-        _deposit(id, recipient);
+    function deposit(uint256 id) external {
+        _deposit(id);
 
-        emit Deposit(msg.sender, id, recipient);
+        emit Deposit(msg.sender, id);
     }
 
     /**
      * @notice Withdraw a NFT from the vault by redeeming a derivative token
-     * @param  id         uint256  Token ID
-     * @param  recipient  address  NFT recipient
+     * @param  id  uint256  Token ID
      */
-    function withdraw(uint256 id, address recipient) external {
-        _withdraw(id, recipient);
+    function withdraw(uint256 id) external {
+        _withdraw(id);
 
-        emit Withdraw(msg.sender, id, recipient);
+        emit Withdraw(msg.sender, id);
     }
 
     /**
@@ -370,47 +350,39 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     /**
      * @notice Batch deposit
-     * @param  ids        uint256[]  Token IDs
-     * @param  recipient  address    Derivative token recipient
+     * @param  ids  uint256[]  Token IDs
      */
-    function batchDeposit(
-        uint256[] calldata ids,
-        address recipient
-    ) external nonReentrant {
+    function batchDeposit(uint256[] calldata ids) external nonReentrant {
         uint256 idsLength = ids.length;
 
         // If ids.length is zero then the loop body never runs and caller wastes gas
         for (uint256 i = 0; i < idsLength; ) {
-            _deposit(ids[i], recipient);
+            _deposit(ids[i]);
 
             unchecked {
                 ++i;
             }
         }
 
-        emit BatchDeposit(msg.sender, ids, recipient);
+        emit BatchDeposit(msg.sender, ids);
     }
 
     /**
      * @notice Batch withdraw
-     * @param  ids        uint256[]  Token IDs
-     * @param  recipient  address    NFT recipient
+     * @param  ids  uint256[]  Token IDs
      */
-    function batchWithdraw(
-        uint256[] calldata ids,
-        address recipient
-    ) external nonReentrant {
+    function batchWithdraw(uint256[] calldata ids) external nonReentrant {
         uint256 idsLength = ids.length;
 
         for (uint256 i = 0; i < idsLength; ) {
-            _withdraw(ids[i], recipient);
+            _withdraw(ids[i]);
 
             unchecked {
                 ++i;
             }
         }
 
-        emit BatchWithdraw(msg.sender, ids, recipient);
+        emit BatchWithdraw(msg.sender, ids);
     }
 
     /**
