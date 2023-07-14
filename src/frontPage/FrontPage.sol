@@ -31,7 +31,6 @@ contract FrontPage is Clone, Page {
     event BatchRedeem(address indexed redeemer, uint256[] ids);
 
     error NotCreator();
-    error InvalidAddress();
     error Soldout();
     error InvalidMsgValue();
 

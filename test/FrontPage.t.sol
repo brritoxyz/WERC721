@@ -152,7 +152,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         // Set `_initialized` to false to test param validation
         _setInitialized(false);
 
-        vm.expectRevert(FrontPage.InvalidAddress.selector);
+        vm.expectRevert(Page.InvalidAddress.selector);
 
         page.initializeCreator(payable(address(0)));
     }
@@ -195,7 +195,7 @@ contract FrontPageTests is Test, ERC721TokenReceiver {
         assertEq(msgSender, page.creator());
 
         vm.prank(msgSender);
-        vm.expectRevert(FrontPage.InvalidAddress.selector);
+        vm.expectRevert(Page.InvalidAddress.selector);
 
         page.setCreator(newCreator);
     }

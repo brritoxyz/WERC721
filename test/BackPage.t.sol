@@ -1520,4 +1520,53 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             onERC721Received
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotOnERC721ReceivedNotCollection(
+        address msgSender,
+        uint256 id
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(msgSender != address(collection));
+
+        collection.mint(msgSender, id);
+
+        assertTrue(msgSender != address(collection));
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.NotCollection.selector);
+
+        page.onERC721Received(address(0), msgSender, id, "");
+    }
+
+    function testCannotOnERC721ReceivedInvalidAddress(uint256 id) external {
+        address msgSender = address(page.collection());
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.InvalidAddress.selector);
+
+        page.onERC721Received(address(0), address(0), id, "");
+    }
+
+    function testOnERC721Received(address msgSender, uint256 id) external {
+        vm.assume(msgSender != address(0));
+
+        collection.mint(msgSender, id);
+
+        assertEq(address(0), page.ownerOf(id));
+        assertEq(msgSender, collection.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(msgSender, address(page), id);
+
+        collection.safeTransferFrom(msgSender, address(page), id);
+
+        assertEq(msgSender, page.ownerOf(id));
+        assertEq(address(page), collection.ownerOf(id));
+    }
 }

@@ -6,7 +6,7 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {ReentrancyGuard} from "src/lib/ReentrancyGuard.sol";
 
-abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
+abstract contract Page is ReentrancyGuard {
     using SafeTransferLib for address payable;
 
     struct Listing {
@@ -62,8 +62,10 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     error NotSeller();
     error NotListed();
     error NotApproved();
+    error NotCollection();
     error InvalidPrice();
     error InvalidOffer();
+    error InvalidAddress();
     error InsufficientMsgValue();
     error UnsafeRecipient();
 
@@ -616,5 +618,31 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         }
 
         emit TakeOffer(msg.sender, ids, maker, offer);
+    }
+
+    /**
+     * @notice Approval-less, gas-efficient means of depositing single ERC-721 tokens
+     * @param  from  address  The address which previously owned the token
+     * @param  id    uint256  The NFT identifier which is being transferred
+     * @return       bytes4   onERC721Received function selector
+     */
+    function onERC721Received(
+        address,
+        address from,
+        uint256 id,
+        bytes calldata
+    ) external returns (bytes4) {
+        // Revert if collection was not the caller (should never be the case with `safeTransferFrom`)
+        if (msg.sender != address(collection())) revert NotCollection();
+
+        // Revert if the original owner is the zero address (may occur if the transfer is the result of `safeMint`)
+        if (from == address(0)) revert InvalidAddress();
+
+        // Assign ownership of the Page token with the same ID to the owner of the ERC-721 token
+        ownerOf[id] = from;
+
+        emit Deposit(from, id);
+
+        return ERC721TokenReceiver.onERC721Received.selector;
     }
 }
