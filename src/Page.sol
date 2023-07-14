@@ -24,17 +24,54 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     mapping(uint256 => Listing) public listings;
     mapping(address => mapping(uint256 => uint256)) public offers;
 
-    event List(uint256 id);
-    event Edit(uint256 id);
-    event Cancel(uint256 id);
-    event BatchList(uint256[] ids);
-    event BatchEdit(uint256[] ids);
-    event BatchCancel(uint256[] ids);
-    event Buy(uint256 id);
-    event BatchBuy(uint256[] ids);
-    event MakeOffer(address maker);
-    event CancelOffer(address maker);
-    event TakeOffer(address taker);
+    event Initialize();
+    event Transfer(
+        address indexed from,
+        address indexed to,
+        uint256 indexed id
+    );
+    event BatchTransfer(address indexed from, address[] to, uint256[] ids);
+    event ApprovalForAll(
+        address indexed owner,
+        address indexed operator,
+        bool approved
+    );
+    event Deposit(
+        address indexed depositor,
+        uint256 indexed id,
+        address indexed recipient
+    );
+    event Withdraw(
+        address indexed withdrawer,
+        uint256 indexed id,
+        address indexed recipient
+    );
+    event List(address indexed seller, uint256 indexed id, uint96 price);
+    event Edit(address indexed seller, uint256 indexed id, uint96 price);
+    event Cancel(address indexed seller, uint256 indexed id);
+    event BatchDeposit(
+        address indexed depositor,
+        uint256[] ids,
+        address indexed recipient
+    );
+    event BatchWithdraw(
+        address indexed withdrawer,
+        uint256[] ids,
+        address indexed recipient
+    );
+    event BatchList(address indexed seller, uint256[] ids, uint96[] prices);
+    event BatchEdit(address indexed seller, uint256[] ids, uint96[] prices);
+    event BatchCancel(address indexed seller, uint256[] ids);
+    event Buy(address indexed buyer, uint256 indexed id);
+    event BatchBuy(address indexed buyer, uint256[] ids);
+    event MakeOffer(address indexed maker, uint256 offer, uint256 quantity);
+    event CancelOffer(address indexed maker, uint256 offer, uint256 quantity);
+    event TakeOffer(
+        address indexed taker,
+        uint256[] ids,
+        address indexed maker,
+        uint256 offer
+    );
 
     error AlreadyInitialized();
     error NotOwner();
@@ -65,6 +102,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
         // Initialize `locked` with the value of 1 (i.e. unlocked)
         locked = 1;
+
+        emit Initialize();
     }
 
     /**
@@ -99,6 +138,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     function setApprovalForAll(address operator, bool approved) external {
         isApprovedForAll[msg.sender][operator] = approved;
+
+        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     function transfer(address to, uint256 id) external {
@@ -110,6 +151,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
         // Set new owner as `to`
         ownerOf[id] = to;
+
+        emit Transfer(msg.sender, to, id);
     }
 
     function batchTransfer(
@@ -136,6 +179,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
                 ++i;
             }
         }
+
+        emit BatchTransfer(msg.sender, to, ids);
     }
 
     function transferFrom(address from, address to, uint256 id) external {
@@ -151,6 +196,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
         // Set new owner as `to`
         ownerOf[id] = to;
+
+        emit Transfer(from, to, id);
     }
 
     function batchTransferFrom(
@@ -183,6 +230,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
                 ++i;
             }
         }
+
+        emit BatchTransfer(from, to, ids);
     }
 
     /**
@@ -272,6 +321,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function deposit(uint256 id, address recipient) external {
         _deposit(id, recipient);
+
+        emit Deposit(msg.sender, id, recipient);
     }
 
     /**
@@ -281,6 +332,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function withdraw(uint256 id, address recipient) external {
         _withdraw(id, recipient);
+
+        emit Withdraw(msg.sender, id, recipient);
     }
 
     /**
@@ -291,7 +344,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     function list(uint256 id, uint96 price) external {
         _list(id, price);
 
-        emit List(id);
+        emit List(msg.sender, id, price);
     }
 
     /**
@@ -302,7 +355,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     function edit(uint256 id, uint96 newPrice) external {
         _edit(id, newPrice);
 
-        emit Edit(id);
+        emit Edit(msg.sender, id, newPrice);
     }
 
     /**
@@ -312,7 +365,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     function cancel(uint256 id) external {
         _cancel(id);
 
-        emit Cancel(id);
+        emit Cancel(msg.sender, id);
     }
 
     /**
@@ -334,6 +387,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
                 ++i;
             }
         }
+
+        emit BatchDeposit(msg.sender, ids, recipient);
     }
 
     /**
@@ -354,6 +409,8 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
                 ++i;
             }
         }
+
+        emit BatchWithdraw(msg.sender, ids, recipient);
     }
 
     /**
@@ -377,7 +434,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             }
         }
 
-        emit BatchList(ids);
+        emit BatchList(msg.sender, ids, prices);
     }
 
     /**
@@ -400,7 +457,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             }
         }
 
-        emit BatchEdit(ids);
+        emit BatchEdit(msg.sender, ids, newPrices);
     }
 
     /**
@@ -418,7 +475,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             }
         }
 
-        emit BatchCancel(ids);
+        emit BatchCancel(msg.sender, ids);
     }
 
     /**
@@ -443,7 +500,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         // Transfer the sales proceeds to the seller
         listing.seller.safeTransferETH(msg.value);
 
-        emit Buy(id);
+        emit Buy(msg.sender, id);
     }
 
     /**
@@ -491,7 +548,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             payable(msg.sender).safeTransferETH(availableETH);
         }
 
-        emit BatchBuy(ids);
+        emit BatchBuy(msg.sender, ids);
     }
 
     /**
@@ -516,7 +573,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             offers[msg.sender][offer] += quantity;
         }
 
-        emit MakeOffer(msg.sender);
+        emit MakeOffer(msg.sender, offer, quantity);
     }
 
     /**
@@ -540,7 +597,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             payable(msg.sender).safeTransferETH(offer * quantity);
         }
 
-        emit CancelOffer(msg.sender);
+        emit CancelOffer(msg.sender, offer, quantity);
     }
 
     /**
@@ -586,6 +643,6 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             payable(msg.sender).safeTransferETH(offer * idsLength);
         }
 
-        emit TakeOffer(msg.sender);
+        emit TakeOffer(msg.sender, ids, maker, offer);
     }
 }

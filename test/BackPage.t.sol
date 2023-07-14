@@ -19,22 +19,54 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
     address[] internal accounts = [address(1), address(2), address(3)];
 
+    event Initialize();
     event Transfer(
         address indexed from,
         address indexed to,
         uint256 indexed id
     );
-    event List(uint256 id);
-    event Edit(uint256 id);
-    event Cancel(uint256 id);
-    event BatchList(uint256[] ids);
-    event BatchEdit(uint256[] ids);
-    event BatchCancel(uint256[] ids);
-    event Buy(uint256 id);
-    event BatchBuy(uint256[] ids);
-    event MakeOffer(address maker);
-    event CancelOffer(address maker);
-    event TakeOffer(address taker);
+    event BatchTransfer(address indexed from, address[] to, uint256[] ids);
+    event ApprovalForAll(
+        address indexed owner,
+        address indexed operator,
+        bool approved
+    );
+    event Deposit(
+        address indexed depositor,
+        uint256 indexed id,
+        address indexed recipient
+    );
+    event Withdraw(
+        address indexed withdrawer,
+        uint256 indexed id,
+        address indexed recipient
+    );
+    event List(address indexed seller, uint256 indexed id, uint96 price);
+    event Edit(address indexed seller, uint256 indexed id, uint96 price);
+    event Cancel(address indexed seller, uint256 indexed id);
+    event BatchDeposit(
+        address indexed depositor,
+        uint256[] ids,
+        address indexed recipient
+    );
+    event BatchWithdraw(
+        address indexed withdrawer,
+        uint256[] ids,
+        address indexed recipient
+    );
+    event BatchList(address indexed seller, uint256[] ids, uint96[] prices);
+    event BatchEdit(address indexed seller, uint256[] ids, uint96[] prices);
+    event BatchCancel(address indexed seller, uint256[] ids);
+    event Buy(address indexed buyer, uint256 indexed id);
+    event BatchBuy(address indexed buyer, uint256[] ids);
+    event MakeOffer(address indexed maker, uint256 offer, uint256 quantity);
+    event CancelOffer(address indexed maker, uint256 offer, uint256 quantity);
+    event TakeOffer(
+        address indexed taker,
+        uint256[] ids,
+        address indexed maker,
+        uint256 offer
+    );
 
     receive() external payable {}
 
@@ -87,7 +119,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.prank(to);
         vm.expectEmit(true, false, false, false, address(page));
 
-        emit List(id);
+        emit List(to, id, price);
 
         page.list(id, price);
 
@@ -191,30 +223,61 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testSetApprovalForAllFalseToTrue() external {
-        assertFalse(page.isApprovedForAll(address(this), accounts[0]));
+        address msgSender = address(this);
+        address operator = accounts[0];
+        bool approved = true;
 
-        page.setApprovalForAll(accounts[0], true);
+        assertFalse(page.isApprovedForAll(msgSender, operator));
 
-        assertTrue(page.isApprovedForAll(address(this), accounts[0]));
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(page));
+
+        emit ApprovalForAll(msgSender, operator, approved);
+
+        page.setApprovalForAll(operator, approved);
+
+        assertTrue(page.isApprovedForAll(msgSender, operator));
     }
 
     function testSetApprovalForAllTrueToFalse() external {
-        page.setApprovalForAll(accounts[0], true);
+        address msgSender = address(this);
+        address operator = accounts[0];
+        bool approvedTrue = true;
 
-        assertTrue(page.isApprovedForAll(address(this), accounts[0]));
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(page));
 
-        page.setApprovalForAll(accounts[0], false);
+        emit ApprovalForAll(msgSender, operator, approvedTrue);
 
-        assertFalse(page.isApprovedForAll(address(this), accounts[0]));
+        page.setApprovalForAll(operator, approvedTrue);
+
+        assertTrue(page.isApprovedForAll(msgSender, operator));
+
+        bool approvedFalse = false;
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(page));
+
+        emit ApprovalForAll(msgSender, operator, approvedFalse);
+
+        page.setApprovalForAll(operator, approvedFalse);
+
+        assertFalse(page.isApprovedForAll(msgSender, operator));
     }
 
     function testSetApprovalForAllFuzz(
+        address msgSender,
         address operator,
         bool approved
     ) external {
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(page));
+
+        emit ApprovalForAll(msgSender, operator, approved);
+
         page.setApprovalForAll(operator, approved);
 
-        assertEq(approved, page.isApprovedForAll(address(this), operator));
+        assertEq(approved, page.isApprovedForAll(msgSender, operator));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -222,55 +285,75 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotTransferNotOwner() external {
+        address msgSender = address(this);
         address to = accounts[0];
         uint256 id = 1;
 
         assertEq(address(0), page.ownerOf(id));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
         page.transfer(to, id);
     }
 
     function testCannotTransferUnsafeRecipient() external {
+        address msgSender = address(this);
         address to = address(0);
         uint256 id = 1;
 
-        _mintDeposit(address(this), id);
+        _mintDeposit(msgSender, id);
 
-        assertEq(address(this), page.ownerOf(id));
+        assertEq(msgSender, page.ownerOf(id));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.transfer(to, id);
     }
 
     function testTransfer() external {
+        address msgSender = address(this);
         address to = accounts[0];
         uint256 id = 1;
 
-        _mintDeposit(address(this), id);
+        _mintDeposit(msgSender, id);
 
-        assertEq(address(this), page.ownerOf(id));
+        assertEq(msgSender, page.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit Transfer(msgSender, to, id);
 
         page.transfer(to, id);
 
         assertEq(to, page.ownerOf(id));
     }
 
-    function testTransferFuzz(uint256 id, address from, address to) external {
-        vm.assume(from != address(0));
-        vm.assume(from != to);
+    function testTransferFuzz(
+        address msgSender,
+        address to,
+        uint256 id
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(msgSender != to);
 
-        _mintDeposit(from, id);
+        _mintDeposit(msgSender, id);
 
-        assertEq(from, page.ownerOf(id));
+        assertEq(msgSender, page.ownerOf(id));
 
         bool toIsUnsafe = to == address(0);
 
-        vm.prank(from);
+        vm.prank(msgSender);
 
-        if (toIsUnsafe) vm.expectRevert(Page.UnsafeRecipient.selector);
+        if (toIsUnsafe) {
+            vm.expectRevert(Page.UnsafeRecipient.selector);
+        } else {
+            vm.expectEmit(true, true, true, true, address(page));
+
+            emit Transfer(msgSender, to, id);
+        }
 
         page.transfer(to, id);
 
@@ -284,46 +367,51 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchTransferNotOwner() external {
+        address msgSender = address(this);
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = accounts[0];
         ids[0] = 1;
 
         for (uint256 i = 0; i < ids.length; ) {
-            assertEq(address(0), page.ownerOf(ids[i]));
+            assertTrue(msgSender != page.ownerOf(ids[i]));
 
             unchecked {
                 ++i;
             }
         }
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransfer(to, ids);
     }
 
     function testCannotBatchTransferUnsafeRecipient() external {
+        address msgSender = address(this);
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = address(0);
         ids[0] = 1;
 
         for (uint256 i = 0; i < ids.length; ) {
-            _mintDeposit(address(this), ids[i]);
+            _mintDeposit(msgSender, ids[i]);
 
-            assertEq(address(this), page.ownerOf(ids[i]));
+            assertEq(msgSender, page.ownerOf(ids[i]));
 
             unchecked {
                 ++i;
             }
         }
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.batchTransfer(to, ids);
     }
 
     function testBatchTransfer() external {
+        address msgSender = address(this);
         address[] memory to = new address[](accounts.length);
         uint256[] memory ids = new uint256[](accounts.length);
 
@@ -331,15 +419,20 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             to[i] = accounts[i];
             ids[i] = i;
 
-            _mintDeposit(address(this), ids[i]);
+            _mintDeposit(msgSender, ids[i]);
 
             assertTrue(to[i] != address(0));
-            assertEq(address(this), page.ownerOf(ids[i]));
+            assertEq(msgSender, page.ownerOf(ids[i]));
 
             unchecked {
                 ++i;
             }
         }
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchTransfer(msgSender, to, ids);
 
         page.batchTransfer(to, ids);
 
@@ -357,18 +450,21 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotTransferFromNotOwner() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address to = accounts[1];
         uint256 id = 1;
 
         assertEq(address(0), page.ownerOf(id));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
         page.transferFrom(from, to, id);
     }
 
     function testCannotTransferFromUnsafeRecipient() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address to = address(0);
         uint256 id = 1;
@@ -377,12 +473,14 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         assertEq(from, page.ownerOf(id));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.transferFrom(from, to, id);
     }
 
     function testCannotTransferFromNotAuthorized() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address to = accounts[1];
         uint256 id = 1;
@@ -390,21 +488,29 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDeposit(from, id);
 
         assertEq(from, page.ownerOf(id));
-        assertFalse(page.isApprovedForAll(from, address(this)));
+        assertFalse(page.isApprovedForAll(from, msgSender));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotApproved.selector);
 
         page.transferFrom(from, to, id);
     }
 
     function testTransferFromSelf() external {
+        address msgSender = address(this);
         address from = address(this);
         address to = accounts[1];
         uint256 id = 1;
 
         _mintDeposit(from, id);
 
+        assertEq(msgSender, from);
         assertEq(from, page.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit Transfer(from, to, id);
 
         page.transferFrom(from, to, id);
 
@@ -412,6 +518,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     }
 
     function testTransferFrom() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address to = accounts[1];
         uint256 id = 1;
@@ -422,10 +529,15 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         vm.prank(from);
 
-        page.setApprovalForAll(address(this), true);
+        page.setApprovalForAll(msgSender, true);
 
-        assertTrue(page.isApprovedForAll(from, address(this)));
-        assertTrue(address(this) != from);
+        assertTrue(page.isApprovedForAll(from, msgSender));
+        assertTrue(msgSender != from);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit Transfer(from, to, id);
 
         page.transferFrom(from, to, id);
 
@@ -433,9 +545,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     }
 
     function testTransferFromFuzz(
-        uint256 id,
         address from,
         address to,
+        uint256 id,
         bool selfTransfer
     ) external {
         vm.assume(from != address(0));
@@ -445,18 +557,30 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         assertEq(from, page.ownerOf(id));
 
-        vm.prank(from);
+        address msgSender = from;
 
         if (!selfTransfer) {
-            page.setApprovalForAll(address(this), true);
+            msgSender = address(this);
 
-            assertTrue(page.isApprovedForAll(from, address(this)));
-            assertTrue(address(this) != from);
+            vm.prank(from);
+
+            page.setApprovalForAll(msgSender, true);
+
+            assertTrue(page.isApprovedForAll(from, msgSender));
+            assertTrue(msgSender != from);
         }
 
         bool toIsUnsafe = to == address(0);
 
-        if (toIsUnsafe) vm.expectRevert(Page.UnsafeRecipient.selector);
+        vm.prank(msgSender);
+
+        if (toIsUnsafe) {
+            vm.expectRevert(Page.UnsafeRecipient.selector);
+        } else {
+            vm.expectEmit(true, true, true, true, address(page));
+
+            emit Transfer(from, to, id);
+        }
 
         page.transferFrom(from, to, id);
 
@@ -470,42 +594,48 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     //////////////////////////////////////////////////////////////*/
 
     function testCannotBatchTransferFromNotAuthorized() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = accounts[1];
         ids[0] = 1;
 
-        assertFalse(page.isApprovedForAll(from, address(this)));
-        assertTrue(from != address(this));
+        assertFalse(page.isApprovedForAll(from, msgSender));
+        assertTrue(from != msgSender);
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotApproved.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
     function testCannotBatchTransferFromNotOwnerSelf() external {
-        address from = accounts[0];
+        address msgSender = address(this);
+        address from = address(this);
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = accounts[1];
         ids[0] = 1;
 
+        assertEq(msgSender, from);
+
         for (uint256 i = 0; i < ids.length; ) {
-            assertEq(address(0), page.ownerOf(ids[i]));
+            assertTrue(from != page.ownerOf(ids[i]));
 
             unchecked {
                 ++i;
             }
         }
 
-        vm.prank(from);
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
     function testCannotBatchTransferFromNotOwner() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
@@ -513,7 +643,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         ids[0] = 1;
 
         for (uint256 i = 0; i < ids.length; ) {
-            assertEq(address(0), page.ownerOf(ids[i]));
+            assertTrue(msgSender != page.ownerOf(ids[i]));
 
             unchecked {
                 ++i;
@@ -522,21 +652,25 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         vm.prank(from);
 
-        page.setApprovalForAll(address(this), true);
+        page.setApprovalForAll(msgSender, true);
 
-        assertTrue(page.isApprovedForAll(from, address(this)));
+        assertTrue(page.isApprovedForAll(from, msgSender));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
     function testCannotBatchTransferFromUnsafeRecipientSelf() external {
-        address from = accounts[0];
+        address msgSender = address(this);
+        address from = address(this);
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = address(0);
         ids[0] = 1;
+
+        assertEq(msgSender, from);
 
         for (uint256 i = 0; i < ids.length; ) {
             _mintDeposit(from, ids[i]);
@@ -548,13 +682,14 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             }
         }
 
-        vm.prank(from);
+        vm.prank(msgSender);
         vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
     function testCannotBatchTransferFromUnsafeRecipient() external {
+        address msgSender = address(this);
         address from = accounts[0];
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
@@ -573,19 +708,23 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         vm.prank(from);
 
-        page.setApprovalForAll(address(this), true);
+        page.setApprovalForAll(msgSender, true);
 
-        assertTrue(page.isApprovedForAll(from, address(this)));
+        assertTrue(page.isApprovedForAll(from, msgSender));
 
+        vm.prank(msgSender);
         vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
     function testBatchTransferFromSelf() external {
-        address from = address(1);
+        address msgSender = address(this);
+        address from = address(this);
         address[] memory to = new address[](accounts.length);
         uint256[] memory ids = new uint256[](accounts.length);
+
+        assertEq(msgSender, from);
 
         for (uint256 i = 0; i < accounts.length; ) {
             to[i] = accounts[i];
@@ -600,7 +739,10 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             }
         }
 
-        vm.prank(from);
+        vm.prank(msgSender);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchTransfer(from, to, ids);
 
         page.batchTransferFrom(from, to, ids);
 
@@ -614,7 +756,8 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     }
 
     function testBatchTransferFrom() external {
-        address from = address(1);
+        address msgSender = address(this);
+        address from = accounts[0];
         address[] memory to = new address[](accounts.length);
         uint256[] memory ids = new uint256[](accounts.length);
 
@@ -633,9 +776,14 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         vm.prank(from);
 
-        page.setApprovalForAll(address(this), true);
+        page.setApprovalForAll(msgSender, true);
 
-        assertTrue(page.isApprovedForAll(from, address(this)));
+        assertTrue(page.isApprovedForAll(from, msgSender));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, false, false, true, address(page));
+
+        emit BatchTransfer(from, to, ids);
 
         page.batchTransferFrom(from, to, ids);
 
@@ -648,9 +796,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
     }
 
-    /*//////////////////////////////////////////////////////////////
-                             deposit
-    //////////////////////////////////////////////////////////////*/
+    // /*//////////////////////////////////////////////////////////////
+    //                          deposit
+    // //////////////////////////////////////////////////////////////*/
 
     function testDeposit() external {
         address msgSender = address(this);
@@ -668,9 +816,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(address(0), page.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectEmit(true, true, true, true, address(collection));
+        vm.expectEmit(true, true, true, true, address(page));
 
-        emit Transfer(msgSender, address(page), id);
+        emit Deposit(msgSender, id, recipient);
 
         page.deposit(id, recipient);
 
@@ -705,6 +853,11 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         vm.startPrank(msgSender);
 
         collection.setApprovalForAll(address(page), true);
+
+        vm.expectEmit(true, true, true, true, address(page));
+
+        emit BatchDeposit(msgSender, ids, recipient);
+
         page.batchDeposit(ids, recipient);
 
         vm.stopPrank();
@@ -763,9 +916,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(address(page), collection.ownerOf(id));
 
         vm.prank(msgSender);
-        vm.expectEmit(true, true, true, true, address(collection));
+        vm.expectEmit(true, true, true, true, address(page));
 
-        emit Transfer(address(page), recipient, id);
+        emit Withdraw(msgSender, id, recipient);
 
         page.withdraw(id, recipient);
 
@@ -817,6 +970,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         address recipient = accounts[0];
 
         vm.prank(msgSender);
+        vm.expectEmit(true, false, true, true, address(page));
+
+        emit BatchWithdraw(msgSender, ids, recipient);
 
         page.batchWithdraw(ids, recipient);
 
@@ -870,9 +1026,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDeposit(msgSender, id);
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit List(id);
+        emit List(msgSender, id, price);
 
         page.list(id, price);
 
@@ -935,9 +1091,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDepositList(msgSender, id, price);
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit Edit(id);
+        emit Edit(msgSender, id, newPrice);
 
         page.edit(id, newPrice);
 
@@ -976,9 +1132,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDepositList(msgSender, id, price);
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit Cancel(id);
+        emit Cancel(msgSender, id);
 
         page.cancel(id);
 
@@ -1033,9 +1189,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         uint256 buyerBalanceBefore = msgSender.balance;
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, true, false, true, address(page));
 
-        emit Buy(id);
+        emit Buy(msgSender, id);
 
         page.buy{value: price}(id);
 
@@ -1089,9 +1245,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         assertEq(ids.length, prices.length);
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchList(ids);
+        emit BatchList(msgSender, ids, prices);
 
         page.batchList(ids, prices);
 
@@ -1184,9 +1340,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchEdit(ids);
+        emit BatchEdit(msgSender, ids, newPrices);
 
         page.batchEdit(ids, newPrices);
 
@@ -1231,9 +1387,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         );
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchCancel(ids);
+        emit BatchCancel(msgSender, ids);
 
         page.batchCancel(ids);
 
@@ -1311,9 +1467,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         uint256 buyerBalanceBefore = msgSender.balance;
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchBuy(ids);
+        emit BatchBuy(msgSender, ids);
 
         // Send enough ETH to cover seller proceeds
         page.batchBuy{value: totalPrice}(ids);
@@ -1373,9 +1529,9 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         uint256 expectedRefund = prices[canceledIndex];
 
         vm.prank(msgSender);
-        vm.expectEmit(false, false, false, true, address(page));
+        vm.expectEmit(true, false, false, true, address(page));
 
-        emit BatchBuy(ids);
+        emit BatchBuy(msgSender, ids);
 
         // Send enough ETH to cover seller proceeds
         page.batchBuy{value: totalPrice}(ids);
