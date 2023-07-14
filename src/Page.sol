@@ -39,11 +39,12 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
     error AlreadyInitialized();
     error NotOwner();
     error NotSeller();
-    error Invalid();
-    error Insufficient();
-    error WrongFrom();
-    error UnsafeRecipient();
+    error NotListed();
     error NotApproved();
+    error InvalidPrice();
+    error InvalidOffer();
+    error InsufficientMsgValue();
+    error UnsafeRecipient();
 
     constructor() payable {
         // Prevent the implementation from being initialized
@@ -102,7 +103,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     function transfer(address to, uint256 id) external {
         // Revert if `msg.sender` is not the token owner
-        if (msg.sender != ownerOf[id]) revert WrongFrom();
+        if (msg.sender != ownerOf[id]) revert NotOwner();
 
         // Revert if `to` is the zero address
         if (to == address(0)) revert UnsafeRecipient();
@@ -123,7 +124,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             id = ids[i];
 
             // Revert if `msg.sender` is not the token owner
-            if (msg.sender != ownerOf[id]) revert WrongFrom();
+            if (msg.sender != ownerOf[id]) revert NotOwner();
 
             // Revert if `to` is the zero address
             if (to[i] == address(0)) revert UnsafeRecipient();
@@ -139,7 +140,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
 
     function transferFrom(address from, address to, uint256 id) external {
         // Revert if `from` is not the token owner
-        if (from != ownerOf[id]) revert WrongFrom();
+        if (from != ownerOf[id]) revert NotOwner();
 
         // Revert if `to` is the zero address
         if (to == address(0)) revert UnsafeRecipient();
@@ -169,7 +170,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
             id = ids[i];
 
             // Revert if `from` is not the token owner
-            if (from != ownerOf[id]) revert WrongFrom();
+            if (from != ownerOf[id]) revert NotOwner();
 
             // Revert if `to` is the zero address
             if (to[i] == address(0)) revert UnsafeRecipient();
@@ -224,7 +225,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         if (ownerOf[id] != msg.sender) revert NotOwner();
 
         // Revert if the price is zero
-        if (price == 0) revert Invalid();
+        if (price == 0) revert InvalidPrice();
 
         // Update token owner to this contract to prevent double-listing
         ownerOf[id] = address(this);
@@ -240,7 +241,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
      */
     function _edit(uint256 id, uint96 newPrice) private {
         // Revert if the new price is zero
-        if (newPrice == 0) revert Invalid();
+        if (newPrice == 0) revert InvalidPrice();
 
         Listing storage listing = listings[id];
 
@@ -428,10 +429,10 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         Listing memory listing = listings[id];
 
         // Revert if the listing does not exist (price cannot be zero)
-        if (listing.price == 0) revert Invalid();
+        if (listing.price == 0) revert NotListed();
 
         // Reverts if the msg.value does not cover the listing price
-        if (msg.value != listing.price) revert Insufficient();
+        if (msg.value != listing.price) revert InsufficientMsgValue();
 
         // Delete listing prior to setting the token to the buyer
         delete listings[id];
@@ -504,7 +505,7 @@ abstract contract Page is ERC721TokenReceiver, ReentrancyGuard {
         // wastes gas since their offer value will be zero (no one will take
         // the offer) or their quantity will not increase. Since this is the
         // assumption, we do not need to validate offer and quantity.
-        if (msg.value != offer * quantity) revert Invalid();
+        if (msg.value != offer * quantity) revert InsufficientMsgValue();
 
         // Increase offer quantity
         // Cannot realistically overflow due to the msg.value check above

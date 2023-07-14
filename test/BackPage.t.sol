@@ -221,13 +221,13 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              transfer
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotTransferWrongFrom() external {
+    function testCannotTransferNotOwner() external {
         address to = accounts[0];
         uint256 id = 1;
 
         assertEq(address(0), page.ownerOf(id));
 
-        vm.expectRevert(Page.WrongFrom.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.transfer(to, id);
     }
@@ -283,7 +283,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              batchTransfer
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBatchTransferWrongFrom() external {
+    function testCannotBatchTransferNotOwner() external {
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
         to[0] = accounts[0];
@@ -297,7 +297,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
             }
         }
 
-        vm.expectRevert(Page.WrongFrom.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransfer(to, ids);
     }
@@ -356,14 +356,14 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              transferFrom
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotTransferFromWrongFrom() external {
+    function testCannotTransferFromNotOwner() external {
         address from = accounts[0];
         address to = accounts[1];
         uint256 id = 1;
 
         assertEq(address(0), page.ownerOf(id));
 
-        vm.expectRevert(Page.WrongFrom.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.transferFrom(from, to, id);
     }
@@ -484,7 +484,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.batchTransferFrom(from, to, ids);
     }
 
-    function testCannotBatchTransferFromWrongFromSelf() external {
+    function testCannotBatchTransferFromNotOwnerSelf() external {
         address from = accounts[0];
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
@@ -500,12 +500,12 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         }
 
         vm.prank(from);
-        vm.expectRevert(Page.WrongFrom.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
 
-    function testCannotBatchTransferFromWrongFrom() external {
+    function testCannotBatchTransferFromNotOwner() external {
         address from = accounts[0];
         address[] memory to = new address[](1);
         uint256[] memory ids = new uint256[](1);
@@ -526,7 +526,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         assertTrue(page.isApprovedForAll(from, address(this)));
 
-        vm.expectRevert(Page.WrongFrom.selector);
+        vm.expectRevert(Page.NotOwner.selector);
 
         page.batchTransferFrom(from, to, ids);
     }
@@ -850,7 +850,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.list(id, price);
     }
 
-    function testCannotListPriceZero() external {
+    function testCannotListInvalidPrice() external {
         address msgSender = address(this);
         uint256 id = 0;
         uint96 price = 0;
@@ -858,7 +858,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDeposit(msgSender, id);
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Invalid.selector);
+        vm.expectRevert(Page.InvalidPrice.selector);
 
         page.list(id, price);
     }
@@ -888,7 +888,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              edit
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotEditPriceZero() external {
+    function testCannotEditInvalidPrice() external {
         address msgSender = address(this);
         uint256 id = 0;
         uint96 price = 1 ether;
@@ -897,7 +897,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         _mintDepositList(msgSender, id, price);
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Invalid.selector);
+        vm.expectRevert(Page.InvalidPrice.selector);
 
         page.edit(id, newPrice);
     }
@@ -994,20 +994,21 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              buy
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotBuyMsgValueInsufficient(bool shouldList) external {
+    function testCannotBuyInsufficientMsgValue(bool shouldList) external {
         address seller = address(this);
         address msgSender = accounts[0];
         uint256 id = 0;
         uint96 price = 1 ether;
         uint256 insufficientMsgValue = price - 1;
 
-        // Reverts with `Insufficient` if msg.value is insufficient or if not listed
+        // Reverts with `InsufficientMsValue` if msg.value is insufficient
         if (shouldList) {
             _mintDepositList(seller, id, price);
 
-            vm.expectRevert(Page.Insufficient.selector);
+            vm.expectRevert(Page.InsufficientMsgValue.selector);
         } else {
-            vm.expectRevert(Page.Invalid.selector);
+            // Reverts with `NotListed` if listing does not exist
+            vm.expectRevert(Page.NotListed.selector);
         }
 
         vm.deal(msgSender, price);
@@ -1019,6 +1020,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
     function testBuy(address msgSender, uint256 id, uint96 price) external {
         vm.assume(msgSender != address(0));
+        vm.assume(msgSender != address(this));
         vm.assume(price != 0);
         vm.deal(msgSender, price);
 
@@ -1127,7 +1129,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         page.batchEdit(ids, newPrices);
     }
 
-    function testCannotBatchEditNewPriceZero() external {
+    function testCannotBatchEditInvalidPrice() external {
         address msgSender = address(this);
         uint256 listQuantity = 5;
         (uint256[] memory ids, ) = _batchMintDepositList(
@@ -1137,7 +1139,7 @@ contract BackPageTests is Test, ERC721TokenReceiver {
         uint96[] memory newPrices = new uint96[](ids.length);
 
         vm.prank(msgSender);
-        vm.expectRevert(Page.Invalid.selector);
+        vm.expectRevert(Page.InvalidPrice.selector);
 
         page.batchEdit(ids, newPrices);
     }
