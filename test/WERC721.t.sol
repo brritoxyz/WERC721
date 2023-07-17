@@ -48,6 +48,208 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertEq(collection.symbol(), wrapper.symbol());
     }
 
+    /**
+     * @notice Mint an ERC-721 and wrap it.
+     * @param  owner  address  Wrapped ERC-721 NFT recipient.
+     * @param  id     uint256  The NFT to mint and wrap.
+     */
+    function _mintDeposit(address owner, uint256 id) internal {
+        collection.mint(owner, id);
+
+        vm.startPrank(owner);
+
+        collection.approve(address(wrapper), id);
+        wrapper.wrap(id);
+
+        vm.stopPrank();
+
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(owner, wrapper.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             setApprovalForAll
+    //////////////////////////////////////////////////////////////*/
+
+    function testSetApprovalForAllFalseToTrue() external {
+        address msgSender = address(this);
+        address operator = address(1);
+        bool approved = true;
+
+        assertFalse(wrapper.isApprovedForAll(msgSender, operator));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit ApprovalForAll(msgSender, operator, approved);
+
+        wrapper.setApprovalForAll(operator, approved);
+
+        assertTrue(wrapper.isApprovedForAll(msgSender, operator));
+    }
+
+    function testSetApprovalForAllTrueToFalse() external {
+        address msgSender = address(this);
+        address operator = address(1);
+        bool approvedTrue = true;
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit ApprovalForAll(msgSender, operator, approvedTrue);
+
+        wrapper.setApprovalForAll(operator, approvedTrue);
+
+        assertTrue(wrapper.isApprovedForAll(msgSender, operator));
+
+        bool approvedFalse = false;
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit ApprovalForAll(msgSender, operator, approvedFalse);
+
+        wrapper.setApprovalForAll(operator, approvedFalse);
+
+        assertFalse(wrapper.isApprovedForAll(msgSender, operator));
+    }
+
+    function testSetApprovalForAllFuzz(
+        address msgSender,
+        address operator,
+        bool approved
+    ) external {
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit ApprovalForAll(msgSender, operator, approved);
+
+        wrapper.setApprovalForAll(operator, approved);
+
+        assertEq(approved, wrapper.isApprovedForAll(msgSender, operator));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             transferFrom
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotTransferFromNotApprovedOperator() external {
+        address msgSender = address(this);
+        address from = address(1);
+        address to = address(2);
+        uint256 id = 0;
+
+        assertFalse(wrapper.isApprovedForAll(from, msgSender));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotApprovedOperator.selector);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
+    function testCannotTransferFromNotTokenOwnerMsgSenderEqualsFrom() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(2);
+        uint256 id = 0;
+
+        assertFalse(wrapper.isApprovedForAll(from, msgSender));
+        assertEq(msgSender, from);
+        assertTrue(from != wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotTokenOwner.selector);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
+    function testCannotTransferFromNotTokenOwnerMsgSenderApprovedOperator()
+        external
+    {
+        address msgSender = address(this);
+        address from = address(1);
+        address to = address(2);
+        uint256 id = 0;
+
+        vm.prank(from);
+
+        wrapper.setApprovalForAll(msgSender, true);
+
+        assertTrue(wrapper.isApprovedForAll(from, msgSender));
+        assertTrue(msgSender != from);
+        assertTrue(from != wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotTokenOwner.selector);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
+    function testCannotTransferFromUnsafeTokenRecipient() external {
+        address msgSender = address(this);
+        address from = address(1);
+        address to = address(0);
+        uint256 id = 0;
+
+        _mintDeposit(from, id);
+
+        vm.prank(from);
+
+        wrapper.setApprovalForAll(msgSender, true);
+
+        assertTrue(wrapper.isApprovedForAll(from, msgSender));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
+    function testTransferFromMsgSenderEqualsFrom() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(2);
+        uint256 id = 0;
+
+        _mintDeposit(from, id);
+
+        assertEq(msgSender, from);
+        assertEq(from, wrapper.ownerOf(id));
+        assertFalse(wrapper.isApprovedForAll(from, msgSender));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
+    function testTransferFromMsgSenderApprovedOperator() external {
+        address msgSender = address(this);
+        address from = address(1);
+        address to = address(2);
+        uint256 id = 0;
+
+        _mintDeposit(from, id);
+
+        assertTrue(msgSender != from);
+        assertEq(from, wrapper.ownerOf(id));
+
+        vm.prank(from);
+
+        wrapper.setApprovalForAll(msgSender, true);
+
+        assertTrue(wrapper.isApprovedForAll(from, msgSender));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.transferFrom(from, to, id);
+    }
+
     /*//////////////////////////////////////////////////////////////
                              wrap
     //////////////////////////////////////////////////////////////*/
