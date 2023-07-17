@@ -61,7 +61,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         vm.startPrank(owner);
 
         collection.approve(address(wrapper), id);
-        wrapper.wrap(id);
+        wrapper.wrap(owner, id);
 
         vm.stopPrank();
 
@@ -356,6 +356,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
     function testWrap() external {
         address msgSender = address(this);
+        address to = address(1);
         uint256 id = 0;
 
         collection.mint(msgSender, id);
@@ -375,11 +376,11 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         vm.expectEmit(true, true, true, true, address(wrapper));
 
         // `Transfer` event emitted by the wrapper in the `onERC721Received` hook.
-        emit Transfer(address(0), msgSender, id);
+        emit Transfer(address(0), to, id);
 
-        wrapper.wrap(id);
+        wrapper.wrap(to, id);
 
         assertEq(address(wrapper), collection.ownerOf(id));
-        assertEq(msgSender, wrapper.ownerOf(id));
+        assertEq(to, wrapper.ownerOf(id));
     }
 }

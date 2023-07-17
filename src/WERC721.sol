@@ -168,24 +168,26 @@ contract WERC721 is Clone {
 
     /**
      * @notice Wrap an ERC-721 NFT.
+     * @param  to  address  The owner of the wrapped ERC-721 NFT.
      * @param  id  uint256  The NFT to deposit and wrap.
      */
-    function wrap(uint256 id) external {
+    function wrap(address to, uint256 id) external {
         // Transfer the ERC-721 NFT to this contract using `safeTransferFrom`, which will
         // result in the `onERC721Received` hook being called (contains minting logic).
         collection().safeTransferFrom(
             msg.sender,
             address(this),
             id,
-            abi.encode(msg.sender)
+            abi.encode(to)
         );
     }
 
     /**
      * @notice Unwrap an ERC-721 NFT.
+     * @param  to  address  The owner of the unwrapped ERC-721 NFT.
      * @param  id  uint256  The NFT to unwrap and withdraw.
      */
-    function unwrap(uint256 id) external {
+    function unwrap(address to, uint256 id) external {
         // Throws if `msg.sender` is not the owner of the wrapped NFT.
         if (ownerOf[id] != msg.sender) revert NotTokenOwner();
 
@@ -196,7 +198,7 @@ contract WERC721 is Clone {
         emit Transfer(msg.sender, address(0), id);
 
         // Transfer the ERC-721 NFT to the recipient.
-        collection().safeTransferFrom(address(this), msg.sender, id);
+        collection().safeTransferFrom(address(this), to, id);
     }
 
     /**
@@ -216,13 +218,13 @@ contract WERC721 is Clone {
         if (msg.sender != address(collection())) revert NotAuthorizedCaller();
 
         // Decode the recipient of the wrapped ERC-721 NFT.
-        address recipient = abi.decode(data, (address));
+        address to = abi.decode(data, (address));
 
         // Mint the wrapped NFT for the depositor.
-        ownerOf[id] = recipient;
+        ownerOf[id] = to;
 
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
-        emit Transfer(address(0), recipient, id);
+        emit Transfer(address(0), to, id);
 
         return ERC721TokenReceiver.onERC721Received.selector;
     }
