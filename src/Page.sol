@@ -128,47 +128,6 @@ abstract contract Page is ReentrancyGuard {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    function transfer(address to, uint256 id) external {
-        // Revert if `msg.sender` is not the token owner
-        if (msg.sender != ownerOf[id]) revert NotOwner();
-
-        // Revert if `to` is the zero address
-        if (to == address(0)) revert UnsafeRecipient();
-
-        // Set new owner as `to`
-        ownerOf[id] = to;
-
-        emit Transfer(msg.sender, to, id);
-    }
-
-    function batchTransfer(
-        address[] calldata to,
-        uint256[] calldata ids
-    ) external {
-        // Storing these outside the loop saves ~15 gas per iteration.
-        uint256 id;
-        uint256 idsLength = ids.length;
-
-        for (uint256 i = 0; i < idsLength; ) {
-            id = ids[i];
-
-            // Revert if `msg.sender` is not the token owner
-            if (msg.sender != ownerOf[id]) revert NotOwner();
-
-            // Revert if `to` is the zero address
-            if (to[i] == address(0)) revert UnsafeRecipient();
-
-            // Set new owner as `to`
-            ownerOf[id] = to[i];
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit BatchTransfer(msg.sender, to, ids);
-    }
-
     function transferFrom(address from, address to, uint256 id) external {
         // Revert if `from` is not the token owner
         if (from != ownerOf[id]) revert NotOwner();
