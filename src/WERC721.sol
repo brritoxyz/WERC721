@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
-import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 
 contract WERC721 is Clone {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
