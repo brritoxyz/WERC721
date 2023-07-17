@@ -127,6 +127,12 @@ abstract contract Page is ReentrancyGuard {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
+    /**
+     * @notice Transfer ownership of an NFT
+     * @param  from  address  The current owner of the NFT
+     * @param  to    address  The new owner
+     * @param  id    uint256  The NFT to transfer
+     */
     function transferFrom(address from, address to, uint256 id) public payable {
         // Throws unless `msg.sender` is the current owner, or an authorized operator
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
@@ -144,6 +150,13 @@ abstract contract Page is ReentrancyGuard {
         emit Transfer(from, to, id);
     }
 
+    /**
+     * @notice Transfers the ownership of an NFT from one address to another address
+     * @param  from  address  The current owner of the NFT
+     * @param  to    address  The new owner
+     * @param  id    uint256  The NFT to transfer
+     * @param  data  bytes    Additional data with no specified format, sent in call to `to`
+     */
     function safeTransferFrom(
         address from,
         address to,
@@ -165,6 +178,12 @@ abstract contract Page is ReentrancyGuard {
         ) revert UnsafeRecipient();
     }
 
+    /**
+     * @notice Transfers the ownership of an NFT from one address to another address
+     * @param  from  address  The current owner of the NFT
+     * @param  to    address  The new owner
+     * @param  id    uint256  The NFT to transfer
+     */
     function safeTransferFrom(
         address from,
         address to,
