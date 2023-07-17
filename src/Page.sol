@@ -30,7 +30,6 @@ abstract contract Page is ReentrancyGuard {
         address indexed to,
         uint256 indexed id
     );
-    event BatchTransfer(address indexed from, address[] to, uint256[] ids);
     event ApprovalForAll(
         address indexed owner,
         address indexed operator,
@@ -128,16 +127,16 @@ abstract contract Page is ReentrancyGuard {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    function transferFrom(address from, address to, uint256 id) external {
-        // Revert if `from` is not the token owner
-        if (from != ownerOf[id]) revert NotOwner();
-
-        // Revert if `to` is the zero address
-        if (to == address(0)) revert UnsafeRecipient();
-
-        // Revert if `msg.sender` is not `from` and does not have transfer approval
+    function transferFrom(address from, address to, uint256 id) public payable {
+        // Throws unless `msg.sender` is the current owner, or an authorized operator
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
             revert NotApproved();
+
+        // Throws if `from` is not the current owner or if `id` is not a valid NFT
+        if (from != ownerOf[id]) revert NotOwner();
+
+        // Throws if `to` is the zero address
+        if (to == address(0)) revert UnsafeRecipient();
 
         // Set new owner as `to`
         ownerOf[id] = to;
@@ -145,38 +144,45 @@ abstract contract Page is ReentrancyGuard {
         emit Transfer(from, to, id);
     }
 
-    function batchTransferFrom(
+    function safeTransferFrom(
         address from,
-        address[] calldata to,
-        uint256[] calldata ids
-    ) external {
-        // Revert if `msg.sender` is not `from` and does not have transfer approval
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotApproved();
+        address to,
+        uint256 id,
+        bytes calldata data
+    ) external payable {
+        transferFrom(from, to, id);
 
-        // Storing these outside the loop saves ~15 gas per iteration.
-        uint256 id;
-        uint256 idsLength = ids.length;
+        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value
+        if (
+            to.code.length != 0 &&
+            ERC721TokenReceiver(to).onERC721Received(
+                msg.sender,
+                from,
+                id,
+                data
+            ) !=
+            ERC721TokenReceiver.onERC721Received.selector
+        ) revert UnsafeRecipient();
+    }
 
-        for (uint256 i = 0; i < idsLength; ) {
-            id = ids[i];
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id
+    ) external payable {
+        transferFrom(from, to, id);
 
-            // Revert if `from` is not the token owner
-            if (from != ownerOf[id]) revert NotOwner();
-
-            // Revert if `to` is the zero address
-            if (to[i] == address(0)) revert UnsafeRecipient();
-
-            ownerOf[id] = to[i];
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit BatchTransfer(from, to, ids);
+        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value
+        if (
+            to.code.length != 0 &&
+            ERC721TokenReceiver(to).onERC721Received(
+                msg.sender,
+                from,
+                id,
+                ""
+            ) !=
+            ERC721TokenReceiver.onERC721Received.selector
+        ) revert UnsafeRecipient();
     }
 
     /**

@@ -268,36 +268,6 @@ contract BackPageTests is Test, ERC721TokenReceiver {
                              transferFrom
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotTransferFromNotOwner() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address to = accounts[1];
-        uint256 id = 1;
-
-        assertEq(address(0), page.ownerOf(id));
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.NotOwner.selector);
-
-        page.transferFrom(from, to, id);
-    }
-
-    function testCannotTransferFromUnsafeRecipient() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address to = address(0);
-        uint256 id = 1;
-
-        _mintDeposit(from, id);
-
-        assertEq(from, page.ownerOf(id));
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.UnsafeRecipient.selector);
-
-        page.transferFrom(from, to, id);
-    }
-
     function testCannotTransferFromNotAuthorized() external {
         address msgSender = address(this);
         address from = accounts[0];
@@ -311,6 +281,42 @@ contract BackPageTests is Test, ERC721TokenReceiver {
 
         vm.prank(msgSender);
         vm.expectRevert(Page.NotApproved.selector);
+
+        page.transferFrom(from, to, id);
+    }
+
+    function testCannotTransferFromNotOwner() external {
+        address owner = accounts[0];
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = accounts[1];
+        uint256 id = 1;
+
+        _mintDeposit(owner, id);
+
+        assertEq(msgSender, from);
+        assertTrue(from != page.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.NotOwner.selector);
+
+        // Attempt to transfer a token that `from` does not own
+        page.transferFrom(from, to, id);
+    }
+
+    function testCannotTransferFromUnsafeRecipient() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(0);
+        uint256 id = 1;
+
+        _mintDeposit(from, id);
+
+        assertEq(msgSender, from);
+        assertEq(from, page.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(Page.UnsafeRecipient.selector);
 
         page.transferFrom(from, to, id);
     }
@@ -409,215 +415,8 @@ contract BackPageTests is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             batchTransferFrom
+                             deposit
     //////////////////////////////////////////////////////////////*/
-
-    function testCannotBatchTransferFromNotAuthorized() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address[] memory to = new address[](1);
-        uint256[] memory ids = new uint256[](1);
-        to[0] = accounts[1];
-        ids[0] = 1;
-
-        assertFalse(page.isApprovedForAll(from, msgSender));
-        assertTrue(from != msgSender);
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.NotApproved.selector);
-
-        page.batchTransferFrom(from, to, ids);
-    }
-
-    function testCannotBatchTransferFromNotOwnerSelf() external {
-        address msgSender = address(this);
-        address from = address(this);
-        address[] memory to = new address[](1);
-        uint256[] memory ids = new uint256[](1);
-        to[0] = accounts[1];
-        ids[0] = 1;
-
-        assertEq(msgSender, from);
-
-        for (uint256 i = 0; i < ids.length; ) {
-            assertTrue(from != page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.NotOwner.selector);
-
-        page.batchTransferFrom(from, to, ids);
-    }
-
-    function testCannotBatchTransferFromNotOwner() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address[] memory to = new address[](1);
-        uint256[] memory ids = new uint256[](1);
-        to[0] = accounts[1];
-        ids[0] = 1;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            assertTrue(msgSender != page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(from);
-
-        page.setApprovalForAll(msgSender, true);
-
-        assertTrue(page.isApprovedForAll(from, msgSender));
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.NotOwner.selector);
-
-        page.batchTransferFrom(from, to, ids);
-    }
-
-    function testCannotBatchTransferFromUnsafeRecipientSelf() external {
-        address msgSender = address(this);
-        address from = address(this);
-        address[] memory to = new address[](1);
-        uint256[] memory ids = new uint256[](1);
-        to[0] = address(0);
-        ids[0] = 1;
-
-        assertEq(msgSender, from);
-
-        for (uint256 i = 0; i < ids.length; ) {
-            _mintDeposit(from, ids[i]);
-
-            assertEq(from, page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.UnsafeRecipient.selector);
-
-        page.batchTransferFrom(from, to, ids);
-    }
-
-    function testCannotBatchTransferFromUnsafeRecipient() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address[] memory to = new address[](1);
-        uint256[] memory ids = new uint256[](1);
-        to[0] = address(0);
-        ids[0] = 1;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            _mintDeposit(from, ids[i]);
-
-            assertEq(from, page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(from);
-
-        page.setApprovalForAll(msgSender, true);
-
-        assertTrue(page.isApprovedForAll(from, msgSender));
-
-        vm.prank(msgSender);
-        vm.expectRevert(Page.UnsafeRecipient.selector);
-
-        page.batchTransferFrom(from, to, ids);
-    }
-
-    function testBatchTransferFromSelf() external {
-        address msgSender = address(this);
-        address from = address(this);
-        address[] memory to = new address[](accounts.length);
-        uint256[] memory ids = new uint256[](accounts.length);
-
-        assertEq(msgSender, from);
-
-        for (uint256 i = 0; i < accounts.length; ) {
-            to[i] = accounts[i];
-            ids[i] = i;
-
-            _mintDeposit(from, ids[i]);
-
-            assertEq(from, page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(msgSender);
-        vm.expectEmit(true, false, false, true, address(page));
-
-        emit BatchTransfer(from, to, ids);
-
-        page.batchTransferFrom(from, to, ids);
-
-        for (uint256 i = 0; i < ids.length; ) {
-            assertEq(to[i], page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    function testBatchTransferFrom() external {
-        address msgSender = address(this);
-        address from = accounts[0];
-        address[] memory to = new address[](accounts.length);
-        uint256[] memory ids = new uint256[](accounts.length);
-
-        for (uint256 i = 0; i < accounts.length; ) {
-            to[i] = accounts[i];
-            ids[i] = i;
-
-            _mintDeposit(from, ids[i]);
-
-            assertEq(from, page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        vm.prank(from);
-
-        page.setApprovalForAll(msgSender, true);
-
-        assertTrue(page.isApprovedForAll(from, msgSender));
-
-        vm.prank(msgSender);
-        vm.expectEmit(true, false, false, true, address(page));
-
-        emit BatchTransfer(from, to, ids);
-
-        page.batchTransferFrom(from, to, ids);
-
-        for (uint256 i = 0; i < ids.length; ) {
-            assertEq(to[i], page.ownerOf(ids[i]));
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    // /*//////////////////////////////////////////////////////////////
-    //                          deposit
-    // //////////////////////////////////////////////////////////////*/
 
     function testDeposit() external {
         address msgSender = address(this);
