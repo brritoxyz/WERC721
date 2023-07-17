@@ -5,7 +5,7 @@ import {Clone} from "solady/utils/Clone.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
-contract WERC721 is Clone, ERC721TokenReceiver {
+contract WERC721 is Clone {
     // Immutable argument byte offsets (`collection` is 1st, so it's offset by 0 bytes).
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
@@ -32,6 +32,7 @@ contract WERC721 is Clone, ERC721TokenReceiver {
 
     error NotOwner();
     error NotApproved();
+    error NotCollection();
     error InvalidTokenId();
     error UnsafeRecipient();
 
@@ -191,5 +192,33 @@ contract WERC721 is Clone, ERC721TokenReceiver {
 
         // Transfer the ERC-721 NFT to the recipient.
         collection().safeTransferFrom(address(this), msg.sender, id);
+    }
+
+    /**
+     * @notice Wrap an ERC-721 NFT using a "safe" ERC-721 method (e.g. `safeTransferFrom` or `safeMint`).
+     * @dev    It is the responsibility of the ERC-721 implementer to ensure that `onERC721Received` is
+     *         implemented and works correctly.
+     * @param  id    uint256  The NFT to deposit and wrap.
+     * @param  data  bytes    Encoded recipient address.
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256 id,
+        bytes calldata data
+    ) external returns (bytes4) {
+        // Throws if `msg.sender` is not the collection contract.
+        if (msg.sender != address(collection())) revert NotCollection();
+
+        // Decode the recipient of the wrapped ERC-721 NFT.
+        address recipient = abi.decode(data, (address));
+
+        // Mint the wrapped NFT for the depositor.
+        ownerOf[id] = recipient;
+
+        // Emit `Transfer` with zero address as the `from` member to denote a mint.
+        emit Transfer(address(0), recipient, id);
+
+        return ERC721TokenReceiver.onERC721Received.selector;
     }
 }
