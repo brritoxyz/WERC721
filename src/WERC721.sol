@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {Clone} from "solady/utils/Clone.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
-abstract contract PageV2 is ERC721TokenReceiver {
+contract WERC721 is Clone, ERC721TokenReceiver {
+    // Immutable argument byte offsets (`collection` is 1st, so it's offset by 0 bytes).
+    uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
+
     // Find the owner of an NFT.
     mapping(uint256 id => address owner) public ownerOf;
 
@@ -34,7 +38,9 @@ abstract contract PageV2 is ERC721TokenReceiver {
     /**
      * @notice The underlying ERC-721 collection contract.
      */
-    function collection() public view virtual returns (ERC721);
+    function collection() public pure returns (ERC721) {
+        return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
+    }
 
     /**
      * @notice The descriptive name for a collection of NFTs in this contract.
