@@ -30,11 +30,11 @@ contract WERC721 is Clone {
         bool approved
     );
 
-    error NotOwner();
-    error NotApproved();
-    error NotCollection();
+    error NotTokenOwner();
     error InvalidTokenId();
-    error UnsafeRecipient();
+    error UnsafeTokenRecipient();
+    error NotApprovedOperator();
+    error NotAuthorizedCaller();
 
     /**
      * @notice The underlying ERC-721 collection contract.
@@ -93,13 +93,13 @@ contract WERC721 is Clone {
     function transferFrom(address from, address to, uint256 id) public payable {
         // Throws unless `msg.sender` is the current owner, or an authorized operator
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotApproved();
+            revert NotApprovedOperator();
 
         // Throws if `from` is not the current owner or if `id` is not a valid NFT
-        if (from != ownerOf[id]) revert NotOwner();
+        if (from != ownerOf[id]) revert NotTokenOwner();
 
         // Throws if `to` is the zero address
-        if (to == address(0)) revert UnsafeRecipient();
+        if (to == address(0)) revert UnsafeTokenRecipient();
 
         // Set new owner as `to`
         ownerOf[id] = to;
@@ -132,7 +132,7 @@ contract WERC721 is Clone {
                 data
             ) !=
             ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeRecipient();
+        ) revert UnsafeTokenRecipient();
     }
 
     /**
@@ -158,7 +158,7 @@ contract WERC721 is Clone {
                 ""
             ) !=
             ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeRecipient();
+        ) revert UnsafeTokenRecipient();
     }
 
     /**
@@ -182,7 +182,7 @@ contract WERC721 is Clone {
      */
     function unwrap(uint256 id) external {
         // Throws if `msg.sender` is not the owner of the wrapped NFT.
-        if (ownerOf[id] != msg.sender) revert NotOwner();
+        if (ownerOf[id] != msg.sender) revert NotTokenOwner();
 
         // Burn the wrapped NFT before transferring the ERC-721 NFT to the withdrawer.
         delete ownerOf[id];
@@ -208,7 +208,7 @@ contract WERC721 is Clone {
         bytes calldata data
     ) external returns (bytes4) {
         // Throws if `msg.sender` is not the collection contract.
-        if (msg.sender != address(collection())) revert NotCollection();
+        if (msg.sender != address(collection())) revert NotAuthorizedCaller();
 
         // Decode the recipient of the wrapped ERC-721 NFT.
         address recipient = abi.decode(data, (address));
