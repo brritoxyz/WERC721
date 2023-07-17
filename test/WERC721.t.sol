@@ -6,6 +6,8 @@ import {TestERC721} from "test/lib/TestERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
+import {TestERC721SafeRecipient} from "test/lib/TestERC721SafeRecipient.sol";
+import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol";
 
 contract WERC721Test is Test, ERC721TokenReceiver {
     TestERC721 public immutable collection;
@@ -248,6 +250,104 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         emit Transfer(from, to, id);
 
         wrapper.transferFrom(from, to, id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             safeTransferFrom
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotSafeTransferFromUnsafeTokenRecipient() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(new TestERC721UnsafeRecipient());
+        uint256 id = 0;
+        bytes memory data = abi.encode(from);
+
+        _mintDeposit(from, id);
+
+        assertEq(msgSender, from);
+        assertEq(from, wrapper.ownerOf(id));
+        assertTrue(to.code.length != 0);
+        assertTrue(
+            TestERC721UnsafeRecipient(to).onERC721Received(
+                msgSender,
+                from,
+                id,
+                data
+            ) != ERC721TokenReceiver.onERC721Received.selector
+        );
+
+        vm.startPrank(msgSender);
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        wrapper.safeTransferFrom(from, to, id, data);
+
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        // `safeTransferFrom` without `data` param.
+        wrapper.safeTransferFrom(from, to, id);
+
+        vm.stopPrank();
+    }
+
+    function testSafeTransferFromWithData() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(new TestERC721SafeRecipient());
+        uint256 id = 0;
+        bytes memory data = abi.encode(from);
+        TestERC721SafeRecipient _to = TestERC721SafeRecipient(to);
+
+        _mintDeposit(from, id);
+
+        assertEq(msgSender, from);
+        assertEq(from, wrapper.ownerOf(id));
+        assertTrue(to.code.length != 0);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.safeTransferFrom(from, to, id, data);
+
+        assertEq(msgSender, _to.operator());
+        assertEq(from, _to.from());
+        assertEq(id, _to.id());
+        assertEq(keccak256(data), keccak256(_to.data()));
+        assertEq(
+            _to.onERC721Received(msgSender, from, id, data),
+            ERC721TokenReceiver.onERC721Received.selector
+        );
+    }
+
+    function testSafeTransferFrom() external {
+        address msgSender = address(this);
+        address from = msgSender;
+        address to = address(new TestERC721SafeRecipient());
+        uint256 id = 0;
+        TestERC721SafeRecipient _to = TestERC721SafeRecipient(to);
+
+        _mintDeposit(from, id);
+
+        assertEq(msgSender, from);
+        assertEq(from, wrapper.ownerOf(id));
+        assertTrue(to.code.length != 0);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.safeTransferFrom(from, to, id);
+
+        assertEq(msgSender, _to.operator());
+        assertEq(from, _to.from());
+        assertEq(id, _to.id());
+        assertEq(
+            _to.onERC721Received(msgSender, from, id, bytes("")),
+            ERC721TokenReceiver.onERC721Received.selector
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
