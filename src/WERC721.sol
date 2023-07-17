@@ -6,7 +6,7 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
 contract WERC721 is Clone {
-    // Immutable argument byte offsets (`collection` is 1st, so it's offset by 0 bytes).
+    // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
     // Find the owner of an NFT.
@@ -38,6 +38,7 @@ contract WERC721 is Clone {
 
     /**
      * @notice The underlying ERC-721 collection contract.
+     * @return ERC721  The underlying ERC-721 collection contract.
      */
     function collection() public pure returns (ERC721) {
         return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
@@ -47,6 +48,7 @@ contract WERC721 is Clone {
      * @notice The descriptive name for a collection of NFTs in this contract.
      * @dev    We are returning the value of `name()` on the underlying ERC-721
      *         contract for parity between the derivatives and the actual assets.
+     * @return string  The descriptive name for a collection of NFTs in this contract.
      */
     function name() external view returns (string memory) {
         return collection().name();
@@ -56,6 +58,7 @@ contract WERC721 is Clone {
      * @notice An abbreviated name for NFTs in this contract.
      * @dev    We are returning the value of `symbol()` on the underlying ERC-721
      *         contract for parity between the derivatives and the actual assets.
+     * @return string  An abbreviated name for NFTs in this contract.
      */
     function symbol() external view returns (string memory) {
         return collection().symbol();
@@ -65,6 +68,8 @@ contract WERC721 is Clone {
      * @notice A distinct Uniform Resource Identifier (URI) for a given asset.
      * @dev    We are returning the value of `tokenURI(id)` on the underlying ERC-721
      *         contract for parity between the derivatives and the actual assets.
+     * @param  id  uint256  The identifier for an NFT.
+     * @return     string   A valid URI for the asset.
      */
     function tokenURI(uint256 id) external view returns (string memory) {
         // Throws if `id` is not a valid NFT.
@@ -91,17 +96,17 @@ contract WERC721 is Clone {
      * @param  id    uint256  The NFT to transfer.
      */
     function transferFrom(address from, address to, uint256 id) public payable {
-        // Throws unless `msg.sender` is the current owner, or an authorized operator
+        // Throws unless `msg.sender` is the current owner, or an authorized operator.
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
             revert NotApprovedOperator();
 
-        // Throws if `from` is not the current owner or if `id` is not a valid NFT
+        // Throws if `from` is not the current owner or if `id` is not a valid NFT.
         if (from != ownerOf[id]) revert NotTokenOwner();
 
-        // Throws if `to` is the zero address
+        // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Set new owner as `to`
+        // Set new owner as `to`.
         ownerOf[id] = to;
 
         emit Transfer(from, to, id);
@@ -166,14 +171,14 @@ contract WERC721 is Clone {
      * @param  id  uint256  The NFT to deposit and wrap.
      */
     function wrap(uint256 id) external {
-        // Mint the wrapped NFT for the depositor.
-        ownerOf[id] = msg.sender;
-
-        // Emit `Transfer` with zero address as the `from` member to denote a mint.
-        emit Transfer(address(0), msg.sender, id);
-
-        // Transfer the ERC-721 NFT to self to enable future withdrawal.
-        collection().transferFrom(msg.sender, address(this), id);
+        // Transfer the ERC-721 NFT to this contract using `safeTransferFrom`, which will
+        // result in the `onERC721Received` hook being called (contains minting logic).
+        collection().safeTransferFrom(
+            msg.sender,
+            address(this),
+            id,
+            abi.encode(msg.sender)
+        );
     }
 
     /**
