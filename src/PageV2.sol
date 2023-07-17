@@ -28,9 +28,7 @@ abstract contract PageV2 is ERC721TokenReceiver {
 
     error NotOwner();
     error NotApproved();
-    error NotCollection();
     error InvalidTokenId();
-    error InvalidAddress();
     error UnsafeRecipient();
 
     /**
@@ -157,33 +155,35 @@ abstract contract PageV2 is ERC721TokenReceiver {
     }
 
     /**
-     * @notice Deposit an ERC-721 NFT for a lighter derivative with matching ID and metadata.
-     * @param  id  uint256  The NFT to deposit.
+     * @notice Wrap an ERC-721 NFT.
+     * @param  id  uint256  The NFT to deposit and wrap.
      */
-    function deposit(uint256 id) external {
-        // Mint the derivative token for the depositor.
+    function wrap(uint256 id) external {
+        // Mint the wrapped NFT for the depositor.
         ownerOf[id] = msg.sender;
 
+        // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), msg.sender, id);
 
-        // Transfer the NFT to self before minting the derivative token.
+        // Transfer the ERC-721 NFT to self to enable future withdrawal.
         collection().transferFrom(msg.sender, address(this), id);
     }
 
     /**
-     * @notice Withdraw the derivative and receive the underlying ERC-721 NFT.
-     * @param  id  uint256  The NFT to withdraw.
+     * @notice Unwrap an ERC-721 NFT.
+     * @param  id  uint256  The NFT to unwrap and withdraw.
      */
-    function withdraw(uint256 id) external {
-        // Throws if msg.sender is not the owner of the derivative.
+    function unwrap(uint256 id) external {
+        // Throws if `msg.sender` is not the owner of the wrapped NFT.
         if (ownerOf[id] != msg.sender) revert NotOwner();
 
-        // Burn the derivative before transferring the NFT to the recipient.
+        // Burn the wrapped NFT before transferring the ERC-721 NFT to the withdrawer.
         delete ownerOf[id];
 
+        // Emit `Transfer` with zero address as the `to` member to denote a burn.
         emit Transfer(msg.sender, address(0), id);
 
-        // Transfer the NFT to the recipient.
+        // Transfer the ERC-721 NFT to the recipient.
         collection().safeTransferFrom(address(this), msg.sender, id);
     }
 }
