@@ -30,6 +30,7 @@ abstract contract Page is ReentrancyGuard {
         address indexed to,
         uint256 indexed id
     );
+    event BatchTransfer(address indexed from, address[] to, uint256[] ids);
     event ApprovalForAll(
         address indexed owner,
         address indexed operator,
@@ -127,22 +128,57 @@ abstract contract Page is ReentrancyGuard {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    /**
-     * @notice Transfer ownership of an NFT
-     * @param  from  address  The current owner of the NFT
-     * @param  to    address  The new owner
-     * @param  id    uint256  The NFT to transfer
-     */
-    function transferFrom(address from, address to, uint256 id) public payable {
-        // Throws unless `msg.sender` is the current owner, or an authorized operator
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotApproved();
+    function transfer(address to, uint256 id) external {
+        // Revert if `msg.sender` is not the token owner
+        if (msg.sender != ownerOf[id]) revert NotOwner();
 
-        // Throws if `from` is not the current owner or if `id` is not a valid NFT
+        // Revert if `to` is the zero address
+        if (to == address(0)) revert UnsafeRecipient();
+
+        // Set new owner as `to`
+        ownerOf[id] = to;
+
+        emit Transfer(msg.sender, to, id);
+    }
+
+    function batchTransfer(
+        address[] calldata to,
+        uint256[] calldata ids
+    ) external {
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+        uint256 idsLength = ids.length;
+
+        for (uint256 i = 0; i < idsLength; ) {
+            id = ids[i];
+
+            // Revert if `msg.sender` is not the token owner
+            if (msg.sender != ownerOf[id]) revert NotOwner();
+
+            // Revert if `to` is the zero address
+            if (to[i] == address(0)) revert UnsafeRecipient();
+
+            // Set new owner as `to`
+            ownerOf[id] = to[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit BatchTransfer(msg.sender, to, ids);
+    }
+
+    function transferFrom(address from, address to, uint256 id) external {
+        // Revert if `from` is not the token owner
         if (from != ownerOf[id]) revert NotOwner();
 
-        // Throws if `to` is the zero address
+        // Revert if `to` is the zero address
         if (to == address(0)) revert UnsafeRecipient();
+
+        // Revert if `msg.sender` is not `from` and does not have transfer approval
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
+            revert NotApproved();
 
         // Set new owner as `to`
         ownerOf[id] = to;
@@ -150,58 +186,38 @@ abstract contract Page is ReentrancyGuard {
         emit Transfer(from, to, id);
     }
 
-    /**
-     * @notice Transfers the ownership of an NFT from one address to another address
-     * @param  from  address  The current owner of the NFT
-     * @param  to    address  The new owner
-     * @param  id    uint256  The NFT to transfer
-     * @param  data  bytes    Additional data with no specified format, sent in call to `to`
-     */
-    function safeTransferFrom(
+    function batchTransferFrom(
         address from,
-        address to,
-        uint256 id,
-        bytes calldata data
-    ) external payable {
-        transferFrom(from, to, id);
+        address[] calldata to,
+        uint256[] calldata ids
+    ) external {
+        // Revert if `msg.sender` is not `from` and does not have transfer approval
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
+            revert NotApproved();
 
-        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value
-        if (
-            to.code.length != 0 &&
-            ERC721TokenReceiver(to).onERC721Received(
-                msg.sender,
-                from,
-                id,
-                data
-            ) !=
-            ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeRecipient();
-    }
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+        uint256 idsLength = ids.length;
 
-    /**
-     * @notice Transfers the ownership of an NFT from one address to another address
-     * @param  from  address  The current owner of the NFT
-     * @param  to    address  The new owner
-     * @param  id    uint256  The NFT to transfer
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id
-    ) external payable {
-        transferFrom(from, to, id);
+        for (uint256 i = 0; i < idsLength; ) {
+            id = ids[i];
 
-        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value
-        if (
-            to.code.length != 0 &&
-            ERC721TokenReceiver(to).onERC721Received(
-                msg.sender,
-                from,
-                id,
-                ""
-            ) !=
-            ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeRecipient();
+            // Revert if `from` is not the token owner
+            if (from != ownerOf[id]) revert NotOwner();
+
+            // Revert if `to` is the zero address
+            if (to[i] == address(0)) revert UnsafeRecipient();
+
+            ownerOf[id] = to[i];
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit BatchTransfer(from, to, ids);
     }
 
     /**
