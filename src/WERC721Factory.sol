@@ -5,6 +5,10 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {WERC721} from "src/WERC721.sol";
 
+/**
+ * @title  Wrapped ERC-721s. Tiny code footprint, huge gas savings.
+ * @author J.Page (Website) / kphed (GitHub) / ppmoon69 (Twitter).
+ */
 contract WERC721Factory {
     // Wrapped collection (i.e. WERC721) implementation address.
     WERC721 public immutable implementation;

@@ -5,6 +5,10 @@ import {Clone} from "solady/utils/Clone.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 
+/**
+ * @title  Wrapped ERC-721s. Tiny code footprint, huge gas savings.
+ * @author J.Page (Website) / kphed (GitHub) / ppmoon69 (Twitter).
+ */
 contract WERC721 is Clone {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
