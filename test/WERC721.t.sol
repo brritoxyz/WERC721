@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
+import {ERC721} from "solady/tokens/ERC721.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
@@ -55,7 +56,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
      * @param  owner  address  Wrapped ERC-721 NFT recipient.
      * @param  id     uint256  The NFT to mint and wrap.
      */
-    function _mintDeposit(address owner, uint256 id) internal {
+    function _mintWrap(address owner, uint256 id) internal {
         collection.mint(owner, id);
 
         vm.startPrank(owner);
@@ -193,7 +194,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         address to = address(0);
         uint256 id = 0;
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         vm.prank(from);
 
@@ -213,7 +214,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         address to = address(2);
         uint256 id = 0;
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         assertEq(msgSender, from);
         assertEq(from, wrapper.ownerOf(id));
@@ -233,7 +234,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         address to = address(2);
         uint256 id = 0;
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         assertTrue(msgSender != from);
         assertEq(from, wrapper.ownerOf(id));
@@ -263,7 +264,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         uint256 id = 0;
         bytes memory data = abi.encode(from);
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         assertEq(msgSender, from);
         assertEq(from, wrapper.ownerOf(id));
@@ -298,7 +299,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         bytes memory data = abi.encode(from);
         TestERC721SafeRecipient _to = TestERC721SafeRecipient(to);
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         assertEq(msgSender, from);
         assertEq(from, wrapper.ownerOf(id));
@@ -328,7 +329,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         uint256 id = 0;
         TestERC721SafeRecipient _to = TestERC721SafeRecipient(to);
 
-        _mintDeposit(from, id);
+        _mintWrap(from, id);
 
         assertEq(msgSender, from);
         assertEq(from, wrapper.ownerOf(id));
@@ -354,6 +355,49 @@ contract WERC721Test is Test, ERC721TokenReceiver {
                              wrap
     //////////////////////////////////////////////////////////////*/
 
+    function testCannotWrapUnsafeTokenRecipient() external {
+        address msgSender = address(this);
+        address to = address(0);
+        uint256 id = 0;
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        wrapper.wrap(to, id);
+    }
+
+    function testCannotWrapERC721TokenDoesNotExist() external {
+        address msgSender = address(this);
+        address to = address(1);
+        uint256 id = 0;
+
+        vm.expectRevert(ERC721.TokenDoesNotExist.selector);
+
+        // Throws because the ERC-721 token has not been minted.
+        collection.ownerOf(id);
+
+        vm.prank(msgSender);
+        vm.expectRevert(ERC721.TokenDoesNotExist.selector);
+
+        wrapper.wrap(to, id);
+    }
+
+    function testCannotWrapERC721TransferFromIncorrectOwner() external {
+        address owner = address(2);
+        address msgSender = address(this);
+        address to = address(1);
+        uint256 id = 0;
+
+        collection.mint(owner, id);
+
+        assertTrue(msgSender != collection.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(ERC721.TransferFromIncorrectOwner.selector);
+
+        wrapper.wrap(to, id);
+    }
+
     function testWrap() external {
         address msgSender = address(this);
         address to = address(1);
@@ -368,14 +412,70 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertTrue(collection.isApprovedForAll(msgSender, address(wrapper)));
 
+        vm.prank(msgSender);
         vm.expectEmit(true, true, true, true, address(wrapper));
 
-        // `Transfer` event emitted by the wrapper in the `onERC721Received` hook.
         emit Transfer(address(0), to, id);
+
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(msgSender, address(wrapper), id);
 
         wrapper.wrap(to, id);
 
         assertEq(address(wrapper), collection.ownerOf(id));
         assertEq(to, wrapper.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             unwrap
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotUnwrapNotTokenOwner() external {
+        address owner = address(2);
+        address msgSender = address(this);
+        address to = address(1);
+        uint256 id = 0;
+
+        _mintWrap(owner, id);
+
+        assertTrue(msgSender != wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotTokenOwner.selector);
+
+        wrapper.unwrap(to, id);
+    }
+
+    function testCannotUnwrapUnsafeTokenRecipient() external {
+        address msgSender = address(this);
+        address to = address(0);
+        uint256 id = 0;
+
+        _mintWrap(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        wrapper.unwrap(to, id);
+    }
+
+    function testUnwrap() external {
+        address msgSender = address(this);
+        address to = address(1);
+        uint256 id = 0;
+
+        _mintWrap(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(msgSender, address(0), id);
+
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(address(wrapper), to, id);
+
+        wrapper.unwrap(to, id);
     }
 }
