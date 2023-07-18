@@ -478,4 +478,44 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         wrapper.unwrap(to, id);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             onERC721Received
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotOnERC721ReceivedNotAuthorizedCaller() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+        bytes memory data = abi.encode(address(1));
+
+        assertTrue(msgSender != address(wrapper.collection()));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotAuthorizedCaller.selector);
+
+        wrapper.onERC721Received(msgSender, msgSender, id, data);
+    }
+
+    function testOnERC721ReceivedSafeTransferFrom() external {
+        address msgSender = address(this);
+        address to = address(1);
+        uint256 id = 0;
+        bytes memory data = abi.encode(to);
+
+        collection.mint(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(msgSender, address(wrapper), id);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), to, id);
+
+        collection.safeTransferFrom(msgSender, address(wrapper), id, data);
+
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(to, wrapper.ownerOf(id));
+    }
 }
