@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Clone} from "solady/utils/Clone.sol";
+import {Multicallable} from "solady/utils/Multicallable.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 
@@ -9,7 +10,7 @@ import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
  * @title  Wrapped ERC-721s. Tiny code footprint, huge gas savings.
  * @author J.Page (Website) / kphed (GitHub) / ppmoon69 (Twitter).
  */
-contract WERC721 is Clone {
+contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
@@ -99,7 +100,7 @@ contract WERC721 is Clone {
      * @param  to    address  The new owner.
      * @param  id    uint256  The NFT to transfer.
      */
-    function transferFrom(address from, address to, uint256 id) public payable {
+    function transferFrom(address from, address to, uint256 id) public {
         // Throws unless `msg.sender` is the current owner, or an authorized operator.
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
             revert NotApprovedOperator();
@@ -128,7 +129,7 @@ contract WERC721 is Clone {
         address to,
         uint256 id,
         bytes calldata data
-    ) external payable {
+    ) external {
         transferFrom(from, to, id);
 
         // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value.
@@ -150,11 +151,7 @@ contract WERC721 is Clone {
      * @param  to    address  The new owner.
      * @param  id    uint256  The NFT to transfer.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id
-    ) external payable {
+    function safeTransferFrom(address from, address to, uint256 id) external {
         transferFrom(from, to, id);
 
         // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value.
@@ -185,8 +182,7 @@ contract WERC721 is Clone {
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
-        // Transfer the ERC-721 NFT to this contract using `safeTransferFrom`, which will
-        // result in the `onERC721Received` hook being called (contains minting logic).
+        // Transfer the ERC-721 NFT to this contract.
         collection().transferFrom(msg.sender, address(this), id);
     }
 
