@@ -368,11 +368,6 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertTrue(collection.isApprovedForAll(msgSender, address(wrapper)));
 
-        vm.expectEmit(true, true, true, true, address(collection));
-
-        // `Transfer` event emitted by the collection when wrapper calls `safeTransferFrom`.
-        emit Transfer(msgSender, address(wrapper), id);
-
         vm.expectEmit(true, true, true, true, address(wrapper));
 
         // `Transfer` event emitted by the wrapper in the `onERC721Received` hook.

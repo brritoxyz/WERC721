@@ -176,14 +176,18 @@ contract WERC721 is Clone {
      * @param  id  uint256  The NFT to deposit and wrap.
      */
     function wrap(address to, uint256 id) external {
+        // Throws if `to` is the zero address.
+        if (to == address(0)) revert UnsafeTokenRecipient();
+
+        // Mint the wrapped NFT for the depositor.
+        ownerOf[id] = to;
+
+        // Emit `Transfer` with zero address as the `from` member to denote a mint.
+        emit Transfer(address(0), to, id);
+
         // Transfer the ERC-721 NFT to this contract using `safeTransferFrom`, which will
         // result in the `onERC721Received` hook being called (contains minting logic).
-        collection().safeTransferFrom(
-            msg.sender,
-            address(this),
-            id,
-            abi.encode(to)
-        );
+        collection().transferFrom(msg.sender, address(this), id);
     }
 
     /**
@@ -195,6 +199,9 @@ contract WERC721 is Clone {
         // Throws if `msg.sender` is not the owner of the wrapped NFT.
         if (ownerOf[id] != msg.sender) revert NotTokenOwner();
 
+        // Throws if `to` is the zero address.
+        if (to == address(0)) revert UnsafeTokenRecipient();
+
         // Burn the wrapped NFT before transferring the ERC-721 NFT to the withdrawer.
         delete ownerOf[id];
 
@@ -202,7 +209,7 @@ contract WERC721 is Clone {
         emit Transfer(msg.sender, address(0), id);
 
         // Transfer the ERC-721 NFT to the recipient.
-        collection().safeTransferFrom(address(this), to, id);
+        collection().transferFrom(address(this), to, id);
     }
 
     /**
