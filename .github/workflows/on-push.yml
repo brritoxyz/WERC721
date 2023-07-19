@@ -24,5 +24,5 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test --fork-url https://eth-mainnet.g.alchemy.com/v2/XnkzWqO3JbuJmw5n0rvsc0dftWOerxOk -vvv
+          forge test -vvvv
         id: test
