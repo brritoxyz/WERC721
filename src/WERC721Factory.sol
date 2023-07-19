@@ -6,7 +6,8 @@ import {LibClone} from "solady/utils/LibClone.sol";
 import {WERC721} from "src/WERC721.sol";
 
 /**
- * @title Factory for deploying WERC721 clones with immutable args.
+ * @title ERC721 wrapper factory contract.
+ * @notice Deploy a WERC721.sol contract for any ERC721 collection.
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */

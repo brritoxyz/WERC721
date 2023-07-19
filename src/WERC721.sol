@@ -7,7 +7,8 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 
 /**
- * @title Wrapped ERC721: Redeemable ERC-721 tokens with a tiny gas footprint.
+ * @title ERC721 wrapper contract.
+ * @notice Wrap your ERC721 tokens for a redeemable derivative with a much smaller gas footprint and built-in tx-batching.
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */
