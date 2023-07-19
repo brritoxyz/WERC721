@@ -534,6 +534,17 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         wrapper.onERC721Received(msgSender, msgSender, id, data);
     }
 
+    function testCannotOnERC721ReceivedDataEmptyByteArray() external {
+        address msgSender = address(collection);
+        uint256 id = 0;
+        bytes memory data = "";
+
+        vm.prank(msgSender);
+        vm.expectRevert();
+
+        wrapper.onERC721Received(msgSender, msgSender, id, data);
+    }
+
     function testCannotOnERC721ReceivedInvalidSafeWrap() external {
         address msgSender = address(collection);
         address to = address(1);

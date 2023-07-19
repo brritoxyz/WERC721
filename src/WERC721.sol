@@ -227,7 +227,7 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `msg.sender` is not the collection contract.
         if (msg.sender != address(_collection)) revert NotAuthorizedCaller();
 
-        // Decode the recipient of the wrapped ERC-721 NFT.
+        // Decode the recipient of the wrapped ERC-721 NFT. Will throw if `data` is an empty byte array.
         address to = abi.decode(data, (address));
 
         // Mint the wrapped NFT for the depositor.
