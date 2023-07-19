@@ -233,6 +233,6 @@ contract WERC721 is Clone, Multicallable {
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
-        return ERC721TokenReceiver.onERC721Received.selector;
+        return this.onERC721Received.selector;
     }
 }

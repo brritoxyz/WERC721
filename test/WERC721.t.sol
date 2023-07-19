@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
+import {LibString} from "solady/utils/LibString.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
@@ -68,6 +69,43 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertEq(address(wrapper), collection.ownerOf(id));
         assertEq(owner, wrapper.ownerOf(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             name
+    //////////////////////////////////////////////////////////////*/
+
+    function testName() external {
+        assertEq(collection.name(), wrapper.name());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             symbol
+    //////////////////////////////////////////////////////////////*/
+
+    function testSymbol() external {
+        assertEq(collection.symbol(), wrapper.symbol());
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             tokenURI
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotTokenURIInvalidTokenId() external {
+        uint256 id = 0;
+
+        vm.expectRevert(WERC721.InvalidTokenId.selector);
+
+        wrapper.tokenURI(id);
+    }
+
+    function testTokenURI() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+
+        _mintWrap(msgSender, id);
+
+        assertEq(LibString.toString(id), wrapper.tokenURI(id));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -517,5 +555,23 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertEq(address(wrapper), collection.ownerOf(id));
         assertEq(to, wrapper.ownerOf(id));
+    }
+
+    function testOnERC721Received() external {
+        address msgSender = address(collection);
+        address to = address(1);
+        uint256 id = 0;
+        bytes memory data = abi.encode(to);
+
+        vm.prank(msgSender);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), to, id);
+
+        bytes4 selector = wrapper.onERC721Received(msgSender, address(wrapper), id, data);
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(selector, WERC721.onERC721Received.selector);
     }
 }
