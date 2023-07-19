@@ -79,9 +79,6 @@ contract WERC721 is Clone, Multicallable {
      * @return     string   A valid URI for the asset.
      */
     function tokenURI(uint256 id) external view returns (string memory) {
-        // Throws if `id` is not a valid NFT.
-        if (ownerOf[id] == address(0)) revert InvalidTokenId();
-
         return collection().tokenURI(id);
     }
 

@@ -91,14 +91,6 @@ contract WERC721Test is Test, ERC721TokenReceiver {
                              tokenURI
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotTokenURIInvalidTokenId() external {
-        uint256 id = 0;
-
-        vm.expectRevert(WERC721.InvalidTokenId.selector);
-
-        wrapper.tokenURI(id);
-    }
-
     function testTokenURI() external {
         address msgSender = address(this);
         uint256 id = 0;
