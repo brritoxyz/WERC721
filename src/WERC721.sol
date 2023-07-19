@@ -40,6 +40,7 @@ contract WERC721 is Clone, Multicallable {
     error UnsafeTokenRecipient();
     error NotApprovedOperator();
     error NotAuthorizedCaller();
+    error InvalidSafeWrap();
 
     /**
      * @notice The underlying ERC-721 collection contract.
@@ -209,7 +210,7 @@ contract WERC721 is Clone, Multicallable {
     }
 
     /**
-     * @notice Wrap an ERC-721 NFT using a "safe" ERC-721 method (e.g. `safeTransferFrom` or `safeMint`).
+     * @notice Wrap an ERC-721 NFT using a "safe" ERC-721 transfer method (e.g. `safeTransferFrom` or `safeMint`).
      * @dev    It is the responsibility of the ERC-721 implementer to ensure that `onERC721Received` is
      *         implemented and works correctly.
      * @param  id    uint256  The NFT to deposit and wrap.
@@ -221,8 +222,10 @@ contract WERC721 is Clone, Multicallable {
         uint256 id,
         bytes calldata data
     ) external returns (bytes4) {
+        ERC721 _collection = collection();
+
         // Throws if `msg.sender` is not the collection contract.
-        if (msg.sender != address(collection())) revert NotAuthorizedCaller();
+        if (msg.sender != address(_collection)) revert NotAuthorizedCaller();
 
         // Decode the recipient of the wrapped ERC-721 NFT.
         address to = abi.decode(data, (address));
@@ -232,6 +235,10 @@ contract WERC721 is Clone, Multicallable {
 
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
+
+        // Throws if the token is not within the custody of this contract.
+        // Insurance against improperly implemented "safe" transfer methods (i.e. `onERC721Received` called w/o transferring).
+        if (_collection.ownerOf(id) != address(this)) revert InvalidSafeWrap();
 
         return this.onERC721Received.selector;
     }
