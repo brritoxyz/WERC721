@@ -4,7 +4,6 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 verbosity = 3
-bytecode_hash = 'none'
 extra_output = ['storageLayout']
 
 [fuzz]

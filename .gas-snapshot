@@ -1,5 +1,0 @@
-MoonERC1155Test:testBaseSafeBatchTransferFrom() (gas: 189534)
-MoonERC1155Test:testBaseSafeTransferFrom() (gas: 46640)
-MoonERC1155Test:testLlamaSafeTransferFrom() (gas: 80139)
-MoonERC1155Test:testMoonSafeBatchTransferFrom() (gas: 174671)
-MoonERC1155Test:testMoonSafeTransferFrom() (gas: 41422)
