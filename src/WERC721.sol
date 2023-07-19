@@ -7,8 +7,9 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 
 /**
- * @title  Wrapped ERC-721s. Tiny code footprint, huge gas savings.
- * @author J.Page (Website) / kphed (GitHub) / ppmoon69 (Twitter).
+ * @title Wrapped ERC721: Redeemable ERC-721 tokens with a tiny gas footprint.
+ * @author kp (ppmoon69.eth)
+ * @custom:contributor vectorized.eth (vectorized.eth)
  */
 contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.

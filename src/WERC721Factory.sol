@@ -6,8 +6,9 @@ import {LibClone} from "solady/utils/LibClone.sol";
 import {WERC721} from "src/WERC721.sol";
 
 /**
- * @title  Wrapped ERC-721s. Tiny code footprint, huge gas savings.
- * @author J.Page (Website) / kphed (GitHub) / ppmoon69 (Twitter).
+ * @title Factory for deploying WERC721 clones with immutable args.
+ * @author kp (ppmoon69.eth)
+ * @custom:contributor vectorized.eth (vectorized.eth)
  */
 contract WERC721Factory {
     // Wrapped collection (i.e. WERC721) implementation address.
