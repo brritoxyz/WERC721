@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.21;
 
 contract TestERC721SafeRecipient {
     // Enables us to verify whether the args were properly passed in the `onERC721Received` call.
