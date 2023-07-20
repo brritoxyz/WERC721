@@ -4,18 +4,34 @@ pragma solidity 0.8.21;
 import {Clone} from "solady/utils/Clone.sol";
 import {Multicallable} from "solady/utils/Multicallable.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
-import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
-import {TransferFromWithAuthorization} from "src/lib/TransferFromWithAuthorization.sol";
+import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 
 /**
  * @title ERC721 wrapper contract.
- * @notice Wrap your ERC721 tokens for a redeemable derivative with a much smaller gas footprint and built-in tx-batching.
+ * @notice Wrap your ERC721 tokens for a redeemable derivative with:
+ *         - A much smaller gas footprint;
+ *         - Built-in tx-batching (with multicall); and
+ *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271 compatible, thanks to Solady).
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */
-contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
+contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
+
+    // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    // EIP-712 domain name (the user readable name of the signing domain).
+    bytes32 private constant EIP712_DOMAIN_NAME = keccak256("WERC721");
+
+    // EIP-712 domain version (the current major version of the signing domain).
+    bytes32 private constant EIP712_DOMAIN_VERSION = keccak256("1");
+
+    // keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+    bytes32 public constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
+        0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
     // Find the owner of an NFT.
     mapping(uint256 id => address owner) public ownerOf;
@@ -23,6 +39,10 @@ contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
     // Query if an address is an authorized operator for another address.
     mapping(address owner => mapping(address operator => bool approved))
         public isApprovedForAll;
+
+    // Returns the state of an authorization.
+    mapping(address authorizer => mapping(bytes32 nonce => bool state))
+        public authorizationState;
 
     // This emits when ownership of any NFT changes by any mechanism.
     event Transfer(
@@ -38,12 +58,46 @@ contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
         bool approved
     );
 
+    // This emits when an authorization is used.
+    event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
+
+    // This emits when an authorization is canceled.
+    event AuthorizationCanceled(
+        address indexed authorizer,
+        bytes32 indexed nonce
+    );
+
     error NotTokenOwner();
     error InvalidTokenId();
     error UnsafeTokenRecipient();
     error NotApprovedOperator();
     error NotAuthorizedCaller();
     error InvalidSafeWrap();
+    error InvalidAuthorization();
+    error AuthorizationAlreadyUsed();
+
+    /**
+     * @notice Get the EIP-712 domain separator.
+     * @return bytes32  The EIP-712 domain separator.
+     */
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        uint256 chainId;
+
+        assembly {
+            chainId := chainid()
+        }
+
+        return
+            keccak256(
+                abi.encode(
+                    EIP712_DOMAIN_TYPEHASH,
+                    EIP712_DOMAIN_NAME,
+                    EIP712_DOMAIN_VERSION,
+                    chainId,
+                    address(this)
+                )
+            );
+    }
 
     /**
      * @notice The underlying ERC-721 collection contract.
@@ -59,7 +113,7 @@ contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
      *         contract for parity between the derivatives and the actual assets.
      * @return string  The descriptive name for a collection of NFTs in this contract.
      */
-    function name() external view returns (string memory) {
+    function name() public view returns (string memory) {
         return collection().name();
     }
 
@@ -97,15 +151,13 @@ contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
 
     /**
      * @notice Transfer ownership of an NFT.
+     * @dev    WARNING: Must be used in conjunction with a public-facing method that performs the necessary
+     *         msg.sender, approval, or authorization checks.
      * @param  from  address  The current owner of the NFT.
      * @param  to    address  The new owner.
      * @param  id    uint256  The NFT to transfer.
      */
-    function transferFrom(address from, address to, uint256 id) public {
-        // Throws unless `msg.sender` is the current owner, or an authorized operator.
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotApprovedOperator();
-
+    function _transferFrom(address from, address to, uint256 id) internal {
         // Throws if `from` is not the current owner or if `id` is not a valid NFT.
         if (from != ownerOf[id]) revert NotTokenOwner();
 
@@ -116,6 +168,110 @@ contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
         ownerOf[id] = to;
 
         emit Transfer(from, to, id);
+    }
+
+    /**
+     * @notice Transfer ownership of an NFT.
+     * @param  from  address  The current owner of the NFT.
+     * @param  to    address  The new owner.
+     * @param  id    uint256  The NFT to transfer.
+     */
+    function transferFrom(address from, address to, uint256 id) public {
+        // Throws unless `msg.sender` is the current owner, or an authorized operator.
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
+            revert NotApprovedOperator();
+
+        _transferFrom(from, to, id);
+    }
+
+    /**
+     * @notice Transfer ownership of an NFT with an authorization.
+     * @param  from         address  The current owner of the NFT.
+     * @param  to           address  The new owner.
+     * @param  id           uint256  The NFT to transfer.
+     * @param  validAfter   uint256  The time after which this is valid (unix time).
+     * @param  validBefore  uint256  The time before which this is valid (unix time).
+     * @param  nonce        bytes32  Unique nonce.
+     * @param  v            uint8    Signature param.
+     * @param  r            bytes32  Signature param.
+     * @param  s            bytes32  Signature param.
+     */
+    function transferFromWithAuthorization(
+        address from,
+        address to,
+        uint256 id,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public {
+        uint256 blockTimestamp;
+
+        assembly {
+            blockTimestamp := timestamp()
+        }
+
+        // Throws if `blockTimestamp` is before `validAfter`.
+        if (blockTimestamp < validAfter) revert InvalidAuthorization();
+
+        // Throws if `blockTimestamp` is after `validBefore`.
+        if (blockTimestamp > validBefore) revert InvalidAuthorization();
+
+        // Throws if `nonce` has already been used.
+        if (authorizationState[from][nonce]) revert AuthorizationAlreadyUsed();
+
+        // Throws if the authorization cannot be verified. Has no external calls
+        // and can be executed prior to marking the nonce as used.
+        if (
+            !SignatureCheckerLib.isValidSignatureNow(
+                from,
+                keccak256(
+                    abi.encodePacked(
+                        "\x19\x01",
+                        DOMAIN_SEPARATOR(),
+                        keccak256(
+                            abi.encode(
+                                TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
+                                msg.sender,
+                                from,
+                                to,
+                                id,
+                                validAfter,
+                                validBefore,
+                                nonce
+                            )
+                        )
+                    )
+                ),
+                v,
+                r,
+                s
+            )
+        ) revert InvalidAuthorization();
+
+        // Set the nonce usage status to `true` to prevent reuse.
+        authorizationState[from][nonce] = true;
+
+        emit AuthorizationUsed(from, nonce);
+
+        _transferFrom(from, to, id);
+    }
+
+    /**
+     * @notice Cancel an authorization.
+     * @param  nonce  bytes32  Unique nonce.
+     */
+    function cancelTransferFromAuthorization(bytes32 nonce) external {
+        // Throws if `nonce` has already been used.
+        if (authorizationState[msg.sender][nonce])
+            revert AuthorizationAlreadyUsed();
+
+        // Set the nonce usage status to `true` to prevent use by the relayer.
+        authorizationState[msg.sender][nonce] = true;
+
+        emit AuthorizationCanceled(msg.sender, nonce);
     }
 
     /**
