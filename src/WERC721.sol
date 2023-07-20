@@ -5,7 +5,7 @@ import {Clone} from "solady/utils/Clone.sol";
 import {Multicallable} from "solady/utils/Multicallable.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
-import {EIP712} from "src/lib/EIP712.sol";
+import {TransferFromWithAuthorization} from "src/lib/TransferFromWithAuthorization.sol";
 
 /**
  * @title ERC721 wrapper contract.
@@ -13,7 +13,7 @@ import {EIP712} from "src/lib/EIP712.sol";
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */
-contract WERC721 is Clone, Multicallable, EIP712 {
+contract WERC721 is Clone, Multicallable, TransferFromWithAuthorization {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
