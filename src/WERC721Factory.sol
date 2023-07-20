@@ -29,15 +29,15 @@ contract WERC721Factory {
 
     /**
      * @notice Create a new WERC721 contract.
-     * @param  collection  ERC721   ERC-721 collection contract.
-     * @return wrapper     WERC721  Wrapped ERC-721 contract (clone with immutable args).
+     * @param  collection  ERC721   ERC721 collection contract.
+     * @return wrapper     WERC721  Wrapped ERC721 contract (clone with immutable args).
      */
     function create(ERC721 collection) external returns (WERC721 wrapper) {
         // Throws if the collection address is the zero address.
         if (address(collection) == address(0))
             revert InvalidCollectionAddress();
 
-        // Throws if the wrapper contract already exists.
+        // Throws if the wrapper contract has already been deployed for the collection.
         if (address(wrappers[collection]) != address(0))
             revert WrapperAlreadyCreated();
 

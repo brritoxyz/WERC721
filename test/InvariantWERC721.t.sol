@@ -37,7 +37,7 @@ contract InvariantWERC721Test is Test {
     }
 
     function invariantTokenOwnership() public {
-        // Only perform the assertions below after 1 or more ERC-721 tokens have been minted.
+        // Only perform the assertions below after 1 or more ERC721 tokens have been minted.
         if (handler.initialized()) {
             uint256 tokenId = handler.tokenId();
 

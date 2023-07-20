@@ -11,7 +11,7 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
  * @notice Wrap your ERC721 tokens for a redeemable derivative with:
  *         - Significantly less gas usage when transferring tokens;
  *         - Built-in call-batching (with multicall); and
- *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271 compatible, thanks to Solady).
+ *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271-compatible, thanks to Solady).
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */
@@ -80,22 +80,26 @@ contract WERC721 is Clone, Multicallable {
      * @notice Get the EIP-712 domain separator.
      * @return bytes32  The EIP-712 domain separator.
      */
-    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+    function domainSeparator() public view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     EIP712_DOMAIN_TYPEHASH,
                     EIP712_DOMAIN_NAME,
                     EIP712_DOMAIN_VERSION,
+                    // Prevents the same signatures from being reused across different chains.
+                    // TODO: Consider using the deployment chain ID since we aren't going to have same-address multi-chain contracts.
                     block.chainid,
+                    // Prevents the same signatures from being reused across different WERC721 contracts.
                     address(this)
+                    // TODO: Consider adding the currently-unused `EIP712Domain.salt` member (e.g. hashed, encoded `collection`).
                 )
             );
     }
 
     /**
-     * @notice The underlying ERC-721 collection contract.
-     * @return ERC721  The underlying ERC-721 collection contract.
+     * @notice The underlying ERC721 collection contract.
+     * @return ERC721  The underlying ERC721 collection contract.
      */
     function collection() public pure returns (ERC721) {
         return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
@@ -103,7 +107,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice The descriptive name for a collection of NFTs in this contract.
-     * @dev    We are returning the value of `name()` on the underlying ERC-721
+     * @dev    We are returning the value of `name()` on the underlying ERC721
      *         contract for parity between the derivatives and the actual assets.
      * @return string  The descriptive name for a collection of NFTs in this contract.
      */
@@ -113,7 +117,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice An abbreviated name for NFTs in this contract.
-     * @dev    We are returning the value of `symbol()` on the underlying ERC-721
+     * @dev    We are returning the value of `symbol()` on the underlying ERC721
      *         contract for parity between the derivatives and the actual assets.
      * @return string  An abbreviated name for NFTs in this contract.
      */
@@ -123,7 +127,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice A distinct Uniform Resource Identifier (URI) for a given asset.
-     * @dev    We are returning the value of `tokenURI(id)` on the underlying ERC-721
+     * @dev    We are returning the value of `tokenURI(id)` on the underlying ERC721
      *         contract for parity between the derivatives and the actual assets.
      * @param  id  uint256  The identifier for an NFT.
      * @return     string   A valid URI for the asset.
@@ -154,7 +158,7 @@ contract WERC721 is Clone, Multicallable {
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
             revert NotApprovedOperator();
 
-        // Throws if `from` is not the current owner or if `id` is not a valid NFT.
+        // Throws if `from` is not the owner.
         if (from != ownerOf[id]) revert NotTokenOwner();
 
         // Throws if `to` is the zero address.
@@ -190,7 +194,7 @@ contract WERC721 is Clone, Multicallable {
         bytes32 r,
         bytes32 s
     ) external {
-        // Throws if `from` is not the current owner or if `id` is not a valid NFT.
+        // Throws if `from` is not the owner.
         if (from != ownerOf[id]) revert NotTokenOwner();
 
         // Throws if `to` is the zero address.
@@ -224,10 +228,13 @@ contract WERC721 is Clone, Multicallable {
                 keccak256(
                     abi.encodePacked(
                         "\x19\x01",
-                        DOMAIN_SEPARATOR(),
+                        // Prevents collision with other contracts that may use the same structured data.
+                        domainSeparator(),
                         keccak256(
                             abi.encode(
                                 TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
+                                // `msg.sender` must match `relayer`, the account allowed to perform authorized transfers
+                                // on behalf of `from`.
                                 msg.sender,
                                 from,
                                 to,
@@ -262,8 +269,8 @@ contract WERC721 is Clone, Multicallable {
     }
 
     /**
-     * @notice Wrap an ERC-721 NFT.
-     * @param  to  address  The owner of the wrapped ERC-721 NFT.
+     * @notice Wrap an ERC721 NFT.
+     * @param  to  address  The owner of the wrapped ERC721 NFT.
      * @param  id  uint256  The NFT to deposit and wrap.
      */
     function wrap(address to, uint256 id) external {
@@ -276,13 +283,13 @@ contract WERC721 is Clone, Multicallable {
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
-        // Transfer the ERC-721 NFT to this contract.
+        // Transfer the ERC721 NFT to this contract.
         collection().transferFrom(msg.sender, address(this), id);
     }
 
     /**
-     * @notice Unwrap an ERC-721 NFT.
-     * @param  to  address  The owner of the unwrapped ERC-721 NFT.
+     * @notice Unwrap an ERC721 NFT.
+     * @param  to  address  The owner of the unwrapped ERC721 NFT.
      * @param  id  uint256  The NFT to unwrap and withdraw.
      */
     function unwrap(address to, uint256 id) external {
@@ -292,20 +299,18 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Burn the wrapped NFT before transferring the ERC-721 NFT to the withdrawer.
+        // Burn the wrapped NFT before transferring the ERC721 NFT to the specific recipient.
         delete ownerOf[id];
 
-        // Emit `Transfer` with zero address as the `to` member to denote a burn.
+        // Emit `Transfer` with the zero address as the `to` member to denote a burn.
         emit Transfer(msg.sender, address(0), id);
 
-        // Transfer the ERC-721 NFT to the recipient.
+        // Transfer the ERC721 NFT to the recipient.
         collection().transferFrom(address(this), to, id);
     }
 
     /**
-     * @notice Wrap an ERC-721 NFT using a "safe" ERC-721 transfer method (e.g. `safeTransferFrom` or `safeMint`).
-     * @dev    It is the responsibility of the ERC-721 implementer to ensure that `onERC721Received` is
-     *         implemented and works correctly.
+     * @notice Wrap an ERC721 NFT using a "safe" ERC721 transfer method (e.g. `safeTransferFrom` or `safeMint`).
      * @param  id    uint256  The NFT to deposit and wrap.
      * @param  data  bytes    Encoded recipient address.
      */
@@ -320,17 +325,17 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `msg.sender` is not the collection contract.
         if (msg.sender != address(_collection)) revert NotAuthorizedCaller();
 
-        // Decode the recipient of the wrapped ERC-721 NFT. Will throw if `data` is an empty byte array.
+        // Decode the recipient of the wrapped ERC721 NFT. Will throw if `data` is an empty byte array.
         address to = abi.decode(data, (address));
 
-        // Mint the wrapped NFT for the depositor.
+        // Set the wrapped ERC721 owner as `to`.
         ownerOf[id] = to;
 
-        // Emit `Transfer` with zero address as the `from` member to denote a mint.
+        // Emit `Transfer` with the zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
         // Throws if the token is not within the custody of this contract.
-        // Insurance against improperly implemented "safe" transfer methods (i.e. `onERC721Received` called w/o transferring).
+        // Protects against incorrect "safe" transfer methods (e.g. calls `onERC721Received` w/o transferring).
         if (_collection.ownerOf(id) != address(this)) revert InvalidSafeWrap();
 
         return this.onERC721Received.selector;

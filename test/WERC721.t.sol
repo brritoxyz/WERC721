@@ -46,15 +46,15 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         // Clone should have the `collection` set.
         assertEq(address(collection), address(wrapper.collection()));
 
-        // Clone should have the same metadata as the ERC-721 collection.
+        // Clone should have the same metadata as the ERC721 collection.
         // `tokenURI` reverts if the token does not exist so cannot test yet.
         assertEq(collection.name(), wrapper.name());
         assertEq(collection.symbol(), wrapper.symbol());
     }
 
     /**
-     * @notice Mint an ERC-721 and wrap it.
-     * @param  owner  address  Wrapped ERC-721 NFT recipient.
+     * @notice Mint an ERC721 and wrap it.
+     * @param  owner  address  Wrapped ERC721 NFT recipient.
      * @param  id     uint256  The NFT to mint and wrap.
      */
     function _mintWrap(address owner, uint256 id) internal {
@@ -305,7 +305,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         vm.expectRevert(ERC721.TokenDoesNotExist.selector);
 
-        // Throws because the ERC-721 token has not been minted.
+        // Throws because the ERC721 token has not been minted.
         collection.ownerOf(id);
 
         vm.prank(msgSender);
