@@ -5,6 +5,7 @@ import {Clone} from "solady/utils/Clone.sol";
 import {Multicallable} from "solady/utils/Multicallable.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
+import {EIP712} from "src/lib/EIP712.sol";
 
 /**
  * @title ERC721 wrapper contract.
@@ -12,7 +13,7 @@ import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
  */
-contract WERC721 is Clone, Multicallable {
+contract WERC721 is Clone, Multicallable, EIP712 {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
@@ -115,56 +116,6 @@ contract WERC721 is Clone, Multicallable {
         ownerOf[id] = to;
 
         emit Transfer(from, to, id);
-    }
-
-    /**
-     * @notice Transfers the ownership of an NFT from one address to another address.
-     * @param  from  address  The current owner of the NFT.
-     * @param  to    address  The new owner.
-     * @param  id    uint256  The NFT to transfer.
-     * @param  data  bytes    Additional data with no specified format, sent in call to `to`.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        bytes calldata data
-    ) external {
-        transferFrom(from, to, id);
-
-        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value.
-        if (
-            to.code.length != 0 &&
-            ERC721TokenReceiver(to).onERC721Received(
-                msg.sender,
-                from,
-                id,
-                data
-            ) !=
-            ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeTokenRecipient();
-    }
-
-    /**
-     * @notice Transfers the ownership of an NFT from one address to another address.
-     * @param  from  address  The current owner of the NFT.
-     * @param  to    address  The new owner.
-     * @param  id    uint256  The NFT to transfer.
-     */
-    function safeTransferFrom(address from, address to, uint256 id) external {
-        transferFrom(from, to, id);
-
-        // Throws if `to` is a smart contract and has an invalid `onERC721Received` return value.
-        if (
-            to.code.length != 0 &&
-            ERC721TokenReceiver(to).onERC721Received(
-                msg.sender,
-                from,
-                id,
-                ""
-            ) !=
-            ERC721TokenReceiver.onERC721Received.selector
-        ) revert UnsafeTokenRecipient();
     }
 
     /**
