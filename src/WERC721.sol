@@ -9,8 +9,8 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 /**
  * @title ERC721 wrapper contract.
  * @notice Wrap your ERC721 tokens for a redeemable derivative with:
- *         - A much smaller gas footprint;
- *         - Built-in tx-batching (with multicall); and
+ *         - Significantly less gas usage when transferring tokens;
+ *         - Built-in call-batching (with multicall); and
  *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271 compatible, thanks to Solady).
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized.eth (vectorized.eth)
@@ -30,7 +30,7 @@ contract WERC721 is Clone, Multicallable {
     bytes32 private constant EIP712_DOMAIN_VERSION = keccak256("1");
 
     // keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
-    bytes32 public constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
+    bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
         0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
     // Find the owner of an NFT.
@@ -81,19 +81,13 @@ contract WERC721 is Clone, Multicallable {
      * @return bytes32  The EIP-712 domain separator.
      */
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        uint256 chainId;
-
-        assembly {
-            chainId := chainid()
-        }
-
         return
             keccak256(
                 abi.encode(
                     EIP712_DOMAIN_TYPEHASH,
                     EIP712_DOMAIN_NAME,
                     EIP712_DOMAIN_VERSION,
-                    chainId,
+                    block.chainid,
                     address(this)
                 )
             );
@@ -113,7 +107,7 @@ contract WERC721 is Clone, Multicallable {
      *         contract for parity between the derivatives and the actual assets.
      * @return string  The descriptive name for a collection of NFTs in this contract.
      */
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return collection().name();
     }
 
@@ -151,13 +145,15 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice Transfer ownership of an NFT.
-     * @dev    WARNING: Must be used in conjunction with a public-facing method that performs the necessary
-     *         msg.sender, approval, or authorization checks.
      * @param  from  address  The current owner of the NFT.
      * @param  to    address  The new owner.
      * @param  id    uint256  The NFT to transfer.
      */
-    function _transferFrom(address from, address to, uint256 id) internal {
+    function transferFrom(address from, address to, uint256 id) external {
+        // Throws unless `msg.sender` is the current owner, or an authorized operator.
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
+            revert NotApprovedOperator();
+
         // Throws if `from` is not the current owner or if `id` is not a valid NFT.
         if (from != ownerOf[id]) revert NotTokenOwner();
 
@@ -171,22 +167,9 @@ contract WERC721 is Clone, Multicallable {
     }
 
     /**
-     * @notice Transfer ownership of an NFT.
-     * @param  from  address  The current owner of the NFT.
-     * @param  to    address  The new owner.
-     * @param  id    uint256  The NFT to transfer.
-     */
-    function transferFrom(address from, address to, uint256 id) public {
-        // Throws unless `msg.sender` is the current owner, or an authorized operator.
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender])
-            revert NotApprovedOperator();
-
-        _transferFrom(from, to, id);
-    }
-
-    /**
      * @notice Transfer ownership of an NFT with an authorization.
-     * @param  from         address  The current owner of the NFT.
+     * @dev    Based on: https://eips.ethereum.org/EIPS/eip-3009.
+     * @param  from         address  The current owner of the NFT and authorizer.
      * @param  to           address  The new owner.
      * @param  id           uint256  The NFT to transfer.
      * @param  validAfter   uint256  The time after which this is valid (unix time).
@@ -206,24 +189,35 @@ contract WERC721 is Clone, Multicallable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public {
-        uint256 blockTimestamp;
+    ) external {
+        // Throws if `from` is not the current owner or if `id` is not a valid NFT.
+        if (from != ownerOf[id]) revert NotTokenOwner();
 
-        assembly {
-            blockTimestamp := timestamp()
-        }
+        // Throws if `to` is the zero address.
+        if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Throws if `blockTimestamp` is before `validAfter`.
-        if (blockTimestamp < validAfter) revert InvalidAuthorization();
+        // Throws if `block.timestamp` is before `validAfter`.
+        if (block.timestamp < validAfter) revert InvalidAuthorization();
 
-        // Throws if `blockTimestamp` is after `validBefore`.
-        if (blockTimestamp > validBefore) revert InvalidAuthorization();
+        // Throws if `block.timestamp` is after `validBefore`.
+        if (block.timestamp > validBefore) revert InvalidAuthorization();
 
         // Throws if `nonce` has already been used.
         if (authorizationState[from][nonce]) revert AuthorizationAlreadyUsed();
 
-        // Throws if the authorization cannot be verified. Has no external calls
-        // and can be executed prior to marking the nonce as used.
+        // Set the nonce usage status to `true` to prevent reuse. This is called before
+        // the signature is verified due to `SignatureCheckerLib` making an external call
+        // if the signer is a contract account.
+        authorizationState[from][nonce] = true;
+
+        emit AuthorizationUsed(from, nonce);
+
+        // Set new owner as `to`.
+        ownerOf[id] = to;
+
+        emit Transfer(from, to, id);
+
+        // Throws if the signature is invalid.
         if (
             !SignatureCheckerLib.isValidSignatureNow(
                 from,
@@ -250,13 +244,6 @@ contract WERC721 is Clone, Multicallable {
                 s
             )
         ) revert InvalidAuthorization();
-
-        // Set the nonce usage status to `true` to prevent reuse.
-        authorizationState[from][nonce] = true;
-
-        emit AuthorizationUsed(from, nonce);
-
-        _transferFrom(from, to, id);
     }
 
     /**
