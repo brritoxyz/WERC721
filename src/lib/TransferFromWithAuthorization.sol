@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
+import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
+
 /**
  * @title Authorized `transferFrom` with EIP-712 signatures.
  * @notice Allow others to call `transferFrom` on your behalf with a signature-based authorization.
@@ -33,6 +35,9 @@ contract TransferFromWithAuthorization {
         bytes32 indexed nonce
     );
 
+    error InvalidAuthorization();
+    error AuthorizationAlreadyUsed();
+
     /**
      * @notice Compute the EIP-712 domain separator.
      * @param name     string   The name of the DApp or the protocol.
@@ -58,6 +63,47 @@ contract TransferFromWithAuthorization {
                     chainId,
                     address(this)
                 )
+            );
+    }
+
+    function verifyAuthorization(
+        bytes32 domainSeparator,
+        address relayer,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public view returns (bool) {
+        return
+            SignatureCheckerLib.isValidSignatureNow(
+                // Authorizer
+                from,
+                keccak256(
+                    abi.encodePacked(
+                        "\x19\x01",
+                        domainSeparator,
+                        keccak256(
+                            abi.encode(
+                                TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
+                                relayer,
+                                from,
+                                to,
+                                tokenId,
+                                validAfter,
+                                validBefore,
+                                nonce
+                            )
+                        )
+                    )
+                ),
+                v,
+                r,
+                s
             );
     }
 }
