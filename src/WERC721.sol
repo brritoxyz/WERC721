@@ -270,7 +270,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice Wrap an ERC721 NFT.
-     * @param  to  address  The owner of the wrapped ERC721 NFT.
+     * @param  to  address  The recipient of the wrapped ERC721 NFT.
      * @param  id  uint256  The NFT to deposit and wrap.
      */
     function wrap(address to, uint256 id) external {
@@ -289,7 +289,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice Unwrap an ERC721 NFT.
-     * @param  to  address  The owner of the unwrapped ERC721 NFT.
+     * @param  to  address  The recipient of the unwrapped ERC721 NFT.
      * @param  id  uint256  The NFT to unwrap and withdraw.
      */
     function unwrap(address to, uint256 id) external {

@@ -503,4 +503,111 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertEq(to, wrapper.ownerOf(id));
         assertEq(selector, WERC721.onERC721Received.selector);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             multicall
+    //////////////////////////////////////////////////////////////*/
+
+    function testMulticallWrapTransferFrom() external {
+        address msgSender = address(this);
+        address wrapTo = address(this);
+        address transferFromTo = address(1);
+        uint256 id = 0;
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(WERC721.wrap.selector, wrapTo, id);
+        data[1] = abi.encodeWithSelector(
+            WERC721.transferFrom.selector,
+            wrapTo,
+            transferFromTo,
+            id
+        );
+
+        vm.startPrank(msgSender);
+
+        collection.mint(msgSender, id);
+        collection.setApprovalForAll(address(wrapper), true);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), wrapTo, id);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(wrapTo, transferFromTo, id);
+
+        wrapper.multicall(data);
+
+        vm.stopPrank();
+
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(transferFromTo, wrapper.ownerOf(id));
+    }
+
+    function testMulticallBatchWrapTransferFrom() external {
+        address msgSender = address(this);
+        address wrapTo = address(this);
+        address transferFromTo = address(1);
+        uint256[] memory ids = new uint256[](3);
+        bytes[] memory data = new bytes[](6);
+
+        for (uint256 i = 0; i < ids.length; ) {
+            ids[i] = i;
+            data[i] = abi.encodeWithSelector(WERC721.wrap.selector, wrapTo, i);
+
+            // Add the `transferFrom` calls after all the `wrap` calls.
+            data[i + 3] = abi.encodeWithSelector(
+                WERC721.transferFrom.selector,
+                wrapTo,
+                transferFromTo,
+                i
+            );
+
+            collection.mint(msgSender, i);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.startPrank(msgSender);
+
+        collection.setApprovalForAll(address(wrapper), true);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), wrapTo, ids[0]);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), wrapTo, ids[1]);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), wrapTo, ids[2]);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(wrapTo, transferFromTo, ids[0]);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(wrapTo, transferFromTo, ids[1]);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(wrapTo, transferFromTo, ids[2]);
+
+        wrapper.multicall(data);
+
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < ids.length; ) {
+            assertEq(address(wrapper), collection.ownerOf(ids[i]));
+            assertEq(transferFromTo, wrapper.ownerOf(ids[i]));
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }
