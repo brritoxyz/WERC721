@@ -657,6 +657,47 @@ contract WERC721Test is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             cancelTransferFromAuthorization
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotCancelTransferFromAuthorizationAuthorizationAlreadyUsed()
+        external
+    {
+        address msgSender = TEST_ACCT;
+        bytes32 nonce = bytes32(uint256(1));
+
+        // Set `authorizationState[from][nonce]` to `true`.
+        vm.store(
+            address(wrapper),
+            _getAuthorizationStateStorageLocation(msgSender, nonce),
+            bytes32(abi.encode(true))
+        );
+
+        assertTrue(wrapper.authorizationState(msgSender, nonce));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.AuthorizationAlreadyUsed.selector);
+
+        wrapper.cancelTransferFromAuthorization(nonce);
+    }
+
+    function testCancelTransferFromAuthorization() external {
+        address msgSender = TEST_ACCT;
+        bytes32 nonce = bytes32(uint256(1));
+
+        assertFalse(wrapper.authorizationState(msgSender, nonce));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit AuthorizationCanceled(msgSender, nonce);
+
+        wrapper.cancelTransferFromAuthorization(nonce);
+
+        assertTrue(wrapper.authorizationState(msgSender, nonce));
+    }
+
+    /*//////////////////////////////////////////////////////////////
                              wrap
     //////////////////////////////////////////////////////////////*/
 

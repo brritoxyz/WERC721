@@ -19,17 +19,19 @@ contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
-    // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+    // EIP-712 domain typehash: keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)").
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-    // EIP-712 domain name (the user readable name of the signing domain).
-    bytes32 private constant EIP712_DOMAIN_NAME = keccak256("WERC721");
+    // EIP-712 domain name (the user readable name of the signing domain): keccak256("WERC721").
+    bytes32 private constant EIP712_DOMAIN_NAME =
+        0x59b335d161aba1eac6f297a3046e2f74e6d4f8b1bc20b3766e382ce7e7b4369c;
 
-    // EIP-712 domain version (the current major version of the signing domain).
-    bytes32 private constant EIP712_DOMAIN_VERSION = keccak256("1");
+    // EIP-712 domain version (the current major version of the signing domain): keccak256("1").
+    bytes32 private constant EIP712_DOMAIN_VERSION =
+        0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-    // keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+    // Authorized transfer typehash: keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)").
     bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
         0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
@@ -86,11 +88,9 @@ contract WERC721 is Clone, Multicallable {
                     EIP712_DOMAIN_NAME,
                     EIP712_DOMAIN_VERSION,
                     // Prevents the same signatures from being reused across different chains.
-                    // TODO: Consider using the deployment chain ID since we aren't going to have same-address multi-chain contracts.
                     block.chainid,
                     // Prevents the same signatures from being reused across different WERC721 contracts.
                     address(this)
-                    // TODO: Consider adding the currently-unused `EIP712Domain.salt` member (e.g. hashed, encoded `collection`).
                 )
             );
     }
@@ -209,7 +209,8 @@ contract WERC721 is Clone, Multicallable {
 
         // Set the nonce usage status to `true` to prevent reuse. This is called before
         // the signature is verified due to `SignatureCheckerLib` making an external call
-        // if the signer is a contract account.
+        // if the signer is a contract account (staticcall but erring on the overly-safe
+        // side and for the sake of consistency @ applying the CEI pattern).
         authorizationState[from][nonce] = true;
 
         emit AuthorizationUsed(from, nonce);
