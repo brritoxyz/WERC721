@@ -188,13 +188,31 @@ contract WERC721Test is Test, ERC721TokenReceiver {
                              tokenURI
     //////////////////////////////////////////////////////////////*/
 
+    function testCannotTokenURIInvalidTokenId() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+
+        collection.mint(msgSender, id);
+
+        assertEq(msgSender, collection.ownerOf(id));
+        assertEq(address(0), wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotWrappedToken.selector);
+
+        wrapper.tokenURI(id);
+    }
+
     function testTokenURI() external {
         address msgSender = address(this);
         uint256 id = 0;
 
         _mintWrap(msgSender, id);
 
-        assertEq(LibString.toString(id), wrapper.tokenURI(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(msgSender, wrapper.ownerOf(id));
+
+        assertEq(collection.tokenURI(id), wrapper.tokenURI(id));
     }
 
     /*//////////////////////////////////////////////////////////////

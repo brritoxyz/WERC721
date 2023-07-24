@@ -83,6 +83,7 @@ contract WERC721 is Clone, Multicallable {
     error NotApprovedOperator();
     error NotAuthorizedCaller();
     error UnsafeTokenRecipient();
+    error NotWrappedToken();
     error InvalidAuthorization();
     error AuthorizationAlreadyUsed();
 
@@ -141,6 +142,9 @@ contract WERC721 is Clone, Multicallable {
      * @return     string   A valid URI for the asset.
      */
     function tokenURI(uint256 id) external view returns (string memory) {
+        // Throws if the token ID is not a wrapped ERC721.
+        if (ownerOf[id] == address(0)) revert NotWrappedToken();
+
         return collection().tokenURI(id);
     }
 
