@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
 import {WERC721} from "src/WERC721.sol";
+import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 
 contract WERC721InvariantHandler is ERC721TokenReceiver {

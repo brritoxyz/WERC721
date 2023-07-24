@@ -3,10 +3,10 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
-import {ERC721TokenReceiver} from "src/lib/ERC721TokenReceiver.sol";
-import {TestERC721} from "test/lib/TestERC721.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
+import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
+import {TestERC721} from "test/lib/TestERC721.sol";
 import {WERC721InvariantHandler} from "test/InvariantWERC721Handler.sol";
 
 contract InvariantWERC721Test is Test {

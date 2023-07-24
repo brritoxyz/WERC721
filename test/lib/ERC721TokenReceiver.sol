@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 /// @notice A generic interface for a contract which properly accepts ERC721 tokens.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
+/// @dev This contract was added directly instead of imported to reduce the # of dependencies.
 abstract contract ERC721TokenReceiver {
     function onERC721Received(
         address,
