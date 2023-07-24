@@ -35,6 +35,16 @@ contract WERC721 is Clone, Multicallable {
     bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
         0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
+    // ERC165 interface identifier: bytes4(keccak256("supportsInterface(bytes4)")).
+    bytes4 private constant ERC165_INTERFACE_ID = 0x01ffc9a7;
+
+    // ERC721 ERC721TokenReceiver ERC165 interface identifier: bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")).
+    bytes4 private constant ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER =
+        0x150b7a02;
+
+    // ERC721 ERC721Metadata ERC165 interface identifier: bytes4(keccak256("name()"))^bytes4(keccak256("symbol()"))^bytes4(keccak256("tokenURI(uint256)")).
+    bytes4 private constant ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
+
     // Find the owner of an NFT.
     mapping(uint256 id => address owner) public ownerOf;
 
@@ -333,5 +343,18 @@ contract WERC721 is Clone, Multicallable {
         emit Transfer(address(0), to, id);
 
         return this.onERC721Received.selector;
+    }
+
+    /**
+     * @notice Query if a contract implements an interface
+     * @param  interfaceID  bytes4  The interface identifier, as specified in ERC165.
+     * @return              bool    Returns `true` if the contract implements `interfaceID`.
+     */
+    function supportsInterface(
+        bytes4 interfaceID
+    ) external pure returns (bool) {
+        return (interfaceID == ERC165_INTERFACE_ID ||
+            interfaceID == ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER ||
+            interfaceID == ERC165_INTERFACE_ID_ERC721_METADATA);
     }
 }

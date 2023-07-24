@@ -1007,4 +1007,36 @@ contract WERC721Test is Test, ERC721TokenReceiver {
             }
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             supportsInterface
+    //////////////////////////////////////////////////////////////*/
+
+    function testSupportsInterface() external {
+        // Must return `false` per the ERC165 spec:
+        // https://eips.ethereum.org/EIPS/eip-165#how-a-contract-will-publish-the-interfaces-it-implements.
+        bytes4 interfaceId = 0xffffffff;
+
+        assertFalse(wrapper.supportsInterface(interfaceId));
+    }
+
+    function testSupportsInterfaceERC165() external {
+        bytes4 interfaceId = WERC721.supportsInterface.selector;
+
+        assertTrue(wrapper.supportsInterface(interfaceId));
+    }
+
+    function testSupportsInterfaceERC721TokenReceiver() external {
+        bytes4 interfaceId = WERC721.onERC721Received.selector;
+
+        assertTrue(wrapper.supportsInterface(interfaceId));
+    }
+
+    function testSupportsInterfaceERC721Metadata() external {
+        bytes4 interfaceId = WERC721.name.selector ^
+            WERC721.symbol.selector ^
+            WERC721.tokenURI.selector;
+
+        assertTrue(wrapper.supportsInterface(interfaceId));
+    }
 }
