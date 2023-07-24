@@ -45,6 +45,15 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         bool approved
     );
 
+    // This emits when an authorization is used.
+    event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
+
+    // This emits when an authorization is canceled.
+    event AuthorizationCanceled(
+        address indexed authorizer,
+        bytes32 indexed nonce
+    );
+
     constructor() {
         collection = new TestERC721();
         factory = new WERC721Factory();
@@ -85,6 +94,20 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertEq(owner, wrapper.ownerOf(id));
     }
 
+    /**
+     * @notice Sign a `transferFromWithAuthorization` authorization.
+     * @param  privateKey   uint256  Authorizer/from private key.
+     * @param  relayer      address  The authorized transfer tx relayer.
+     * @param  from         address  The current owner of the NFT and authorizer.
+     * @param  to           address  The new owner.
+     * @param  id           uint256  The NFT to transfer.
+     * @param  validAfter   uint256  The time after which this is valid (unix time).
+     * @param  validBefore  uint256  The time before which this is valid (unix time).
+     * @param  nonce        bytes32  Unique nonce.
+     * @return              uint8    Signature param.
+     * @return              bytes32  Signature param.
+     * @return              bytes32  Signature param.
+     */
     function _signTransferFromWithAuthorizationDigest(
         uint256 privateKey,
         address relayer,
@@ -119,6 +142,12 @@ contract WERC721Test is Test, ERC721TokenReceiver {
             );
     }
 
+    /**
+     * @notice Compute the storage location of `authorizationState[authorizer][nonce]`.
+     * @param  from   address  The current owner of the NFT and authorizer.
+     * @param  nonce  bytes32  Unique nonce.
+     * @return        bytes32  Storage location.
+     */
     function _getAuthorizationStateStorageLocation(
         address from,
         bytes32 nonce
@@ -571,6 +600,60 @@ contract WERC721Test is Test, ERC721TokenReceiver {
             r,
             s
         );
+    }
+
+    function testTransferFromWithAuthorization() external {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        ) = _signTransferFromWithAuthorizationDigest(
+                TEST_ACCT_PRIV_KEY,
+                msgSender,
+                from,
+                to,
+                id,
+                validAfter,
+                validBefore,
+                nonce
+            );
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+        assertFalse(wrapper.authorizationState(from, nonce));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit AuthorizationUsed(from, nonce);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertTrue(wrapper.authorizationState(from, nonce));
     }
 
     /*//////////////////////////////////////////////////////////////
