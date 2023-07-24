@@ -12,6 +12,16 @@ import {TestERC721SafeRecipient} from "test/lib/TestERC721SafeRecipient.sol";
 import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol";
 
 contract WERC721Test is Test, ERC721TokenReceiver {
+    // Anvil test account and private key for testing `transferFromWithAuthorization.
+    address private constant TEST_ACCT =
+        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
+    uint256 private constant TEST_ACCT_PRIV_KEY =
+        0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6;
+
+    // keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+    bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
+        0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
+
     TestERC721 public immutable collection;
     WERC721Factory private immutable factory;
     WERC721 private immutable wrapperImplementation;
@@ -69,6 +79,40 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertEq(address(wrapper), collection.ownerOf(id));
         assertEq(owner, wrapper.ownerOf(id));
+    }
+
+    function _signTransferFromWithAuthorizationDigest(
+        uint256 privateKey,
+        address relayer,
+        address from,
+        address to,
+        uint256 id,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce
+    ) internal view returns (uint8, bytes32, bytes32) {
+        return
+            vm.sign(
+                privateKey,
+                keccak256(
+                    abi.encodePacked(
+                        "\x19\x01",
+                        wrapper.domainSeparator(),
+                        keccak256(
+                            abi.encode(
+                                TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
+                                relayer,
+                                from,
+                                to,
+                                id,
+                                validAfter,
+                                validBefore,
+                                nonce
+                            )
+                        )
+                    )
+                )
+            );
     }
 
     /*//////////////////////////////////////////////////////////////
