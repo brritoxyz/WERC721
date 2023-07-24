@@ -812,23 +812,6 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         wrapper.onERC721Received(msgSender, msgSender, id, data);
     }
 
-    function testCannotOnERC721ReceivedInvalidSafeWrap() external {
-        address msgSender = address(collection);
-        address to = address(1);
-        uint256 id = 0;
-        bytes memory data = abi.encode(to);
-
-        // Mint token to avoid `TokenDoesNotExist` error but do not transfer to WERC721.
-        collection.mint(msgSender, id);
-
-        assertTrue(address(wrapper) != collection.ownerOf(id));
-
-        vm.prank(msgSender);
-        vm.expectRevert(WERC721.InvalidSafeWrap.selector);
-
-        wrapper.onERC721Received(msgSender, address(wrapper), id, data);
-    }
-
     function testOnERC721ReceivedSafeTransferFrom() external {
         address msgSender = address(this);
         address to = address(1);
