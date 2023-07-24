@@ -12,6 +12,10 @@ import {TestERC721SafeRecipient} from "test/lib/TestERC721SafeRecipient.sol";
 import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol";
 
 contract WERC721Test is Test, ERC721TokenReceiver {
+    // Position of the mapping within the WERC721 contract.
+    // Retrieve from contract output file after running `forge build --extra-output storageLayout`.
+    uint256 private constant STORAGE_SLOT_AUTHORIZATION_STATE = 2;
+
     // Anvil test account and private key for testing `transferFromWithAuthorization.
     address private constant TEST_ACCT =
         0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
@@ -113,6 +117,26 @@ contract WERC721Test is Test, ERC721TokenReceiver {
                     )
                 )
             );
+    }
+
+    function _getAuthorizationStateStorageLocation(
+        address from,
+        bytes32 nonce
+    ) internal pure returns (bytes32) {
+        return (
+            // Storage location of `authorizationState[authorizer][nonce]`.
+            // keccak256(nonceKey . keccak256(authorizerKey . mappingSlot)).
+            keccak256(
+                abi.encode(
+                    nonce,
+                    // Storage location of `authorizationState[authorizer]`.
+                    // keccak256(authorizerKey . mappingSlot).
+                    keccak256(
+                        abi.encode(from, STORAGE_SLOT_AUTHORIZATION_STATE)
+                    )
+                )
+            )
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -325,6 +349,228 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         emit Transfer(from, to, id);
 
         wrapper.transferFrom(from, to, id);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             transferFromWithAuthorization
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotTransferFromWithAuthorizationNotTokenOwner() external {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        assertTrue(from != wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.NotTokenOwner.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+    }
+
+    function testCannotTransferFromWithAuthorizationUnsafeTokenRecipient()
+        external
+    {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+
+        // Unsafe recipient.
+        address to = address(0);
+
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.UnsafeTokenRecipient.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+    }
+
+    function testCannotTransferFromWithAuthorizationInvalidAuthorizationValidAfter()
+        external
+    {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+
+        // Timestamp that is in the future, beyond the ts of when `transferFromWithAuthorization` will be called.
+        uint256 validAfter = block.timestamp + 1;
+
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+        assertLt(block.timestamp, validAfter);
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+    }
+
+    function testCannotTransferFromWithAuthorizationInvalidAuthorizationValidBefore()
+        external
+    {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+
+        // Timestamp that is in the past, before the ts of when `transferFromWithAuthorization` will be called.
+        uint256 validBefore = block.timestamp - 1;
+
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+        assertGt(block.timestamp, validBefore);
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+    }
+
+    function testCannotTransferFromWithAuthorizationAuthorizationAlreadyUsed()
+        external
+    {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        _mintWrap(from, id);
+
+        // Set `authorizationState[from][nonce]` to `true`.
+        vm.store(
+            address(wrapper),
+            _getAuthorizationStateStorageLocation(from, nonce),
+            bytes32(abi.encode(true))
+        );
+
+        assertTrue(wrapper.authorizationState(from, nonce));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.AuthorizationAlreadyUsed.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+    }
+
+    function testCannotTransferFromWithAuthorizationInvalidAuthorizationSignature()
+        external
+    {
+        address msgSender = address(this);
+        address from = TEST_ACCT;
+        address to = address(1);
+        uint256 id = 0;
+        uint256 validAfter = block.timestamp;
+        uint256 validBefore = block.timestamp + 1 hours;
+        bytes32 nonce = bytes32(uint256(1));
+        uint8 v = 0;
+        bytes32 r = bytes32(0);
+        bytes32 s = bytes32(0);
+
+        _mintWrap(from, id);
+
+        assertFalse(wrapper.authorizationState(from, nonce));
+
+        vm.prank(msgSender);
+        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
