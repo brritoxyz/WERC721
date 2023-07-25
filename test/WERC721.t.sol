@@ -371,6 +371,9 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         emit Transfer(from, to, id);
 
         wrapper.transferFrom(from, to, id);
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
     }
 
     function testTransferFromMsgSenderApprovedOperator() external {
@@ -396,6 +399,43 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         emit Transfer(from, to, id);
 
         wrapper.transferFrom(from, to, id);
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
+    }
+
+    function testTransferFromFuzz(
+        address msgSender,
+        address from,
+        address to,
+        uint256 id
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(from != address(0));
+        vm.assume(to != address(0));
+        vm.assume(from != to);
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+
+        if (msgSender != from) {
+            vm.prank(from);
+
+            wrapper.setApprovalForAll(msgSender, true);
+
+            assertTrue(wrapper.isApprovedForAll(from, msgSender));
+        }
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.transferFrom(from, to, id);
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -674,6 +714,65 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertTrue(wrapper.authorizationState(from, nonce));
     }
 
+    function testTransferFromWithAuthorizationFuzz(
+        address msgSender,
+        address to,
+        uint256 id,
+        uint256 validBefore,
+        bytes32 nonce
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(to != address(0));
+        vm.assume(validBefore >= block.timestamp);
+
+        uint256 validAfter = block.timestamp;
+        address from = TEST_ACCT;
+        (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        ) = _signTransferFromWithAuthorizationDigest(
+                TEST_ACCT_PRIV_KEY,
+                msgSender,
+                from,
+                to,
+                id,
+                validAfter,
+                validBefore,
+                nonce
+            );
+
+        _mintWrap(from, id);
+
+        assertEq(from, wrapper.ownerOf(id));
+        assertFalse(wrapper.authorizationState(from, nonce));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit AuthorizationUsed(from, nonce);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(from, to, id);
+
+        wrapper.transferFromWithAuthorization(
+            from,
+            to,
+            id,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertTrue(wrapper.authorizationState(from, nonce));
+    }
+
     /*//////////////////////////////////////////////////////////////
                              cancelTransferFromAuthorization
     //////////////////////////////////////////////////////////////*/
@@ -702,6 +801,24 @@ contract WERC721Test is Test, ERC721TokenReceiver {
     function testCancelTransferFromAuthorization() external {
         address msgSender = TEST_ACCT;
         bytes32 nonce = bytes32(uint256(1));
+
+        assertFalse(wrapper.authorizationState(msgSender, nonce));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, false, true, address(wrapper));
+
+        emit AuthorizationCanceled(msgSender, nonce);
+
+        wrapper.cancelTransferFromAuthorization(nonce);
+
+        assertTrue(wrapper.authorizationState(msgSender, nonce));
+    }
+
+    function testCancelTransferFromAuthorizationFuzz(
+        address msgSender,
+        bytes32 nonce
+    ) external {
+        vm.assume(msgSender != address(0));
 
         assertFalse(wrapper.authorizationState(msgSender, nonce));
 
@@ -771,6 +888,39 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertEq(msgSender, collection.ownerOf(id));
         assertEq(address(0), wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
+
+        collection.setApprovalForAll(address(wrapper), true);
+
+        assertTrue(collection.isApprovedForAll(msgSender, address(wrapper)));
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), to, id);
+
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(msgSender, address(wrapper), id);
+
+        wrapper.wrap(to, id);
+
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(to, wrapper.ownerOf(id));
+    }
+
+    function testWrapFuzz(address msgSender, address to, uint256 id) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(to != address(0));
+        vm.assume(msgSender != to);
+
+        collection.mint(msgSender, id);
+
+        assertEq(msgSender, collection.ownerOf(id));
+        assertEq(address(0), wrapper.ownerOf(id));
+
+        vm.prank(msgSender);
 
         collection.setApprovalForAll(address(wrapper), true);
 
@@ -843,6 +993,29 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         wrapper.unwrap(to, id);
     }
 
+    function testUnwrapFuzz(
+        address msgSender,
+        address to,
+        uint256 id
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(to != address(0));
+        vm.assume(msgSender != to);
+
+        _mintWrap(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(msgSender, address(0), id);
+
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(address(wrapper), to, id);
+
+        wrapper.unwrap(to, id);
+    }
+
     /*//////////////////////////////////////////////////////////////
                              onERC721Received
     //////////////////////////////////////////////////////////////*/
@@ -894,10 +1067,64 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertEq(to, wrapper.ownerOf(id));
     }
 
+    function testOnERC721ReceivedSafeTransferFromFuzz(
+        address msgSender,
+        address to,
+        uint256 id
+    ) external {
+        vm.assume(msgSender != address(0));
+        vm.assume(to != address(0));
+        vm.assume(msgSender != to);
+
+        bytes memory data = abi.encode(to);
+
+        collection.mint(msgSender, id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(collection));
+
+        emit Transfer(msgSender, address(wrapper), id);
+
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), to, id);
+
+        collection.safeTransferFrom(msgSender, address(wrapper), id, data);
+
+        assertEq(address(wrapper), collection.ownerOf(id));
+        assertEq(to, wrapper.ownerOf(id));
+    }
+
     function testOnERC721Received() external {
         address msgSender = address(collection);
         address to = address(1);
         uint256 id = 0;
+        bytes memory data = abi.encode(to);
+
+        // Mint the token for the WERC721 contract to ensure the `ownerOf` check does not throw.
+        collection.mint(address(wrapper), id);
+
+        vm.prank(msgSender);
+        vm.expectEmit(true, true, true, true, address(wrapper));
+
+        emit Transfer(address(0), to, id);
+
+        bytes4 selector = wrapper.onERC721Received(
+            msgSender,
+            address(wrapper),
+            id,
+            data
+        );
+
+        assertEq(to, wrapper.ownerOf(id));
+        assertEq(selector, WERC721.onERC721Received.selector);
+    }
+
+    function testOnERC721ReceivedFuzz(address to, uint256 id) external {
+        vm.assume(to != address(0));
+        vm.assume(to != address(collection));
+
+        address msgSender = address(collection);
         bytes memory data = abi.encode(to);
 
         // Mint the token for the WERC721 contract to ensure the `ownerOf` check does not throw.
