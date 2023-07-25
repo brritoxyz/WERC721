@@ -44,7 +44,7 @@ function approve(address _approved, uint256 _tokenId) external payable;
 function getApproved(uint256 _tokenId) external view returns (address);
 ```
 
-The following operations below are removed from the `transferFrom` function, reducing gas costs:
+The following operations below are removed from the `transferFrom` function, reducing gas costs (the values below were derived from [EVM Codes](https://www.evm.codes/?fork=shanghai)):
 
 > NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are well-written. There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
 >
@@ -57,14 +57,14 @@ The following operations below are removed from the `transferFrom` function, red
     - Incurs a 2,900 gas cost (slot started non-zero, pending change).
     - If the new balance of `from` is zero, results in a 4,800 gas refund.
     - Net gas cost = 200 or 5,000.
-- `SSTORE` incrementing the balance of `to` (we are assuming the `from` and `to` are not the same account).
+- `SSTORE` for incrementing the balance of `to` (we are assuming that `from` and `to` are not the same account).
     - Incurs a 2,100 gas cost (cold access).
     - If the original balance of `to` was zero, incurs a 20,000 gas cost.
     - Else incurs a 2,900 gas cost.
     - Net gas cost = 5,000 or 22,100.
 - `SSTORE` for deleting the token approval.
-    - If `msg.sender` had an approval for this token ID, incurs a 2,900 gas cost, and results in a 4,800 gas refund.
-    - Else incurs a 100 gas cost (no op).
+    - If `msg.sender` did not have an approval for this token, incurs a 100 gas cost (no op).
+    - Else incurs a 2,900 gas cost (slot started non-zero, pending change) and results in a 4,800 gas refund.
     - Net gas cost = -1,900 or 100.
 
 Referencing the above, the gas savings from `WERC721.transferFrom` ranges from 3,300 to 27,200 gas.
