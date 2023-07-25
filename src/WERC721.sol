@@ -19,15 +19,15 @@ contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
     uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
-    // EIP-712 domain typehash: keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)").
+    // EIP712 domain typehash: keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)").
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-    // EIP-712 domain name (the user readable name of the signing domain): keccak256("WERC721").
+    // EIP712 domain name (the user readable name of the signing domain): keccak256("WERC721").
     bytes32 private constant EIP712_DOMAIN_NAME =
         0x59b335d161aba1eac6f297a3046e2f74e6d4f8b1bc20b3766e382ce7e7b4369c;
 
-    // EIP-712 domain version (the current major version of the signing domain): keccak256("1").
+    // EIP712 domain version (the current major version of the signing domain): keccak256("1").
     bytes32 private constant EIP712_DOMAIN_VERSION =
         0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
@@ -38,11 +38,11 @@ contract WERC721 is Clone, Multicallable {
     // ERC165 interface identifier: bytes4(keccak256("supportsInterface(bytes4)")).
     bytes4 private constant ERC165_INTERFACE_ID = 0x01ffc9a7;
 
-    // ERC721 ERC721TokenReceiver ERC165 interface identifier: bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")).
+    // ERC165 ERC721TokenReceiver interface identifier: bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")).
     bytes4 private constant ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER =
         0x150b7a02;
 
-    // ERC721 ERC721Metadata ERC165 interface identifier: bytes4(keccak256("name()"))^bytes4(keccak256("symbol()"))^bytes4(keccak256("tokenURI(uint256)")).
+    // ERC165 ERC721Metadata interface identifier: bytes4(keccak256("name()"))^bytes4(keccak256("symbol()"))^bytes4(keccak256("tokenURI(uint256)")).
     bytes4 private constant ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
 
     // Find the owner of an NFT.
@@ -84,12 +84,12 @@ contract WERC721 is Clone, Multicallable {
     error NotAuthorizedCaller();
     error UnsafeTokenRecipient();
     error NotWrappedToken();
-    error InvalidAuthorization();
-    error AuthorizationAlreadyUsed();
+    error InvalidTransferAuthorization();
+    error TransferAuthorizationUsed();
 
     /**
-     * @notice Get the EIP-712 domain separator.
-     * @return bytes32  The EIP-712 domain separator.
+     * @notice Get the EIP712 domain separator.
+     * @return bytes32  The EIP712 domain separator.
      */
     function domainSeparator() public view returns (bytes32) {
         return
@@ -136,6 +136,8 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice A distinct Uniform Resource Identifier (URI) for a given asset.
+     * @dev    To maintain clear separation between WERC721 and ERC721 contracts,
+     *         we are only returning a URI for wrapped tokens (throws otherwise).
      * @dev    We are returning the value of `tokenURI(id)` on the underlying ERC721
      *         contract for parity between the derivatives and the actual assets.
      * @param  id  uint256  The identifier for an NFT.
@@ -213,13 +215,13 @@ contract WERC721 is Clone, Multicallable {
         if (to == address(0)) revert UnsafeTokenRecipient();
 
         // Throws if `block.timestamp` is before `validAfter`.
-        if (block.timestamp < validAfter) revert InvalidAuthorization();
+        if (block.timestamp < validAfter) revert InvalidTransferAuthorization();
 
         // Throws if `block.timestamp` is after `validBefore`.
-        if (block.timestamp > validBefore) revert InvalidAuthorization();
+        if (block.timestamp > validBefore) revert InvalidTransferAuthorization();
 
         // Throws if `nonce` has already been used.
-        if (authorizationState[from][nonce]) revert AuthorizationAlreadyUsed();
+        if (authorizationState[from][nonce]) revert TransferAuthorizationUsed();
 
         // Set the nonce usage status to `true` to prevent reuse. This is called before
         // the signature is verified due to `SignatureCheckerLib` making an external call
@@ -263,7 +265,7 @@ contract WERC721 is Clone, Multicallable {
                 r,
                 s
             )
-        ) revert InvalidAuthorization();
+        ) revert InvalidTransferAuthorization();
     }
 
     /**
@@ -273,7 +275,7 @@ contract WERC721 is Clone, Multicallable {
     function cancelTransferFromAuthorization(bytes32 nonce) external {
         // Throws if `nonce` has already been used.
         if (authorizationState[msg.sender][nonce])
-            revert AuthorizationAlreadyUsed();
+            revert TransferAuthorizationUsed();
 
         // Set the nonce usage status to `true` to prevent use by the relayer.
         authorizationState[msg.sender][nonce] = true;

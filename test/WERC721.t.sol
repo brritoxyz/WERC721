@@ -469,7 +469,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         );
     }
 
-    function testCannotTransferFromWithAuthorizationInvalidAuthorizationValidAfter()
+    function testCannotTransferFromWithAuthorizationInvalidTransferAuthorizationValidAfter()
         external
     {
         address msgSender = address(this);
@@ -492,7 +492,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertLt(block.timestamp, validAfter);
 
         vm.prank(msgSender);
-        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+        vm.expectRevert(WERC721.InvalidTransferAuthorization.selector);
 
         wrapper.transferFromWithAuthorization(
             from,
@@ -507,7 +507,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         );
     }
 
-    function testCannotTransferFromWithAuthorizationInvalidAuthorizationValidBefore()
+    function testCannotTransferFromWithAuthorizationInvalidTransferAuthorizationValidBefore()
         external
     {
         address msgSender = address(this);
@@ -530,7 +530,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertGt(block.timestamp, validBefore);
 
         vm.prank(msgSender);
-        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+        vm.expectRevert(WERC721.InvalidTransferAuthorization.selector);
 
         wrapper.transferFromWithAuthorization(
             from,
@@ -545,7 +545,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         );
     }
 
-    function testCannotTransferFromWithAuthorizationAuthorizationAlreadyUsed()
+    function testCannotTransferFromWithAuthorizationTransferAuthorizationUsed()
         external
     {
         address msgSender = address(this);
@@ -571,7 +571,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertTrue(wrapper.authorizationState(from, nonce));
 
         vm.prank(msgSender);
-        vm.expectRevert(WERC721.AuthorizationAlreadyUsed.selector);
+        vm.expectRevert(WERC721.TransferAuthorizationUsed.selector);
 
         wrapper.transferFromWithAuthorization(
             from,
@@ -586,7 +586,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         );
     }
 
-    function testCannotTransferFromWithAuthorizationInvalidAuthorizationSignature()
+    function testCannotTransferFromWithAuthorizationInvalidTransferAuthorizationSignature()
         external
     {
         address msgSender = address(this);
@@ -605,7 +605,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertFalse(wrapper.authorizationState(from, nonce));
 
         vm.prank(msgSender);
-        vm.expectRevert(WERC721.InvalidAuthorization.selector);
+        vm.expectRevert(WERC721.InvalidTransferAuthorization.selector);
 
         wrapper.transferFromWithAuthorization(
             from,
@@ -678,7 +678,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
                              cancelTransferFromAuthorization
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotCancelTransferFromAuthorizationAuthorizationAlreadyUsed()
+    function testCannotCancelTransferFromAuthorizationTransferAuthorizationUsed()
         external
     {
         address msgSender = TEST_ACCT;
@@ -694,7 +694,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         assertTrue(wrapper.authorizationState(msgSender, nonce));
 
         vm.prank(msgSender);
-        vm.expectRevert(WERC721.AuthorizationAlreadyUsed.selector);
+        vm.expectRevert(WERC721.TransferAuthorizationUsed.selector);
 
         wrapper.cancelTransferFromAuthorization(nonce);
     }
