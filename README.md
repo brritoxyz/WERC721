@@ -30,16 +30,23 @@ The WERC721 contract is a partial implementation of the ERC721 interface with ad
 WERC721 is partially compliant with the ERC721 standard for the sake of reducing friction with regards to developer adoption (i.e. any application which interacts with ERC721 and does not make use of the missing ERC721 interface can seamlessly integrate WERC721) and to reduce token transfer gas costs substantially.
 
 The following items from the ERC721 interface are removed in WERC721:
-- `event Approval(address indexed _owner, address indexed _approved, uint256 indexed _tokenId);`
-- `function balanceOf(address _owner) external view returns (uint256);`
-- `function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) external payable;`
-- `function safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable;`
-- `function approve(address _approved, uint256 _tokenId) external payable;`
-- `function getApproved(uint256 _tokenId) external view returns (address);`
+```
+event Approval(address indexed _owner, address indexed _approved, uint256 indexed _tokenId);
+
+function balanceOf(address _owner) external view returns (uint256);
+
+function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) external payable;
+
+function safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable;
+
+function approve(address _approved, uint256 _tokenId) external payable;
+
+function getApproved(uint256 _tokenId) external view returns (address);
+```
 
 The following operations below are removed from the `transferFrom` function, reducing gas costs:
 
-> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are well-written. There may be outlier implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
+> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are well-written. There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
 >
 > For the sake of simplicity, EIP2930 is not considered.
 
