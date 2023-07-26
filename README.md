@@ -25,7 +25,7 @@ Reference material:
 
 ## Contracts: WERC721
 
-The WERC721 contract is a partial implementation of the ERC721 interface with additional generally-useful utility: call-batching and meta transactions.
+The WERC721 contract is a partial implementation of the ERC721 interface with additional broadly-useful utility: call-batching and meta transactions.
 
 WERC721 is partially compliant with the ERC721 standard for the sake of reducing friction with regards to developer adoption (i.e. any application which interacts with ERC721 and does not make use of the missing ERC721 interface can seamlessly integrate WERC721) and to reduce token transfer gas costs substantially.
 
@@ -44,9 +44,9 @@ function approve(address _approved, uint256 _tokenId) external payable;
 function getApproved(uint256 _tokenId) external view returns (address);
 ```
 
-The following operations below are removed from the `transferFrom` function, reducing gas costs (the values below were derived from [EVM Codes](https://www.evm.codes/?fork=shanghai)):
+The following operations below are removed from the `transferFrom` function, reducing gas costs. Below each operation are details about their gas costs, enabling the reader to better understand the gas savings from using WERC721 (resources are linked below for verifying the figures).
 
-> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are well-written. There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
+> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are exceptionally-written. There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
 >
 > For the sake of simplicity, EIP2930 is not considered.
 
@@ -67,7 +67,11 @@ The following operations below are removed from the `transferFrom` function, red
     - Else incurs a 2,900 gas cost (slot started non-zero, pending change) and results in a 4,800 gas refund.
     - Net gas cost = -1,900 or 100.
 
-Referencing the above, the gas savings from `WERC721.transferFrom` ranges from 3,300 to 27,200 gas.
+Referring to the gas costs of the removed operations above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 and 27,200 gas.
+
+Reference material:
+- [Dynamic gas cost appendix by wolflo](https://github.com/wolflo/evm-opcodes/blob/main/gas.md).
+- [EVM Codes](https://www.evm.codes/?fork=shanghai).
 
 [WIP]
 

@@ -45,14 +45,14 @@ contract WERC721 is Clone, Multicallable {
     // ERC165 ERC721Metadata interface identifier: bytes4(keccak256("name()"))^bytes4(keccak256("symbol()"))^bytes4(keccak256("tokenURI(uint256)")).
     bytes4 private constant ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
 
-    // Find the owner of an NFT.
+    // WERC721 tokens mapped to their owners.
     mapping(uint256 id => address owner) public ownerOf;
 
-    // Query if an address is an authorized operator for another address.
+    // WERC721 owners mapped to operators and their approval status.
     mapping(address owner => mapping(address operator => bool approved))
         public isApprovedForAll;
 
-    // Returns the state of an authorization.
+    // Transfer authorizers mapped to nonces and their usage status.
     mapping(address authorizer => mapping(bytes32 nonce => bool state))
         public authorizationState;
 
@@ -178,7 +178,7 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Set new owner as `to`.
+        // Transfer the wrapped ERC721 token by updating it to `to`.
         ownerOf[id] = to;
 
         emit Transfer(from, to, id);
@@ -218,7 +218,8 @@ contract WERC721 is Clone, Multicallable {
         if (block.timestamp < validAfter) revert InvalidTransferAuthorization();
 
         // Throws if `block.timestamp` is after `validBefore`.
-        if (block.timestamp > validBefore) revert InvalidTransferAuthorization();
+        if (block.timestamp > validBefore)
+            revert InvalidTransferAuthorization();
 
         // Throws if `nonce` has already been used.
         if (authorizationState[from][nonce]) revert TransferAuthorizationUsed();
@@ -231,7 +232,7 @@ contract WERC721 is Clone, Multicallable {
 
         emit AuthorizationUsed(from, nonce);
 
-        // Set new owner as `to`.
+        // Transfer the wrapped ERC721 token by updating it to `to`.
         ownerOf[id] = to;
 
         emit Transfer(from, to, id);
@@ -243,13 +244,12 @@ contract WERC721 is Clone, Multicallable {
                 keccak256(
                     abi.encodePacked(
                         "\x19\x01",
-                        // Prevents collision with other contracts that may use the same structured data.
+                        // Prevents collision with other contracts that may use the same structured data (the unique element is this contract's address).
                         domainSeparator(),
                         keccak256(
                             abi.encode(
                                 TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
-                                // `msg.sender` must match `relayer`, the account allowed to perform authorized transfers
-                                // on behalf of `from`.
+                                // `msg.sender` must match `relayer` (i.e. account allowed to perform authorized transfers on behalf of `from`).
                                 msg.sender,
                                 from,
                                 to,
@@ -292,7 +292,7 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Mint the wrapped NFT for the depositor.
+        // Mint the wrapped ERC721 token by setting it to `to`.
         ownerOf[id] = to;
 
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
@@ -314,7 +314,7 @@ contract WERC721 is Clone, Multicallable {
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Burn the wrapped NFT before transferring the ERC721 NFT to the specific recipient.
+        // Burn the wrapped ERC721 token by setting it to the zero address.
         delete ownerOf[id];
 
         // Emit `Transfer` with the zero address as the `to` member to denote a burn.
@@ -342,7 +342,7 @@ contract WERC721 is Clone, Multicallable {
         // Decode the recipient of the wrapped ERC721 NFT. Will throw if `data` is an empty byte array.
         address to = abi.decode(data, (address));
 
-        // Set the wrapped ERC721 owner as `to`.
+        // Mint the wrapped ERC721 token by setting it to `to`.
         ownerOf[id] = to;
 
         // Emit `Transfer` with the zero address as the `from` member to denote a mint.
