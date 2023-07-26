@@ -46,7 +46,7 @@ function getApproved(uint256 _tokenId) external view returns (address);
 
 The following operations below are removed from the `transferFrom` function, reducing gas costs. Below each operation are details about their gas costs, enabling the reader to better understand the gas savings from using WERC721 (resources are linked below for verifying the figures).
 
-> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are exceptionally-written. There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
+> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are exceptionally-written in plain Solidity (generally easier to read). There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
 >
 > For the sake of simplicity, EIP2930 is not considered.
 
@@ -68,6 +68,8 @@ The following operations below are removed from the `transferFrom` function, red
     - Net gas cost = -1,900 or 100.
 
 Referring to the gas costs of the removed operations above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 and 27,200 gas.
+
+It's important to note that the act of wrapping ERC721 tokens costs gas and users should factor that into their decision-making when considering whether or not to use WERC721. For tokens that are transferred frequently, the gas savings will likely recoup the wrapping gas costs quickly.
 
 Reference material:
 - [Dynamic gas cost appendix by wolflo](https://github.com/wolflo/evm-opcodes/blob/main/gas.md).

@@ -326,7 +326,7 @@ contract WERC721 is Clone, Multicallable {
 
     /**
      * @notice Wrap an ERC721 NFT using a "safe" ERC721 transfer method (e.g. `safeTransferFrom` or `safeMint`).
-     * @dev    It is the responsibility of the ERC721 contract implement calls to `onERC721Received` correctly!
+     * @dev    It is the responsibility of the ERC721 contract creator to implement `onERC721Received` calls correctly!
      * @param  id    uint256  The NFT to deposit and wrap.
      * @param  data  bytes    Encoded recipient address.
      */
