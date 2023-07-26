@@ -13,19 +13,16 @@ import {WERC721} from "src/WERC721.sol";
  */
 contract WERC721Factory {
     // Wrapped collection (i.e. WERC721) implementation address.
-    WERC721 public immutable implementation;
+    WERC721 public immutable implementation = new WERC721();
 
     // Collection contracts mapped to their wrapped counterparts.
     mapping(ERC721 collection => WERC721 wrapper) public wrappers;
 
+    // This emits when a new WERC721 contract is created.
     event CreateWrapper(ERC721 indexed collection, WERC721 indexed wrapper);
 
     error InvalidCollectionAddress();
     error WrapperAlreadyCreated();
-
-    constructor() {
-        implementation = new WERC721();
-    }
 
     /**
      * @notice Create a new WERC721 contract.
