@@ -135,19 +135,6 @@ contract WERC721 is Clone, Multicallable {
     }
 
     /**
-     * @notice Find the owner of an NFT.
-     * @dev    NFTs assigned to zero address are considered invalid, and queries about them do throw.
-     * @param  id     uint256  The identifier for an NFT.
-     * @return owner  address  The address of the owner of the NFT.
-     */
-    function ownerOf(uint256 id) external view returns (address owner) {
-        owner = _ownerOf[id];
-
-        // Throw if `owner` is the zero address.
-        if (owner == address(0)) revert NotWrappedToken();
-    }
-
-    /**
      * @notice A distinct Uniform Resource Identifier (URI) for a given asset.
      * @dev    To maintain clear separation between WERC721 and ERC721 contracts,
      *         we are only returning a URI for wrapped tokens (throws otherwise).
@@ -161,6 +148,19 @@ contract WERC721 is Clone, Multicallable {
         if (_ownerOf[id] == address(0)) revert NotWrappedToken();
 
         return collection().tokenURI(id);
+    }
+
+    /**
+     * @notice Find the owner of an NFT.
+     * @dev    NFTs assigned to zero address are considered invalid, and queries about them do throw.
+     * @param  id     uint256  The identifier for an NFT.
+     * @return owner  address  The address of the owner of the NFT.
+     */
+    function ownerOf(uint256 id) external view returns (address owner) {
+        owner = _ownerOf[id];
+
+        // Throw if `owner` is the zero address.
+        if (owner == address(0)) revert NotWrappedToken();
     }
 
     /**
