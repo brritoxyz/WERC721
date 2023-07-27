@@ -156,12 +156,6 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
-                             ownerOf
-    //////////////////////////////////////////////////////////////*/
-
-    function testCannotOwnerOfNotWrappedToken() external {}
-
-    /*//////////////////////////////////////////////////////////////
                              tokenURI
     //////////////////////////////////////////////////////////////*/
 
@@ -190,6 +184,29 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         assertEq(msgSender, wrapper.ownerOf(id));
 
         assertEq(collection.tokenURI(id), wrapper.tokenURI(id));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             ownerOf
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotOwnerOfNotWrappedToken() external {
+        assertEq(address(0), _getOwnerOf(address(wrapper), 0));
+
+        vm.expectRevert(WERC721.NotWrappedToken.selector);
+
+        wrapper.ownerOf(0);
+    }
+
+    function testOwnerOf() external {
+        address msgSender = address(this);
+        uint256 id = 0;
+
+        _mintWrap(msgSender, id);
+
+        address owner = wrapper.ownerOf(id);
+
+        assertEq(msgSender, owner);
     }
 
     /*//////////////////////////////////////////////////////////////
