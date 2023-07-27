@@ -8,8 +8,9 @@ import {WERC721} from "src/WERC721.sol";
 import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {WERC721InvariantHandler} from "test/InvariantWERC721Handler.sol";
+import {WERC721Helper} from "test/lib/WERC721Helper.sol";
 
-contract InvariantWERC721Test is Test {
+contract InvariantWERC721Test is Test, WERC721Helper {
     TestERC721 private collection;
     WERC721Factory private factory;
     WERC721 private wrapper;
@@ -41,7 +42,7 @@ contract InvariantWERC721Test is Test {
         if (handler.initialized()) {
             uint256 tokenId = handler.tokenId();
 
-            if (address(0) != wrapper.ownerOf(tokenId)) {
+            if (address(0) != _getOwnerOf(address(wrapper), tokenId)) {
                 // If a wrapper token exists, then the collection token must be owned by the wrapper.
                 assertEq(address(wrapper), collection.ownerOf(tokenId));
 

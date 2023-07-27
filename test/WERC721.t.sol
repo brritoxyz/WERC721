@@ -6,16 +6,13 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
+import {WERC721Helper} from "test/lib/WERC721Helper.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
 import {TestERC721SafeRecipient} from "test/lib/TestERC721SafeRecipient.sol";
 import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol";
 
-contract WERC721Test is Test, ERC721TokenReceiver {
-    // Position of the mapping within the WERC721 contract.
-    // Retrieve from contract output file after running `forge build --extra-output storageLayout`.
-    uint256 private constant STORAGE_SLOT_AUTHORIZATION_STATE = 2;
-
+contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
     // Anvil test account and private key for testing `transferFromWithAuthorization`.
     address private constant TEST_ACCT =
         0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
@@ -142,32 +139,6 @@ contract WERC721Test is Test, ERC721TokenReceiver {
             );
     }
 
-    /**
-     * @notice Compute the storage location of `authorizationState[authorizer][nonce]`.
-     * @param  from   address  The current owner of the NFT and authorizer.
-     * @param  nonce  bytes32  Unique nonce.
-     * @return        bytes32  Storage location.
-     */
-    function _getAuthorizationStateStorageLocation(
-        address from,
-        bytes32 nonce
-    ) internal pure returns (bytes32) {
-        return (
-            // Storage location of `authorizationState[authorizer][nonce]`.
-            // keccak256(nonceKey . keccak256(authorizerKey . mappingSlot)).
-            keccak256(
-                abi.encode(
-                    nonce,
-                    // Storage location of `authorizationState[authorizer]`.
-                    // keccak256(authorizerKey . mappingSlot).
-                    keccak256(
-                        abi.encode(from, STORAGE_SLOT_AUTHORIZATION_STATE)
-                    )
-                )
-            )
-        );
-    }
-
     /*//////////////////////////////////////////////////////////////
                              name
     //////////////////////////////////////////////////////////////*/
@@ -185,6 +156,12 @@ contract WERC721Test is Test, ERC721TokenReceiver {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             ownerOf
+    //////////////////////////////////////////////////////////////*/
+
+    function testCannotOwnerOfNotWrappedToken() external {}
+
+    /*//////////////////////////////////////////////////////////////
                              tokenURI
     //////////////////////////////////////////////////////////////*/
 
@@ -195,7 +172,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         collection.mint(msgSender, id);
 
         assertEq(msgSender, collection.ownerOf(id));
-        assertEq(address(0), wrapper.ownerOf(id));
+        assertEq(address(0), _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
         vm.expectRevert(WERC721.NotWrappedToken.selector);
@@ -303,7 +280,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertFalse(wrapper.isApprovedForAll(from, msgSender));
         assertEq(msgSender, from);
-        assertTrue(from != wrapper.ownerOf(id));
+        assertTrue(from != _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
         vm.expectRevert(WERC721.NotTokenOwner.selector);
@@ -325,7 +302,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
 
         assertTrue(wrapper.isApprovedForAll(from, msgSender));
         assertTrue(msgSender != from);
-        assertTrue(from != wrapper.ownerOf(id));
+        assertTrue(from != _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
         vm.expectRevert(WERC721.NotTokenOwner.selector);
@@ -454,7 +431,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         bytes32 r = bytes32(0);
         bytes32 s = bytes32(0);
 
-        assertTrue(from != wrapper.ownerOf(id));
+        assertTrue(from != _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
         vm.expectRevert(WERC721.NotTokenOwner.selector);
@@ -887,7 +864,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         collection.mint(msgSender, id);
 
         assertEq(msgSender, collection.ownerOf(id));
-        assertEq(address(0), wrapper.ownerOf(id));
+        assertEq(address(0), _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
 
@@ -918,7 +895,7 @@ contract WERC721Test is Test, ERC721TokenReceiver {
         collection.mint(msgSender, id);
 
         assertEq(msgSender, collection.ownerOf(id));
-        assertEq(address(0), wrapper.ownerOf(id));
+        assertEq(address(0), _getOwnerOf(address(wrapper), id));
 
         vm.prank(msgSender);
 
