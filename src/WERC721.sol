@@ -158,10 +158,8 @@ contract WERC721 is Clone, Multicallable {
      * @return owner  address  The address of the owner of the NFT.
      */
     function ownerOf(uint256 id) external view returns (address owner) {
-        owner = _ownerOf[id];
-
         // Throw if `owner` is the zero address.
-        if (owner == address(0)) revert NotWrappedToken();
+        if ((owner = _ownerOf[id]) == address(0)) revert NotWrappedToken();
     }
 
     /**
