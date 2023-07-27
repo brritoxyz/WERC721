@@ -13,7 +13,8 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
  *         - Built-in call-batching (with multicall); and
  *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271-compatible, thanks to Solady).
  * @author kp (ppmoon69.eth)
- * @custom:contributor vectorized.eth (vectorized.eth)
+ * @custom:contributor vectorized (vectorized.eth)
+ * @custom:contributor pashov (pashov.eth)
  */
 contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
