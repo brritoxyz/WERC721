@@ -25,9 +25,11 @@ Reference material:
 
 ## Contracts: WERC721
 
-The WERC721 contract is a partial implementation of the ERC721 interface with additional broadly-useful utility: call-batching and meta transactions.
+![WERC721Factory Diagram](https://github.com/jpvge/WERC721/blob/master/readme/WERC721Diagram.png?raw=true)
 
-WERC721 is partially compliant with the ERC721 standard for the sake of reducing friction with regards to developer adoption (i.e. any application which interacts with ERC721 and does not make use of the missing ERC721 interface can seamlessly integrate WERC721) and to reduce token transfer gas costs substantially.
+The WERC721 contract is a **partially-compliant** implementation of the ERC721 interface with significantly-reduced token transfer gas costs and additional (broadly-useful) utility built in: call-batching and meta transactions.
+
+The decision to be partially-compliant was for the sake of reducing friction with regards to developer adoption and ease of integration; any application which handles ERC721 tokens and does not make use of the missing ERC721 interface can support WERC721 tokens with minimal changes.
 
 The following items from the ERC721 interface are removed in WERC721:
 ```
@@ -44,9 +46,11 @@ function approve(address _approved, uint256 _tokenId) external payable;
 function getApproved(uint256 _tokenId) external view returns (address);
 ```
 
+### Significantly-Reduced Transfer Gas Costs
+
 The following operations below are removed from the `transferFrom` function, reducing gas costs. Below each operation are details about their gas costs, enabling the reader to better understand the gas savings from using WERC721 (resources are linked below for verifying the figures).
 
-> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation will be used for comparison since the library is popular and the contracts are exceptionally-written in plain Solidity (generally easier to read). There may be implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
+> NOTE: [Solmate's ERC721](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol) implementation is used for comparison since the library is popular and the contracts are written in plain Solidity (generally easier to read). There may be ERC721 implementations which the list below does not apply to (e.g. an ERC721 implementation which uses a loop to determine an account's token balance vs. maintaining a storage variable).
 >
 > For the sake of simplicity, EIP2930 is not considered.
 
@@ -67,17 +71,13 @@ The following operations below are removed from the `transferFrom` function, red
     - Else incurs a 2,900 gas cost (slot started non-zero, pending change) and results in a 4,800 gas refund.
     - Net gas cost = -1,900 or 100.
 
-Referring to the gas costs of the removed operations above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 and 27,200 gas.
+Based on the above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 and 27,200 gas.
 
-It's important to note that the act of wrapping ERC721 tokens costs gas and users should factor that into their decision-making when considering whether or not to use WERC721. For tokens that are transferred frequently, the gas savings will likely recoup the wrapping gas costs quickly.
+It's important to note that wrapping ERC721 tokens costs gas and should be considered when deciding whether or not to use WERC721. For tokens that are transferred frequently, the gas savings will likely recoup the wrapping gas costs quickly.
 
 Reference material:
 - [Dynamic gas cost appendix by wolflo](https://github.com/wolflo/evm-opcodes/blob/main/gas.md).
 - [EVM Codes](https://www.evm.codes/?fork=shanghai).
-
-[WIP]
-
-...
 
 ## Installation
 
