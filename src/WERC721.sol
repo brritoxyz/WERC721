@@ -46,7 +46,7 @@ contract WERC721 is Clone, Multicallable {
     bytes4 private constant ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
 
     // WERC721 tokens mapped to their owners.
-    mapping(uint256 id => address owner) public ownerOf;
+    mapping(uint256 id => address owner) private _ownerOf;
 
     // WERC721 owners mapped to operators and their approval status.
     mapping(address owner => mapping(address operator => bool approved))
@@ -135,6 +135,19 @@ contract WERC721 is Clone, Multicallable {
     }
 
     /**
+     * @notice Find the owner of an NFT.
+     * @dev    NFTs assigned to zero address are considered invalid, and queries about them do throw.
+     * @param  id     uint256  The identifier for an NFT.
+     * @return owner  address  The address of the owner of the NFT.
+     */
+    function ownerOf(uint256 id) external view returns (address owner) {
+        owner = _ownerOf[id];
+
+        // Throw if `owner` is the zero address.
+        if (owner == address(0)) revert NotWrappedToken();
+    }
+
+    /**
      * @notice A distinct Uniform Resource Identifier (URI) for a given asset.
      * @dev    To maintain clear separation between WERC721 and ERC721 contracts,
      *         we are only returning a URI for wrapped tokens (throws otherwise).
@@ -145,7 +158,7 @@ contract WERC721 is Clone, Multicallable {
      */
     function tokenURI(uint256 id) external view returns (string memory) {
         // Throws if the token ID is not a wrapped ERC721.
-        if (ownerOf[id] == address(0)) revert NotWrappedToken();
+        if (_ownerOf[id] == address(0)) revert NotWrappedToken();
 
         return collection().tokenURI(id);
     }
@@ -173,13 +186,13 @@ contract WERC721 is Clone, Multicallable {
             revert NotApprovedOperator();
 
         // Throws if `from` is not the owner.
-        if (from != ownerOf[id]) revert NotTokenOwner();
+        if (from != _ownerOf[id]) revert NotTokenOwner();
 
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
         // Transfer the wrapped ERC721 token by updating it to `to`.
-        ownerOf[id] = to;
+        _ownerOf[id] = to;
 
         emit Transfer(from, to, id);
     }
@@ -209,7 +222,7 @@ contract WERC721 is Clone, Multicallable {
         bytes32 s
     ) external {
         // Throws if `from` is not the owner.
-        if (from != ownerOf[id]) revert NotTokenOwner();
+        if (from != _ownerOf[id]) revert NotTokenOwner();
 
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
@@ -233,7 +246,7 @@ contract WERC721 is Clone, Multicallable {
         emit AuthorizationUsed(from, nonce);
 
         // Transfer the wrapped ERC721 token by updating it to `to`.
-        ownerOf[id] = to;
+        _ownerOf[id] = to;
 
         emit Transfer(from, to, id);
 
@@ -293,7 +306,7 @@ contract WERC721 is Clone, Multicallable {
         if (to == address(0)) revert UnsafeTokenRecipient();
 
         // Mint the wrapped ERC721 token by setting it to `to`.
-        ownerOf[id] = to;
+        _ownerOf[id] = to;
 
         // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
@@ -309,13 +322,13 @@ contract WERC721 is Clone, Multicallable {
      */
     function unwrap(address to, uint256 id) external {
         // Throws if `msg.sender` is not the owner of the wrapped NFT.
-        if (ownerOf[id] != msg.sender) revert NotTokenOwner();
+        if (_ownerOf[id] != msg.sender) revert NotTokenOwner();
 
         // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
         // Burn the wrapped ERC721 token by setting it to the zero address.
-        delete ownerOf[id];
+        delete _ownerOf[id];
 
         // Emit `Transfer` with the zero address as the `to` member to denote a burn.
         emit Transfer(msg.sender, address(0), id);
@@ -343,7 +356,7 @@ contract WERC721 is Clone, Multicallable {
         address to = abi.decode(data, (address));
 
         // Mint the wrapped ERC721 token by setting it to `to`.
-        ownerOf[id] = to;
+        _ownerOf[id] = to;
 
         // Emit `Transfer` with the zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
