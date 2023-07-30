@@ -237,8 +237,8 @@ contract WERC721 is Clone, Multicallable {
         if (authorizationState[from][nonce]) revert TransferAuthorizationUsed();
 
         // Set the nonce usage status to `true` to prevent reuse. This is called before
-        // the signature is verified due to `SignatureCheckerLib` making an external call
-        // if the signer is a contract account (staticcall but erring on the overly-safe
+        // the signature is verified due to `isValidSignatureNow` resulting in an external
+        // call if the signer is a contract account (staticcall but erring on the overly-safe
         // side and for the sake of consistency @ applying the CEI pattern).
         authorizationState[from][nonce] = true;
 
