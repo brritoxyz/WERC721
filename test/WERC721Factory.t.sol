@@ -8,8 +8,8 @@ import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
 
 contract WERC721FactoryTest is Test {
-    WERC721Factory private immutable factory = new WERC721Factory();
-    TestERC721 private immutable collection = new TestERC721();
+    WERC721Factory public immutable factory = new WERC721Factory();
+    TestERC721 public immutable collection = new TestERC721();
 
     event CreateWrapper(ERC721 indexed collection, WERC721 indexed wrapper);
 

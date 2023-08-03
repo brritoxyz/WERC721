@@ -5,10 +5,10 @@ import "forge-std/Test.sol";
 
 contract WERC721Helper is Test {
     // Position of the `_ownerOf` mapping within the WERC721 contract.
-    uint256 private constant STORAGE_SLOT_OWNER_OF = 0;
+    uint256 public constant STORAGE_SLOT_OWNER_OF = 0;
 
     // Position of the `authorizationState` mapping within the WERC721 contract.
-    uint256 private constant STORAGE_SLOT_AUTHORIZATION_STATE = 2;
+    uint256 public constant STORAGE_SLOT_AUTHORIZATION_STATE = 2;
 
     /**
      * @notice Get the owner address for the token ID directly from the `_ownerOf` mapping.

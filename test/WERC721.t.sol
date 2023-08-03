@@ -14,19 +14,19 @@ import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol"
 
 contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
     // Anvil test account and private key for testing `transferFromWithAuthorization`.
-    address private constant TEST_ACCT =
+    address public constant TEST_ACCT =
         0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-    uint256 private constant TEST_ACCT_PRIV_KEY =
+    uint256 public constant TEST_ACCT_PRIV_KEY =
         0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6;
 
     // keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)").
-    bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
+    bytes32 public constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
         0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
     TestERC721 public immutable collection;
-    WERC721Factory private immutable factory;
-    WERC721 private immutable wrapperImplementation;
-    WERC721 private immutable wrapper;
+    WERC721Factory public immutable factory;
+    WERC721 public immutable wrapperImplementation;
+    WERC721 public immutable wrapper;
 
     // This emits when ownership of any NFT changes by any mechanism.
     event Transfer(

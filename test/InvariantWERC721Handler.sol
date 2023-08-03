@@ -6,9 +6,8 @@ import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 
 contract WERC721InvariantHandler is ERC721TokenReceiver {
-    TestERC721 private immutable collection;
-    WERC721 private immutable wrapper;
-
+    TestERC721 public immutable collection;
+    WERC721 public immutable wrapper;
     uint256 public tokenId;
     bool public initialized;
 

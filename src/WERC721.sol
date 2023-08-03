@@ -18,33 +18,33 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
  */
 contract WERC721 is Clone, Multicallable {
     // Immutable `collection` arg. Offset by 0 bytes since it's first.
-    uint256 private constant IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
+    uint256 private constant _IMMUTABLE_ARG_OFFSET_COLLECTION = 0;
 
     // EIP712 domain typehash: keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)").
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+    bytes32 private constant _EIP712_DOMAIN_TYPEHASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
     // EIP712 domain name (the user readable name of the signing domain): keccak256("WERC721").
-    bytes32 private constant EIP712_DOMAIN_NAME =
+    bytes32 private constant _EIP712_DOMAIN_NAME =
         0x59b335d161aba1eac6f297a3046e2f74e6d4f8b1bc20b3766e382ce7e7b4369c;
 
     // EIP712 domain version (the current major version of the signing domain): keccak256("1").
-    bytes32 private constant EIP712_DOMAIN_VERSION =
+    bytes32 private constant _EIP712_DOMAIN_VERSION =
         0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
     // Authorized transfer typehash: keccak256("TransferFromWithAuthorization(address relayer,address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)").
-    bytes32 private constant TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
+    bytes32 private constant _TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH =
         0x0e3210998bc7d4519a993d9c986d16a1be38c22a169884883d35e6a2e9bff24d;
 
     // ERC165 interface identifier: bytes4(keccak256("supportsInterface(bytes4)")).
-    bytes4 private constant ERC165_INTERFACE_ID = 0x01ffc9a7;
+    bytes4 private constant _ERC165_INTERFACE_ID = 0x01ffc9a7;
 
     // ERC165 ERC721TokenReceiver interface identifier: bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")).
-    bytes4 private constant ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER =
+    bytes4 private constant _ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER =
         0x150b7a02;
 
     // ERC165 ERC721Metadata interface identifier: bytes4(keccak256("name()"))^bytes4(keccak256("symbol()"))^bytes4(keccak256("tokenURI(uint256)")).
-    bytes4 private constant ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
+    bytes4 private constant _ERC165_INTERFACE_ID_ERC721_METADATA = 0x5b5e139f;
 
     // WERC721 tokens mapped to their owners.
     mapping(uint256 id => address owner) private _ownerOf;
@@ -96,9 +96,9 @@ contract WERC721 is Clone, Multicallable {
         return
             keccak256(
                 abi.encode(
-                    EIP712_DOMAIN_TYPEHASH,
-                    EIP712_DOMAIN_NAME,
-                    EIP712_DOMAIN_VERSION,
+                    _EIP712_DOMAIN_TYPEHASH,
+                    _EIP712_DOMAIN_NAME,
+                    _EIP712_DOMAIN_VERSION,
                     // Prevents the same signatures from being reused across different chains.
                     block.chainid,
                     // Prevents the same signatures from being reused across different WERC721 contracts.
@@ -112,7 +112,7 @@ contract WERC721 is Clone, Multicallable {
      * @return ERC721  The underlying ERC721 collection contract.
      */
     function collection() public pure returns (ERC721) {
-        return ERC721(_getArgAddress(IMMUTABLE_ARG_OFFSET_COLLECTION));
+        return ERC721(_getArgAddress(_IMMUTABLE_ARG_OFFSET_COLLECTION));
     }
 
     /**
@@ -260,7 +260,7 @@ contract WERC721 is Clone, Multicallable {
                         domainSeparator(),
                         keccak256(
                             abi.encode(
-                                TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
+                                _TRANSFER_FROM_WITH_AUTHORIZATION_TYPEHASH,
                                 // `msg.sender` must match `relayer` (i.e. account allowed to perform authorized transfers on behalf of `from`).
                                 msg.sender,
                                 from,
@@ -374,8 +374,8 @@ contract WERC721 is Clone, Multicallable {
     function supportsInterface(
         bytes4 interfaceID
     ) external pure returns (bool) {
-        return (interfaceID == ERC165_INTERFACE_ID ||
-            interfaceID == ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER ||
-            interfaceID == ERC165_INTERFACE_ID_ERC721_METADATA);
+        return (interfaceID == _ERC165_INTERFACE_ID ||
+            interfaceID == _ERC165_INTERFACE_ID_ERC721_TOKEN_RECEIVER ||
+            interfaceID == _ERC165_INTERFACE_ID_ERC721_METADATA);
     }
 }

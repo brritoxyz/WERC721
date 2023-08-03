@@ -11,10 +11,10 @@ import {WERC721InvariantHandler} from "test/InvariantWERC721Handler.sol";
 import {WERC721Helper} from "test/lib/WERC721Helper.sol";
 
 contract InvariantWERC721Test is Test, WERC721Helper {
-    TestERC721 private collection;
-    WERC721Factory private factory;
-    WERC721 private wrapper;
-    WERC721InvariantHandler private handler;
+    TestERC721 public collection;
+    WERC721Factory public factory;
+    WERC721 public wrapper;
+    WERC721InvariantHandler public handler;
 
     bytes4[] handlerSelectors = [
         WERC721InvariantHandler.wrap.selector,
