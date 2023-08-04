@@ -3,14 +3,11 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
-import {LibString} from "solady/utils/LibString.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
 import {WERC721Helper} from "test/lib/WERC721Helper.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
-import {TestERC721SafeRecipient} from "test/lib/TestERC721SafeRecipient.sol";
-import {TestERC721UnsafeRecipient} from "test/lib/TestERC721UnsafeRecipient.sol";
 
 contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
     // Anvil test account and private key for testing `transferFromWithAuthorization`.
@@ -55,7 +52,7 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         collection = new TestERC721();
         factory = new WERC721Factory();
         wrapperImplementation = factory.implementation();
-        wrapper = WERC721(factory.create(collection));
+        wrapper = WERC721(factory.create(address(collection)));
 
         assertTrue(address(wrapperImplementation) != address(0));
         assertTrue(address(wrapper) != address(0));

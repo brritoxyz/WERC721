@@ -2,18 +2,19 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {ERC721} from "solady/tokens/ERC721.sol";
 import {TestERC721} from "test/lib/TestERC721.sol";
 import {WERC721Factory} from "src/WERC721Factory.sol";
 import {WERC721} from "src/WERC721.sol";
 
 contract WERC721FactoryTest is Test {
     WERC721Factory public immutable factory = new WERC721Factory();
-    TestERC721 public immutable collection = new TestERC721();
+    address public immutable collection;
 
-    event CreateWrapper(ERC721 indexed collection, WERC721 indexed wrapper);
+    event CreateWrapper(address indexed collection, address indexed wrapper);
 
     constructor() {
+        collection = address(new TestERC721());
+
         assertTrue(address(0) != address(factory.implementation()));
     }
 
@@ -21,16 +22,10 @@ contract WERC721FactoryTest is Test {
                              create
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotCreateInvalidCollectionAddress() external {
-        vm.expectRevert(WERC721Factory.InvalidCollectionAddress.selector);
-
-        factory.create(ERC721(address(0)));
-    }
-
     function testCannotCreateWrapperAlreadyCreated() external {
         factory.create(collection);
 
-        assertTrue(address(0) != address(factory.wrappers(collection)));
+        assertTrue(address(0) != factory.wrappers(collection));
 
         vm.expectRevert(WERC721Factory.WrapperAlreadyCreated.selector);
 
@@ -38,15 +33,15 @@ contract WERC721FactoryTest is Test {
     }
 
     function testCreate() external {
-        assertEq(address(0), address(factory.wrappers(collection)));
+        assertEq(address(0), factory.wrappers(collection));
 
         vm.expectEmit(true, false, false, false, address(factory));
 
-        emit CreateWrapper(collection, WERC721(address(0)));
+        emit CreateWrapper(collection, address(0));
 
-        WERC721 wrapper = factory.create(collection);
+        address wrapper = factory.create(collection);
 
-        assertEq(address(wrapper), address(factory.wrappers(collection)));
-        assertEq(address(collection), address(wrapper.collection()));
+        assertEq(wrapper, factory.wrappers(collection));
+        assertEq(collection, address(WERC721(wrapper).collection()));
     }
 }

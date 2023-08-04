@@ -24,7 +24,7 @@ contract InvariantWERC721Test is Test, WERC721Helper {
     function setUp() public {
         collection = new TestERC721();
         factory = new WERC721Factory();
-        wrapper = factory.create(collection);
+        wrapper = WERC721(factory.create(address(collection)));
         handler = new WERC721InvariantHandler(collection, wrapper);
 
         // Target the handler and specific function selectors.
