@@ -99,9 +99,7 @@ contract WERC721 is Clone, Multicallable {
                     _EIP712_DOMAIN_TYPEHASH,
                     _EIP712_DOMAIN_NAME,
                     _EIP712_DOMAIN_VERSION,
-                    // Prevents the same signatures from being reused across different chains.
                     block.chainid,
-                    // Prevents the same signatures from being reused across different WERC721 contracts.
                     address(this)
                 )
             );
@@ -180,17 +178,11 @@ contract WERC721 is Clone, Multicallable {
      * @param  id    uint256  The NFT to transfer.
      */
     function transferFrom(address from, address to, uint256 id) external {
-        // Throws unless `msg.sender` is the current owner, or an authorized operator.
+        if (from != _ownerOf[id]) revert NotTokenOwner();
+        if (to == address(0)) revert UnsafeTokenRecipient();
         if (msg.sender != from && !isApprovedForAll[from][msg.sender])
             revert NotApprovedOperator();
 
-        // Throws if `from` is not the owner.
-        if (from != _ownerOf[id]) revert NotTokenOwner();
-
-        // Throws if `to` is the zero address.
-        if (to == address(0)) revert UnsafeTokenRecipient();
-
-        // Transfer the wrapped ERC721 token by updating it to `to`.
         _ownerOf[id] = to;
 
         emit Transfer(from, to, id);
@@ -220,36 +212,25 @@ contract WERC721 is Clone, Multicallable {
         bytes32 r,
         bytes32 s
     ) external {
-        // Throws if `from` is not the owner.
         if (from != _ownerOf[id]) revert NotTokenOwner();
-
-        // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
-
-        // Throws if `block.timestamp` is before `validAfter`.
         if (block.timestamp < validAfter) revert InvalidTransferAuthorization();
-
-        // Throws if `block.timestamp` is after `validBefore`.
         if (block.timestamp > validBefore)
             revert InvalidTransferAuthorization();
-
-        // Throws if `nonce` has already been used.
         if (authorizationState[from][nonce]) revert TransferAuthorizationUsed();
 
-        // Set the nonce usage status to `true` to prevent reuse. This is called before
-        // the signature is verified due to `isValidSignatureNow` resulting in an external
-        // call if the signer is a contract account (staticcall but erring on the overly-safe
-        // side and for the sake of consistency @ applying the CEI pattern).
+        // This is called before the signature is verified due to `isValidSignatureNow`
+        // resulting in an external call if the signer is a contract account (staticcall
+        // but erring on the overly-safe side and for the sake of consistency @ applying
+        // the CEI pattern).
         authorizationState[from][nonce] = true;
 
         emit AuthorizationUsed(from, nonce);
 
-        // Transfer the wrapped ERC721 token by updating it to `to`.
         _ownerOf[id] = to;
 
         emit Transfer(from, to, id);
 
-        // Throws if the signature is invalid.
         if (
             !SignatureCheckerLib.isValidSignatureNow(
                 from,
@@ -285,11 +266,10 @@ contract WERC721 is Clone, Multicallable {
      * @param  nonce  bytes32  Unique nonce.
      */
     function cancelTransferFromAuthorization(bytes32 nonce) external {
-        // Throws if `nonce` has already been used.
         if (authorizationState[msg.sender][nonce])
             revert TransferAuthorizationUsed();
 
-        // Set the nonce usage status to `true` to prevent use by the relayer.
+        // Prevents future usage.
         authorizationState[msg.sender][nonce] = true;
 
         emit AuthorizationCanceled(msg.sender, nonce);
@@ -301,16 +281,12 @@ contract WERC721 is Clone, Multicallable {
      * @param  id  uint256  The NFT to deposit and wrap.
      */
     function wrap(address to, uint256 id) external {
-        // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Mint the wrapped ERC721 token by setting it to `to`.
         _ownerOf[id] = to;
 
-        // Emit `Transfer` with zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
-        // Transfer the ERC721 NFT to this contract.
         collection().transferFrom(msg.sender, address(this), id);
     }
 
@@ -320,19 +296,13 @@ contract WERC721 is Clone, Multicallable {
      * @param  id  uint256  The NFT to unwrap and withdraw.
      */
     function unwrap(address to, uint256 id) external {
-        // Throws if `msg.sender` is not the owner of the wrapped NFT.
         if (_ownerOf[id] != msg.sender) revert NotTokenOwner();
-
-        // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Burn the wrapped ERC721 token by setting it to the zero address.
         delete _ownerOf[id];
 
-        // Emit `Transfer` with the zero address as the `to` member to denote a burn.
         emit Transfer(msg.sender, address(0), id);
 
-        // Transfer the ERC721 NFT to the recipient.
         collection().transferFrom(address(this), to, id);
     }
 
@@ -348,19 +318,16 @@ contract WERC721 is Clone, Multicallable {
         uint256 id,
         bytes calldata data
     ) external returns (bytes4) {
-        // Throws if `msg.sender` is not the collection contract.
+        // Prevents minting WERC721s via this method outside of the collection's safe transfer call flow.
         if (msg.sender != address(collection())) revert NotAuthorizedCaller();
 
-        // Decode the recipient of the wrapped ERC721 NFT. Will throw if `data` is an empty byte array.
+        // Will throw if `data` is an empty byte array.
         address to = abi.decode(data, (address));
 
-        // Throws if `to` is the zero address.
         if (to == address(0)) revert UnsafeTokenRecipient();
 
-        // Mint the wrapped ERC721 token by setting it to `to`.
         _ownerOf[id] = to;
 
-        // Emit `Transfer` with the zero address as the `from` member to denote a mint.
         emit Transfer(address(0), to, id);
 
         return this.onERC721Received.selector;

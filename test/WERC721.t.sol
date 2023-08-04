@@ -281,6 +281,8 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         address to = address(2);
         uint256 id = 0;
 
+        _mintWrap(from, id);
+
         assertFalse(wrapper.isApprovedForAll(from, msgSender));
 
         vm.prank(msgSender);
