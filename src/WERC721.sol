@@ -214,8 +214,7 @@ contract WERC721 is Clone, Multicallable {
     ) external {
         if (from != _ownerOf[id]) revert NotTokenOwner();
         if (to == address(0)) revert UnsafeTokenRecipient();
-        if (block.timestamp < validAfter) revert InvalidTransferAuthorization();
-        if (block.timestamp > validBefore)
+        if (block.timestamp <= validAfter || block.timestamp >= validBefore)
             revert InvalidTransferAuthorization();
         if (authorizationState[from][nonce]) revert TransferAuthorizationUsed();
 

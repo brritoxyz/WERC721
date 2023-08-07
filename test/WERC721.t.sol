@@ -604,6 +604,7 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         assertTrue(wrapper.authorizationState(from, nonce));
 
         vm.prank(msgSender);
+        vm.warp(validAfter + 1);
         vm.expectRevert(WERC721.TransferAuthorizationUsed.selector);
 
         wrapper.transferFromWithAuthorization(
@@ -682,6 +683,7 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         assertFalse(wrapper.authorizationState(from, nonce));
 
         vm.prank(msgSender);
+        vm.warp(validAfter + 1);
         vm.expectEmit(true, true, false, true, address(wrapper));
 
         emit AuthorizationUsed(from, nonce);
@@ -711,14 +713,18 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         address msgSender,
         address to,
         uint256 id,
+        uint128 validAfter,
         uint256 validBefore,
         bytes32 nonce
     ) external {
         vm.assume(msgSender != address(0));
         vm.assume(to != address(0));
-        vm.assume(validBefore >= block.timestamp);
 
-        uint256 validAfter = block.timestamp;
+        vm.assume(validBefore > validAfter);
+
+        // Require a sufficient margin between the the two timestamps to enable calling from a timestamp that is in between both.
+        vm.assume((validBefore - validAfter) > 2);
+
         address from = TEST_ACCT;
         (
             uint8 v,
@@ -741,6 +747,7 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         assertFalse(wrapper.authorizationState(from, nonce));
 
         vm.prank(msgSender);
+        vm.warp(uint256(validAfter) + 1);
         vm.expectEmit(true, true, false, true, address(wrapper));
 
         emit AuthorizationUsed(from, nonce);
