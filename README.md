@@ -9,7 +9,7 @@ WERC721 (wrapped ERC721) tokens are redeemable extensions of their ERC721 counte
 
 The project is comprised of two (2) key contracts:
 - [WERC721Factory](https://github.com/jpvge/WERC721/blob/master/src/WERC721Factory.sol): Deploys WERC721 contracts against existing ERC721 contracts.
-- [WERC721](https://github.com/jpvge/WERC721/blob/master/src/WERC721Factory.sol): Handles wrapping, unwrapping, and transfers for a single ERC721 contract.
+- [WERC721](https://github.com/jpvge/WERC721/blob/master/src/WERC721.sol): Handles wrapping, unwrapping, and transfers for a single ERC721 contract.
 
 ## Contracts: WERC721Factory
 
