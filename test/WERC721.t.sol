@@ -585,8 +585,11 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         address from = TEST_ACCT;
         address to = address(1);
         uint256 id = 0;
-        uint256 validAfter = block.timestamp;
-        uint256 validBefore = block.timestamp + 1 hours;
+
+        // Use fixed values instead of `block.timestamp` since values mutate with `vm.warp` (only with IR pipeline enabled)
+        uint256 validAfter = 1;
+        uint256 validBefore = 3600;
+
         bytes32 nonce = bytes32(uint256(1));
         uint8 v = 0;
         bytes32 r = bytes32(0);
@@ -659,8 +662,8 @@ contract WERC721Test is Test, WERC721Helper, ERC721TokenReceiver {
         address from = TEST_ACCT;
         address to = address(1);
         uint256 id = 0;
-        uint256 validAfter = block.timestamp;
-        uint256 validBefore = block.timestamp + 1 hours;
+        uint256 validAfter = 1;
+        uint256 validBefore = 3600;
         bytes32 nonce = bytes32(uint256(1));
         (
             uint8 v,
