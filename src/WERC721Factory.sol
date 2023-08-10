@@ -6,7 +6,7 @@ import {WERC721} from "src/WERC721.sol";
 
 /**
  * @title ERC721 wrapper factory contract.
- * @notice Deploy a WERC721.sol contract for any ERC721 collection.
+ * @notice Deploy a WERC721 contract for any ERC721 collection.
  * @author kp (ppmoon69.eth)
  * @custom:contributor vectorized (vectorized.eth)
  * @custom:contributor pashov (pashov.eth)

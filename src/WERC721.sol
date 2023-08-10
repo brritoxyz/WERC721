@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 
 /**
  * @title ERC721 wrapper contract.
- * @notice Wrap your ERC721 tokens for a redeemable extension with:
+ * @notice Wrap your ERC721 tokens for redeemable tokens with:
  *         - Significantly less gas usage when transferring tokens;
  *         - Built-in call-batching (with multicall); and
  *         - Meta-transactions using EIP3009-inspired authorized transfers (ERC1271-compatible, thanks to Solady).
