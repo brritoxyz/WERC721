@@ -89,4 +89,4 @@ The steps below assume that the code repo has already been cloned and the reader
 
 ## Audits
 
-Coming soon.
+- [Krum Pashov (@pashov) independent smart contract security researcher.](https://github.com/jpvge/WERC721/blob/master/audits/krum-pashov.md)
