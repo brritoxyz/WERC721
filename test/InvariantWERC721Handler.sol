@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity 0.8.19;
 
 import {WERC721} from "src/WERC721.sol";
 import {ERC721TokenReceiver} from "test/lib/ERC721TokenReceiver.sol";
