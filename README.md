@@ -79,6 +79,12 @@ Reference material:
 - [Dynamic gas cost appendix by wolflo](https://github.com/wolflo/evm-opcodes/blob/main/gas.md).
 - [EVM Codes](https://www.evm.codes/?fork=shanghai).
 
+## Contract Deployments: WERC721Factory
+
+| Chain ID         | Chain             | Contract Address                           | Deployment Tx |
+| :--------------- | :---------------- | :----------------------------------------- | :------------ |
+| 1                | Ethereum Mainnet  | 0x9246B771Ee83877c8D6Cba3780747F603754728D | [Etherscan](https://etherscan.io/tx/0x4e376754d8921447e93bafa313b6f40582e139d0e4c00bc959c665ef15a9593e) |
+
 ## Installation
 
 The steps below assume that the code repo has already been cloned and the reader has navigated to the root of the project directory.
