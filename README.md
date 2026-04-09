@@ -15,7 +15,7 @@ The project is comprised of two (2) key contracts:
 
 ![WERC721Factory Diagram](https://github.com/jpvge/WERC721/blob/master/readme/WERC721FactoryDiagram.png?raw=true)
 
-The WERC721Factory contract enables anyone to easily and cheaply deploy a WERC721 contract that is associated with a ERC721 contract (if one does not already exist - each ERC721 contract may only have one WERC721 contract) by employing the Clones With Immutable Args (CWIA) pattern.
+The WERC721Factory contract enables anyone to easily and cheaply deploy a WERC721 contract that is associated with an ERC721 contract (if one does not already exist - each ERC721 contract may only have one WERC721 contract) by employing the Clones With Immutable Args (CWIA) pattern.
 
 The CWIA implementation contract is deployed by the WERC721Factory contract, and is admin-less, contains no `selfdestruct` calls, and does not delegate calls to any contracts other than itself (see [Multicallable#L46](https://github.com/Vectorized/solady/blob/2cfa231273fea6872c7cb70acfa134d2199aa7ea/src/utils/Multicallable.sol#L46)).
 
@@ -71,7 +71,7 @@ The following operations below are removed from the `transferFrom` function, red
     - Else incurs a 2,900 gas cost (slot started non-zero, pending change) and results in a 4,800 gas refund.
     - Net gas cost = -1,900 or 100.
 
-Based on the above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 and 27,200 gas.
+Based on the above, the gas savings from switching to `WERC721.transferFrom` ranges from 3,300 to 27,200 gas.
 
 It's important to note that wrapping ERC721 tokens costs gas and should be considered when deciding whether or not to use WERC721. For tokens that are transferred frequently, the gas savings will likely recoup the wrapping gas costs quickly.
 
